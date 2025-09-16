@@ -3,6 +3,7 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from utils.roles_enum import UserRole
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ def send_follow_up_reminder(lead, hours_before=2):
             'follow_up_time': lead.follow_up_at,
             'current_time': current_time,
             'hours_until': hours_before,
+            'UserRole': UserRole,
             'site_url': getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000'),
         }
         

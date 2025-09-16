@@ -219,6 +219,7 @@ class ManageLeadOptionsView(View):
         context = {
             'lead_statuses': LeadStatus.objects.all().order_by('name'),
             'lead_sources': LeadSource.objects.all().order_by('name'),
+            'UserRole': UserRole,
         }
         return render(request, self.template_name, context)
     
@@ -350,6 +351,8 @@ class UsersListView(APIView, LimitOffsetPagination):
             )
 
         context = {}
+        context['UserRole'] = UserRole
+        queryset = Profile.objects.filter().order_by("user__email")
         queryset_active_users = queryset.filter(is_active=True)
         results_active_users = self.paginate_queryset(
             queryset_active_users.distinct(), self.request, view=self
@@ -413,6 +416,7 @@ class UserDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         context = {}
+        context['UserRole'] = UserRole
         context["profile_obj"] = ProfileSerializer(profile_obj).data
         return Response(
             {"error": False, "data": context},
@@ -501,6 +505,7 @@ class ApiHomeView(APIView):
             ).exclude(status="closed")
             opportunities = opportunities
         context = {}
+        context['UserRole'] = UserRole
         context["leads_count"] = leads.count()
         context["opportunities_count"] = 0
         context["leads"] = LeadSerializer(leads, many=True).data
@@ -514,6 +519,7 @@ class ProfileView(APIView):
     def get(self, request, format=None):
         # profile=Profile.objects.get(user=request.user)
         context = {}
+        context['UserRole'] = UserRole
         context["user_obj"] = ProfileSerializer(self.request.profile).data
         return Response(context, status=status.HTTP_200_OK)
 
@@ -548,6 +554,7 @@ class UserStatusView(APIView):
             profile.save()
 
         context = {}
+        context['UserRole'] = UserRole
         active_profiles = profiles.filter(is_active=True)
         inactive_profiles = profiles.filter(is_active=False)
         context["active_profiles"] = ProfileSerializer(active_profiles, many=True).data
@@ -686,6 +693,7 @@ class TestEmailView(LoginRequiredMixin, View):
         context = {
             'email_backend': settings.EMAIL_BACKEND,
             'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'Not configured'),
+            'UserRole': UserRole
         }
         
         return render(request, 'common/test_email.html', context)

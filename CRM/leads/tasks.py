@@ -9,6 +9,7 @@ from django.template.loader import render_to_string
 
 from common.models import Profile
 from leads.models import Lead
+from utils.roles_enum import UserRole
 
 app = Celery("redis://")
 
@@ -63,6 +64,7 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
     context = {
         "lead_instance": lead_instance,
         "lead_detail_url": url,
+        'UserRole': UserRole,
     }
     mail_kwargs = {"subject": subject, "from_email": from_email}
     for profile in users:
@@ -90,6 +92,7 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
             context["lead"] = lead
             context["created_by"] = created_by
             context["source"] = source
+            context["UserRole"] = UserRole
             subject = "Assigned a lead for you. "
             html_content = render_to_string(
                 "assigned_to/leads_assigned.html", context=context

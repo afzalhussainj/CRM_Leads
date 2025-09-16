@@ -17,6 +17,7 @@ from leads.tasks import (
     send_email_to_assigned_user,
     send_lead_assigned_emails,
 )
+from utils.roles_enum import UserRole
 
 
 class LeadListView(APIView, LimitOffsetPagination):
@@ -54,6 +55,7 @@ class LeadListView(APIView, LimitOffsetPagination):
                 queryset = queryset.filter(assigned_to=request_post.get("assigned_to"))
 
         context = {}
+        context["UserRole"] = UserRole
         search = False
         if (
             params.get("name")
@@ -105,6 +107,7 @@ class LeadListView(APIView, LimitOffsetPagination):
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
+        context["UserRole"] = UserRole
         return Response(context)
 
     def post(self, request, *args, **kwargs):
@@ -146,6 +149,7 @@ class LeadDetailView(APIView):
     def get(self, request, pk, **kwargs):
         lead_obj = self.get_object(pk)
         context = {}
+        context["UserRole"] = UserRole
         context["lead_obj"] = LeadSerializer(lead_obj).data
         return Response(context)
 

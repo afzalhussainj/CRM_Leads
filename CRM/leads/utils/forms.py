@@ -1,6 +1,6 @@
 from django import forms
 from leads.models import Lead, LeadNote
-from CRM.utils.roles_enum import UserRole
+from utils.roles_enum import UserRole
 
 email_regex = r"^[_a-zA-Z0-9-]+(\.[_a-zA-Z0-9-]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*(\.[a-zA-Z]{2,4})$"
 

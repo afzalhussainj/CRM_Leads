@@ -12,7 +12,7 @@ from django.shortcuts import render
 
 from .models import Lead
 from leads.utils.forms import LeadCreateForm, LeadNoteForm
-from CRM.utils.roles_enum import UserRole
+from utils.roles_enum import UserRole
 
 class LeadListUI(LoginRequiredMixin, ListView):
     model = Lead
@@ -61,6 +61,7 @@ class LeadListUI(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["lead_status_choices"] = list(Lead._meta.get_field("status").choices or [])
         context["user_role"] = getattr(self.request, 'profile', None)
+        context["UserRole"] = UserRole
         
         # Add available profiles for assignment dropdown
         if context["user_role"]:
@@ -110,6 +111,7 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['UserRole'] = UserRole
         return context
 
     def post(self, request, *args, **kwargs):
@@ -292,6 +294,7 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['UserRole'] = UserRole
         context["notes"] = self.object.notes.all()
         context["note_form"] = LeadNoteForm()
         context["user_role"] = getattr(self.request, 'profile', None)
@@ -427,6 +430,7 @@ class RemindersView(LoginRequiredMixin, View):
             'done_reminders': done_reminders,
             'upcoming_reminders': upcoming_reminders,
             'user_role': request.profile,
+            'UserRole': UserRole,
         }
         
         return render(request, self.template_name, context)

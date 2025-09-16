@@ -8,6 +8,7 @@ import datetime
 import json
 
 from leads.models import Lead, LeadNote
+from utils.roles_enum import UserRole
 
 
 class SiteAdminView(LoginRequiredMixin, TemplateView):
@@ -23,13 +24,14 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+        context['UserRole'] = UserRole
+
         # Get user profile and role
         user_profile = self.request.profile
         user_role = user_profile.role
         
         # Role-based data filtering
-        if user_role == 'MANAGER':
+        if user_role == UserRole.MANAGER.value:
             # Manager sees all data
             base_leads_queryset = Lead.objects.all()
             my_leads_queryset = Lead.objects.filter(assigned_to=user_profile)

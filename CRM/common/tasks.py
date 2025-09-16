@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode
 
 from common.models import Profile, User
 from common.utils.token_generator import account_activation_token
+from utils.roles_enum import UserRole
 
 app = Celery("redis://")
 
@@ -27,6 +28,7 @@ def send_email_to_new_user(user_id):
         context["url"] = settings.DOMAIN_NAME
         context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
         context["token"] = account_activation_token.make_token(user_obj)
+        context["UserRole"] = UserRole
         time_delta_two_hours = datetime.datetime.strftime(
             timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
         )
@@ -70,6 +72,7 @@ def send_email_user_status(
         context["message"] = "deactivated"
         context["email"] = user.email
         context["url"] = settings.DOMAIN_NAME
+        context["UserRole"] = UserRole
         if user.is_active:
             context["message"] = "activated"
         context["status_changed_user"] = status_changed_user
@@ -107,6 +110,7 @@ def send_email_user_delete(
         context["message"] = "deleted"
         context["deleted_by"] = deleted_by
         context["email"] = user_email
+        context["UserRole"] = UserRole
         recipients = []
         recipients.append(user_email)
         subject = "CRM : Your account is Deleted. "
@@ -134,6 +138,7 @@ def resend_activation_link_to_user(
     if user_obj:
         context = {}
         context["user_email"] = user_email
+        context["UserRole"] = UserRole
         context["url"] = settings.DOMAIN_NAME
         context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
         context["token"] = account_activation_token.make_token(user_obj)
@@ -178,6 +183,7 @@ def send_email_to_reset_password(user_email):
     context["uid"] = (urlsafe_base64_encode(force_bytes(user.pk)),)
     context["token"] = default_token_generator.make_token(user)
     context["token"] = context["token"]
+    context["UserRole"] = UserRole
     context["complete_url"] = context[
         "url"
     ] + "/auth/reset-password/{uidb64}/{token}/".format(
