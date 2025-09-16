@@ -1,25 +1,15 @@
 from django.contrib import admin
 from .models import (
-    User, Profile, APISettings, LeadSource, LeadStatus
+    User, Profile, Leads, LeadSource, LeadStatus
 )
 
 
 @admin.register(LeadSource)
 class LeadSourceAdmin(admin.ModelAdmin):
-    list_display = ['name', 'is_active', 'sort_order', 'created_at']
-    list_editable = ['is_active', 'sort_order']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['name','lead', 'linkdein', 'phone', 'company']
+    list_filter = ['name']
     search_fields = ['name']
-    ordering = ['sort_order']
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ['name']
-        }),
-        ('Settings', {
-            'fields': ('is_active', 'sort_order')
-        }),
-    )
+    ordering = ['name']
     
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('sort_order')
@@ -61,9 +51,8 @@ class ProfileAdmin(admin.ModelAdmin):
     search_fields = ['user__email']
 
 
-@admin.register(APISettings)
-class APISettingsAdmin(admin.ModelAdmin):
-    list_display = ['title', 'apikey', 'created_by', 'created_at']
-    list_filter = ['created_at']
+@admin.register(Leads)
+class Leads(admin.ModelAdmin):
+    list_display = ['title', 'status', 'created_by']
+    list_filter = ['title']
     search_fields = ['title']
-    readonly_fields = ['apikey']

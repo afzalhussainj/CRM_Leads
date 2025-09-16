@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.models import APISettings, Profile
+from common.models import Leads, Profile
 from .models import Lead
 from leads.serializer import (
     LeadCreateSerializer,
@@ -190,7 +190,7 @@ class CreateLeadFromSite(APIView):
 
     def post(self, request, *args, **kwargs):
         params = request.data
-        api_setting = APISettings.objects.filter(website=request.META.get("HTTP_REFERER")).first()
+        api_setting = Leads.objects.filter(website=request.META.get("HTTP_REFERER")).first()
         if not api_setting:
             return Response(
                 {"error": True, "message": "Invalid request"},

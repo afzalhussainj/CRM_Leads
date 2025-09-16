@@ -244,7 +244,7 @@
           <a href="/ui/leads/new/">New Lead</a>
         </div>
 
-        {% if request.profile and request.profile.role == 'EMPLOYEE' or request.profile and request.profile.role == 'MANAGER' %}
+        {% if request.profile and request.profile.role == UserRole.EMPLOYEE or request.profile and request.profile.role == UserRole.MANAGER %}
         <h2>
           <a href="/reminders/" style="display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -253,7 +253,7 @@
         </h2>
         {% endif %}
 
-        {% if request.profile and request.profile.role == 'MANAGER' %}
+        {% if request.profile and request.profile.role == UserRole.MANAGER %}
         <h2>
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM20 8v6M23 11h-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Management

@@ -101,7 +101,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='APISettings',
+            name='Leads',
             fields=[
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Created At')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Last Modified At')),
@@ -116,8 +116,8 @@ class Migration(migrations.Migration):
             ],
             options={
                 'verbose_name': 'APISetting',
-                'verbose_name_plural': 'APISettings',
-                'db_table': 'apiSettings',
+                'verbose_name_plural': 'Leads',
+                'db_table': 'Leads',
                 'ordering': ('-created_at',),
             },
         ),

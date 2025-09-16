@@ -9,7 +9,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from common.utils.choices import ROLES
 from common.base import BaseModel
-from ..utils.roles_enum import UserRole
+from utils.roles_enum import UserRole
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -48,7 +48,6 @@ class Profile(BaseModel):
     phone = PhoneNumberField(null=True, unique=True)
     alternate_phone = PhoneNumberField(null=True, blank=True)
     role = models.IntegerField(
-        max_length=50,
         choices=[(role.value, role.name.title) for role in UserRole],
         default=UserRole.EMPLOYEE.value
         )
@@ -120,16 +119,21 @@ class LeadSource(BaseModel):
     """Model to store lead source options that can be managed through admin"""
     name = models.CharField(max_length=100, unique=True)
     phone = PhoneNumberField(null=True, unique=True)
-    linkdein = models.CharField()
+    linkdein = models.CharField(
+        max_length=150
+    )
     lead = models.ForeignKey(Leads, on_delete=models.CASCADE)
-    company = models.CharField(null=True)
+    company = models.CharField(
+        max_length=30,
+        null=True
+        )
 
     
     class Meta:
         verbose_name = "Lead Source"
         verbose_name_plural = "Lead Sources"
         db_table = "lead_source"
-        ordering = ["sort_order", "name"]
+        ordering = ["name"]
     
     def __str__(self):
         return self.name

@@ -12,7 +12,7 @@
   </div>
   <div class="quick-actions">
     <a class="btn" href="/ui/leads/">View Leads</a>
-    {% if user_role.role == 'MANAGER' %}
+    {% if user_role.role == UserRole.MANAGER %}
       <a class="btn primary" href="/ui/leads/new/">+ New Lead</a>
     {% endif %}
     <a class="btn" href="/reminders/">Reminders</a>
@@ -22,7 +22,7 @@
 <section class="row" style="margin-bottom:14px;">
   <div class="span-4 card">
     <h3>
-      {% if user_role.role == 'MANAGER' %}Lead Overview{% elif user_role.role == 'EMPLOYEE' %}My Leads{% elif user_role.role == 'DEVELOPMENT_LEAD' %}Development Leads{% endif %}
+      {% if user_role.role == UserRole.MANAGER %}Lead Overview{% elif user_role.role == UserRole.EMPLOYEE %}My Leads{% elif user_role.role == UserRole.DEV_LEAD %}Development Leads{% endif %}
     </h3>
     <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap:12px;">
       <div class="kpi">
@@ -66,15 +66,15 @@
   <div class="span-3 card">
     <h3>Quick Actions</h3>
     <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-      {% if user_role.role == 'MANAGER' %}
+      {% if user_role.role == UserRole.MANAGER %}
         <a class="btn primary" href="/ui/leads/new/">+ New Lead</a>
         <a class="btn" href="/add-employee/">+ Employee</a>
         <a class="btn" href="/manage-lead-options/">Manage Options</a>
         <a class="btn" href="/test-email/">Test Email</a>
-      {% elif user_role.role == 'EMPLOYEE' %}
+      {% elif user_role.role == UserRole.EMPLOYEE %}
         <a class="btn" href="/reminders/">My Reminders</a>
         <a class="btn" href="/ui/leads/">My Leads</a>
-      {% elif user_role.role == 'DEVELOPMENT_LEAD' %}
+      {% elif user_role.role == UserRole.DEV_LEAD %}
         <a class="btn" href="/ui/leads/">Development Leads</a>
       {% endif %}
       <a class="btn" href="/reminders/">View Reminders</a>
@@ -86,7 +86,7 @@
 <section class="row" style="margin-bottom:14px;">
   <div class="span-6 card">
     <h3>
-      {% if user_role.role == 'MANAGER' %}All Leads Over Time{% elif user_role.role == 'EMPLOYEE' %}My Leads Over Time{% elif user_role.role == 'DEVELOPMENT_LEAD' %}Development Leads Over Time{% endif %}
+      {% if user_role.role == UserRole.MANAGER %}All Leads Over Time{% elif user_role.role == UserRole.EMPLOYEE %}My Leads Over Time{% elif user_role.role == UserRole.DEV_LEAD %}Development Leads Over Time{% endif %}
     </h3>
     <div class="chart" style="padding:10px;">
       <canvas id="leadsOverTimeChart" data-labels='{{ leads_over_time_labels_json|safe }}'
@@ -96,10 +96,10 @@
   
   <div class="span-6 card">
     <h3>
-      {% if user_role.role == 'MANAGER' %}Team Analytics{% elif user_role.role == 'EMPLOYEE' %}My Analytics{% elif user_role.role == 'DEVELOPMENT_LEAD' %}Development Analytics{% endif %}
+      {% if user_role.role == UserRole.MANAGER %}Team Analytics{% elif user_role.role == UserRole.EMPLOYEE %}My Analytics{% elif user_role.role == UserRole.DEV_LEAD %}Development Analytics{% endif %}
     </h3>
     <div class="list">
-      {% if user_role.role == 'MANAGER' %}
+      {% if user_role.role == UserRole.MANAGER %}
         <div class="list-item">
           <div>
             <div class="title">My Assigned Leads</div>
@@ -121,7 +121,7 @@
           </div>
           <span class="chip" style="background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.35); color: #ef4444;">{{ unassigned_leads_count }}</span>
         </div>
-      {% elif user_role.role == 'EMPLOYEE' %}
+      {% elif user_role.role == UserRole.EMPLOYEE %}
         <div class="list-item">
           <div>
             <div class="title">My Leads</div>
@@ -143,7 +143,7 @@
           </div>
           <span class="chip" style="background: rgba(52,211,153,.15); border-color: rgba(52,211,153,.35); color: #34d399;">{{ follow_up_counts.done }}</span>
         </div>
-      {% elif user_role.role == 'DEVELOPMENT_LEAD' %}
+      {% elif user_role.role == UserRole.DEV_LEAD %}
         <div class="list-item">
           <div>
             <div class="title">Development Leads</div>
@@ -166,7 +166,7 @@
 <section class="row" style="margin-bottom:14px;">
   <div class="span-6 card">
     <h3>
-      {% if user_role.role == 'MANAGER' %}Recent Activity{% elif user_role.role == 'EMPLOYEE' %}My Recent Activity{% elif user_role.role == 'DEVELOPMENT_LEAD' %}Development Activity{% endif %}
+      {% if user_role.role == UserRole.MANAGER %}Recent Activity{% elif user_role.role == UserRole.EMPLOYEE %}My Recent Activity{% elif user_role.role == UserRole.DEV_LEAD %}Development Activity{% endif %}
     </h3>
     <table>
       <thead>
@@ -196,7 +196,7 @@
   
   <div class="span-6 card">
     <h3>
-      {% if user_role.role == 'MANAGER' %}Upcoming Reminders{% elif user_role.role == 'EMPLOYEE' %}My Upcoming Reminders{% elif user_role.role == 'DEVELOPMENT_LEAD' %}Development Reminders{% endif %}
+      {% if user_role.role == UserRole.MANAGER %}Upcoming Reminders{% elif user_role.role == UserRole.EMPLOYEE %}My Upcoming Reminders{% elif user_role.role == UserRole.DEV_LEAD %}Development Reminders{% endif %}
     </h3>
     <div class="list">
       {% for r in upcoming_reminders %}

@@ -2,16 +2,16 @@
 {% block content %}
 <div class="page-header">
   <div class="page-title">
-    {% if user_role.role == 'EMPLOYEE' %}
+    {% if user_role.role == UserRole.EMPLOYEE %}
       My Assigned Leads
-    {% elif user_role.role == 'DEVELOPMENT_LEAD' %}
+    {% elif user_role.role == UserRole.DEV_LEAD %}
       All Leads
     {% else %}
       Open Leads
     {% endif %}
   </div>
   <div class="quick-actions">
-    {% if user_role.role == 'MANAGER' %}
+    {% if user_role.role == UserRole.MANAGER %}
       <a class="btn primary" href="/ui/leads/new/">+ New Lead</a>
     {% endif %}
   </div>
@@ -32,7 +32,7 @@
         <th>Lead Title</th>
         <th>LinkedIn</th>
         <th>Status</th>
-        {% if user_role.role == 'MANAGER' %}
+        {% if user_role.role == UserRole.MANAGER %}
           <th>Assigned To</th>
         {% endif %}
         <th>Follow-up At</th>
@@ -50,7 +50,7 @@
               {% csrf_token %}
               <select name="status" id="lead-status-select-{{ lead.pk }}" class="status-select">
                 {% for value, label in lead_status_choices %}
-                  {% if user_role.role == 'DEVELOPMENT_LEAD' and value != 'closed' %}
+                  {% if user_role.role == UserRole.DEV_LEAD and value != 'closed' %}
                     <!-- Development leads can only set status to 'closed' -->
                   {% else %}
                     <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
@@ -59,7 +59,7 @@
               </select>
             </form>
           </td>
-          {% if user_role.role == 'MANAGER' or user_role.role == 'EMPLOYEE' %}
+          {% if user_role.role == UserRole.MANAGER or user_role.role == UserRole.EMPLOYEE %}
             <td>
               <form method="post" class="inline-assigned-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
                 {% csrf_token %}
@@ -67,9 +67,9 @@
                   <option value="">Unassigned</option>
                   <option value="{{ user_role.id }}" {% if lead.assigned_to == user_role %}selected{% endif %}>{{ user_role.user.first_name|default:user_role.user.email }} (Me)</option>
                   {% for profile in available_profiles %}
-                    {% if user_role.role == 'MANAGER' and profile.role == 'EMPLOYEE' %}
+                    {% if user_role.role == UserRole.MANAGER and profile.role == UserRole.EMPLOYEE %}
                       <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
-                    {% elif user_role.role == 'EMPLOYEE' and profile.role == 'MANAGER' %}
+                    {% elif user_role.role == UserRole.EMPLOYEE and profile.role == UserRole.MANAGER %}
                       <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
                     {% endif %}
                   {% endfor %}
@@ -107,12 +107,12 @@
               {% endif %}
             </button>
             <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
-            {% if user_role.role == 'MANAGER' %}
+            {% if user_role.role == UserRole.MANAGER %}
               <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
               <a class="btn" href="/ui/leads/{{ lead.pk }}/delete/">Delete</a>
-            {% elif user_role.role == 'EMPLOYEE' %}
+            {% elif user_role.role == UserRole.EMPLOYEE %}
               <!-- Employee can only update status and assignment through dropdowns, no edit button -->
-            {% elif user_role.role == 'DEVELOPMENT_LEAD' %}
+            {% elif user_role.role == UserRole.DEV_LEAD %}
               <!-- Development Lead can only view, no edit/delete -->
             {% endif %}
           </td>
@@ -176,7 +176,7 @@
 {% else %}
   <div class="empty-state">
     <div>No leads found</div>
-    {% if user_role.role == 'MANAGER' %}
+    {% if user_role.role == UserRole.MANAGER %}
       <a class="btn primary" href="/ui/leads/new/">+ Create New Lead</a>
     {% endif %}
   </div>

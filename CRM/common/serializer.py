@@ -3,7 +3,7 @@ import re
 from rest_framework import serializers
 
 from common.models import (
-    APISettings,
+    Leads,
     Profile,
     User,
 )
@@ -91,12 +91,12 @@ def find_urls(string):
     return url_port
 
 
-class APISettingsSerializer(serializers.ModelSerializer):
+class LeadsSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     class Meta:
-        model = APISettings
+        model = Leads
         fields = ("title", "website")
 
     def validate_website(self, website):
@@ -111,7 +111,7 @@ class APISettingsSerializer(serializers.ModelSerializer):
         return website
 
 
-class APISettingsListSerializer(serializers.ModelSerializer):
+class LeadsListSerializer(serializers.ModelSerializer):
     created_by = UserSerializer()
     lead_assigned_to = ProfileSerializer(read_only=True, many=True)
     tags = serializers.SerializerMethodField()
@@ -120,7 +120,7 @@ class APISettingsListSerializer(serializers.ModelSerializer):
         return obj.tags.all().values()
 
     class Meta:
-        model = APISettings
+        model = Leads
         fields = [
             "title",
             "apikey",

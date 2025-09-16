@@ -26,8 +26,8 @@ from rest_framework.views import APIView
 """API views retained only for users/documents/settings; accounts/contacts removed."""
 
 ##from common.custom_auth import JSONWebTokenAuthentication
-from common.models import APISettings, Profile, User
-from CRM.utils.roles_enum import UserRole
+from common.models import Leads, Profile, User
+from utils.roles_enum import UserRole
 from common.serializer import *
 from common.tasks import (
     send_email_user_delete,
@@ -209,7 +209,7 @@ class ManageLeadOptionsView(View):
             return redirect('/login/')
         
         # Only managers can manage lead options
-        if request.profile.role != 'MANAGER':
+        if request.profile.role != UserRole.MANAGER.value:
             raise PermissionError("Only managers can manage lead options.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -296,7 +296,7 @@ class UsersListView(APIView, LimitOffsetPagination):
     permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
         print(request.profile.role, request.user.is_superuser)
-        if self.request.profile.role != "ADMIN" and not self.request.user.is_superuser:
+        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -343,7 +343,7 @@ class UsersListView(APIView, LimitOffsetPagination):
 
 
     def get(self, request, format=None):
-        if self.request.profile.role != "ADMIN" and not self.request.user.is_superuser:
+        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -404,7 +404,7 @@ class UserDetailView(APIView):
     def get(self, request, pk, format=None):
         profile_obj = self.get_object(pk)
         if (
-            self.request.profile.role != "ADMIN"
+            self.request.profile.role != UserRole.DEV_LEAD.value
             and not self.request.profile.is_admin
             and self.request.profile.id != profile_obj.id
         ):
@@ -424,7 +424,7 @@ class UserDetailView(APIView):
         profile = self.get_object(pk)
         address_obj = profile.address
         if (
-            self.request.profile.role != "ADMIN"
+            self.request.profile.role != UserRole.DEV_LEAD.value
             and not self.request.user.is_superuser
             and self.request.profile.id != profile.id
         ):
@@ -465,7 +465,7 @@ class UserDetailView(APIView):
         )
 
     def delete(self, request, pk, format=None):
-        if self.request.profile.role != "ADMIN" and not self.request.profile.is_admin:
+        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.profile.is_admin:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -494,7 +494,7 @@ class ApiHomeView(APIView):
         # Accounts/Contacts removed
         
 
-        if self.request.profile.role != "ADMIN" and not self.request.user.is_superuser:
+        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             leads = leads.filter(
                 Q(assigned_to__id__in=self.request.profile)
                 | Q(created_by=self.request.profile.user)
@@ -522,7 +522,7 @@ class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, format=None):
-        if self.request.profile.role != "ADMIN" and not self.request.user.is_superuser:
+        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {
                     "error": True,
@@ -558,18 +558,18 @@ class UserStatusView(APIView):
 
 
 class DomainList(APIView):
-    model = APISettings
+    model = Leads
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        api_settings = APISettings.objects.filter()
+        api_settings = Leads.objects.filter()
         users = Profile.objects.filter(is_active=Trueg).order_by(
             "user__email"
         )
         return Response(
             {
                 "error": False,
-                "api_settings": APISettingsListSerializer(api_settings, many=True).data,
+                "api_settings": LeadsListSerializer(api_settings, many=True).data,
                 "users": ProfileSerializer(users, many=True).data,
             },
             status=status.HTTP_200_OK,
@@ -580,7 +580,7 @@ class DomainList(APIView):
         assign_to_list = []
         if params.get("lead_assigned_to"):
             assign_to_list = params.get("lead_assigned_to")
-        serializer = APISettingsSerializer(data=params)
+        serializer = LeadsSerializer(data=params)
         if serializer.is_valid():
             settings_obj = serializer.save(created_by=request.profile.user)
             if assign_to_list:
@@ -596,14 +596,14 @@ class DomainList(APIView):
 
 
 class DomainDetailView(APIView):
-    model = APISettings
+    model = Leads
     #authentication_classes = (CustomDualAuthentication,)
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, pk, format=None):
         api_setting = self.get_object(pk)
         return Response(
-            {"error": False, "domain": APISettingsListSerializer(api_setting).data},
+            {"error": False, "domain": LeadsListSerializer(api_setting).data},
             status=status.HTTP_200_OK,
         )
 
@@ -613,7 +613,7 @@ class DomainDetailView(APIView):
         assign_to_list = []
         if params.get("lead_assigned_to"):
             assign_to_list = params.get("lead_assigned_to")
-        serializer = APISettingsSerializer(data=params, instance=api_setting)
+        serializer = LeadsSerializer(data=params, instance=api_setting)
         if serializer.is_valid():
             api_setting = serializer.save()
             api_setting.tags.clear()
@@ -678,7 +678,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def get(self, request):
         # Only managers can test emails
-        if request.profile.role != 'MANAGER':
+        if request.profile.role != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         
@@ -692,7 +692,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def post(self, request):
         # Only managers can test emails
-        if request.profile.role != 'MANAGER':
+        if request.profile.role != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         
