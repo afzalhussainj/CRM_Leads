@@ -1,0 +1,36 @@
+FOLLOW-UP REMINDER
+==================
+
+You have a follow-up scheduled soon!
+
+⏰ Follow-up in {{ hours_until }} hours
+Scheduled for: {{ follow_up_time|date:"F j, Y, g:i A" }}
+Current time: {{ current_time|date:"F j, Y, g:i A" }}
+
+📋 LEAD DETAILS
+===============
+Title: {{ lead.title }}
+Company: {{ lead.company_name|default:"Not specified" }}
+Contact: {{ lead.contact_first_name|default:"" }} {{ lead.contact_last_name|default:"" }}
+Email: {{ lead.contact_email|default:"Not specified" }}
+Status: {{ lead.status|title }}
+Source: {{ lead.source|title|default:"Not specified" }}
+{% if lead.description %}Description: {{ lead.description|truncatewords:30 }}{% endif %}
+
+🔗 VIEW LEAD DETAILS
+====================
+{{ site_url }}/ui/leads/{{ lead.pk }}/
+
+⚠️ ACTION REQUIRED
+==================
+Please review this lead and take necessary action before the scheduled follow-up time. You can:
+- Update the lead status
+- Add notes or comments
+- Reschedule the follow-up if needed
+- Mark the follow-up as completed
+
+---
+This is an automated reminder from your Lead Management System.
+If you have any questions, please contact your manager.
+Sent on {{ current_time|date:"F j, Y, g:i A" }}
+

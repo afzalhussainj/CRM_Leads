@@ -1,0 +1,172 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Create New Lead</div>
+  <div class="quick-actions">
+    <a class="btn" href="/ui/leads/">View Leads</a>
+  </div>
+</div>
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="form-grid">
+      {# Render fields manually to wrap follow_up_at with calendar icon #}
+      {% for field in form %}
+      {% if field.name == 'follow_up_status' %}
+      {# rendered alongside follow_up_at below #}
+      {% elif field.name == 'status' %}
+      <p>
+        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        {{ field }}
+        {% if request.profile and request.profile.role == 'MANAGER' %}
+        <div id="new_status_input" style="display: none; margin-top: 10px;">
+          <input type="text" name="new_status_name" placeholder="Enter new status name" class="form-input" style="margin-bottom: 5px;">
+          <div class="muted" style="font-size: 12px;">Enter the name for the new status</div>
+        </div>
+        {% endif %}
+        {% if field.help_text %}
+      <div class="muted">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>{% endfor %}
+      </p>
+      {% elif field.name == 'source' %}
+      <p>
+        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        {{ field }}
+        {% if request.profile and request.profile.role == 'MANAGER' %}
+        <div id="new_source_input" style="display: none; margin-top: 10px;">
+          <input type="text" name="new_source_name" placeholder="Enter new source name" class="form-input" style="margin-bottom: 5px;">
+          <div class="muted" style="font-size: 12px;">Enter the name for the new source</div>
+        </div>
+        {% endif %}
+        {% if field.help_text %}
+      <div class="muted">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>{% endfor %}
+      </p>
+      {% elif field.name != 'follow_up_at' %}
+      <p>
+        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}
+      <div class="muted">{{ field.help_text }}</div>{% endif %}
+      {% for error in field.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>{% endfor %}
+      </p>
+      {% else %}
+      <div class="inline-2">
+        <div>
+          <label for="id_{{ field.name }}">{{ field.label }}</label>
+        <div class="input datetime">
+          {{ field }}
+          <button type="button" class="icon-btn" id="followup_picker_btn" aria-label="Open date & time picker">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" />
+              <path d="M8 3v4M16 3v4M3 9h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
+        <div>
+          <label for="id_follow_up_status">{{ form.follow_up_status.label }}</label>
+          {{ form.follow_up_status }}
+          {% if form.follow_up_status.help_text %}
+        <div class="muted">{{ form.follow_up_status.help_text }}</div>{% endif %}
+        {% for error in form.follow_up_status.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>
+        {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div style="margin-top:14px;">
+    <button class="btn primary" type="submit">Create Lead</button>
+  </div>
+  <script>
+    (function () {
+      const followInput = document.getElementById('id_follow_up_at');
+      const followBtn = document.getElementById('followup_picker_btn');
+
+      if (followBtn && followInput) {
+        followBtn.addEventListener('click', function () {
+          followInput.focus();
+        });
+      }
+
+      // Load flatpickr dynamically if not present
+      function ensureFlatpickr(cb){
+        if(window.flatpickr){ cb(); return; }
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
+        document.head.appendChild(link);
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
+        script.onload = cb;
+        document.body.appendChild(script);
+      }
+      ensureFlatpickr(function(){
+        if(followInput){
+          flatpickr(followInput, {
+            enableTime: true,
+            time_24hr: false,
+            dateFormat: 'Y-m-d h:i K',
+            allowInput: true,
+            minuteIncrement: 5,
+            defaultHour: new Date().getHours(),
+            static: true,
+            onOpen: function(sel){
+              // inject confirm bar once
+              var cal = sel.calendarContainer;
+              if(cal && !cal.querySelector('.flatpickr-confirm')){
+                var bar = document.createElement('div');
+                bar.className = 'flatpickr-confirm';
+                var cancel = document.createElement('button');
+                cancel.type = 'button';
+                cancel.className = 'flatpickr-confirm-button cancel';
+                cancel.textContent = 'Cancel';
+                cancel.onclick = function(){ sel.close(); };
+                var ok = document.createElement('button');
+                ok.type = 'button';
+                ok.className = 'flatpickr-confirm-button ok';
+                ok.textContent = 'OK';
+                ok.onclick = function(){ sel.close(); };
+                bar.appendChild(cancel); bar.appendChild(ok);
+                cal.appendChild(bar);
+              }
+            }
+          });
+        }
+      });
+    })();
+    
+    // Handle "Add New" options for status and source
+    {% if request.profile and request.profile.role == 'MANAGER' %}
+    document.addEventListener('DOMContentLoaded', function() {
+      const statusSelect = document.getElementById('id_status');
+      const sourceSelect = document.getElementById('id_source');
+      const newStatusInput = document.getElementById('new_status_input');
+      const newSourceInput = document.getElementById('new_source_input');
+      
+      if (statusSelect && newStatusInput) {
+        statusSelect.addEventListener('change', function() {
+          if (this.value === '__add_new__') {
+            newStatusInput.style.display = 'block';
+          } else {
+            newStatusInput.style.display = 'none';
+          }
+        });
+      }
+      
+      if (sourceSelect && newSourceInput) {
+        sourceSelect.addEventListener('change', function() {
+          if (this.value === '__add_new__') {
+            newSourceInput.style.display = 'block';
+          } else {
+            newSourceInput.style.display = 'none';
+          }
+        });
+      }
+    });
+    {% endif %}
+  </script>
+</form>
+{% endblock %}

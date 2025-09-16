@@ -1,0 +1,366 @@
+{% extends "base_admin.html" %}
+{% block content %}
+{% csrf_token %}
+
+<div class="page-header">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; stroke: currentColor;">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    My Reminders
+  </div>
+</div>
+
+<div class="reminders-board">
+  <!-- Past Reminders -->
+  <div class="reminder-column">
+    <div class="column-header past">
+      <div class="header-content">
+        <div class="header-icon">⏰</div>
+        <h3>Past</h3>
+      </div>
+      <span class="count">{{ past_reminders.count }}</span>
+    </div>
+    <div class="column-content">
+      {% for lead in past_reminders %}
+      <div class="reminder-card past">
+        <div class="card-header">
+          <h4>{{ lead.title }}</h4>
+          <span class="date overdue">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Done
+          </button>
+          <a class="btn small ghost" href="/ui/leads/{{ lead.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-column">
+        <div class="empty-icon">🎉</div>
+        <p>All caught up!</p>
+        <span>No past reminders</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Done Reminders (Middle) -->
+  <div class="reminder-column">
+    <div class="column-header done">
+      <div class="header-content">
+        <div class="header-icon">✅</div>
+        <h3>Done</h3>
+      </div>
+      <span class="count">{{ done_reminders.count }}</span>
+    </div>
+    <div class="column-content">
+      {% for lead in done_reminders %}
+      <div class="reminder-card done">
+        <div class="card-header">
+          <h4>{{ lead.title }}</h4>
+          <span class="date completed">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+        </div>
+        <div class="card-actions">
+          <a class="btn small ghost" href="/ui/leads/{{ lead.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-column">
+        <div class="empty-icon">📋</div>
+        <p>No completed tasks</p>
+        <span>Start marking reminders as done</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Upcoming Reminders -->
+  <div class="reminder-column">
+    <div class="column-header upcoming">
+      <div class="header-content">
+        <div class="header-icon">🚀</div>
+        <h3>Upcoming</h3>
+      </div>
+      <span class="count">{{ upcoming_reminders.count }}</span>
+    </div>
+    <div class="column-content">
+      {% for lead in upcoming_reminders %}
+      <div class="reminder-card upcoming">
+        <div class="card-header">
+          <h4>{{ lead.title }}</h4>
+          <span class="date">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Done
+          </button>
+          <a class="btn small ghost" href="/ui/leads/{{ lead.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-column">
+        <div class="empty-icon">📅</div>
+        <p>No upcoming tasks</p>
+        <span>You're all set!</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function markAsDone(leadId) {
+    const formData = new FormData();
+    formData.append('status', 'done');
+    formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
+    
+    fetch(`/ui/leads/${leadId}/status/`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.ok) {
+        window.location.reload();
+      } else {
+        alert('Error updating reminder status: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating reminder status:', error);
+      alert('Error updating reminder status');
+    });
+  }
+</script>
+
+<style>
+  .reminders-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-top: 24px;
+    padding: 0 8px;
+  }
+  
+  .reminder-column {
+    background: linear-gradient(135deg, var(--card-soft) 0%, #f8fafc 100%);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    min-height: 600px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s ease;
+  }
+  
+  .reminder-column:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .column-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 16px 16px 0 0;
+  }
+  
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .header-icon {
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  
+  .column-header.past .header-icon {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #dc2626;
+  }
+  
+  .column-header.done .header-icon {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    color: #16a34a;
+  }
+  
+  .column-header.upcoming .header-icon {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    color: #d97706;
+  }
+  
+  .column-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  
+  .count {
+    background: var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 32px;
+    text-align: center;
+  }
+  
+  .column-content {
+    padding: 20px;
+    max-height: 480px;
+    overflow-y: auto;
+  }
+  
+  .reminder-card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .reminder-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+  }
+  
+  .reminder-card.past::before {
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+  }
+  
+  .reminder-card.upcoming::before {
+    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+  }
+  
+  .reminder-card.done::before {
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  }
+  
+  .reminder-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .reminder-card.done {
+    opacity: 0.8;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+  
+  .card-header {
+    margin-bottom: 16px;
+  }
+  
+  .card-header h4 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  
+  .date {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 4px 8px;
+    background: var(--border);
+    border-radius: 6px;
+    display: inline-block;
+  }
+  
+  .date.overdue {
+    color: #dc2626;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+  
+  .date.completed {
+    color: #059669;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+  
+  .card-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .btn.primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  
+  .btn.primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+  }
+  
+  .empty-column {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+  
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+  
+  .empty-column p {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  
+  .empty-column span {
+    font-size: 14px;
+    opacity: 0.7;
+  }
+  
+  @media (max-width: 1200px) {
+    .reminders-board {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    
+    .reminder-column {
+      min-height: auto;
+    }
+  }
+</style>
+{% endblock %}
+
+
+

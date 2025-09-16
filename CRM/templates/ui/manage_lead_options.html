@@ -1,0 +1,109 @@
+{% extends "base_admin.html" %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 24px; height: 24px; stroke: currentColor;"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2zM7 7h.01" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Manage Lead Options
+  </div>
+</div>
+
+<div class="row">
+  <!-- Lead Statuses -->
+  <div class="span-6">
+    <div class="card">
+      <h3>Lead Statuses</h3>
+      
+      <!-- Add New Status -->
+      <form method="post" style="margin-bottom: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_status">
+        <div style="display: flex; gap: 10px; align-items: end;">
+          <div style="flex: 1;">
+            <label for="status_name">New Status Name</label>
+            <input type="text" id="status_name" name="status_name" required placeholder="Enter status name" class="form-input">
+          </div>
+          <button type="submit" class="btn primary">Add Status</button>
+        </div>
+      </form>
+      
+      <!-- Status List -->
+      <div class="list">
+        {% for status in lead_statuses %}
+        <div class="list-item">
+          <div>
+            <div class="title">{{ status.name }}</div>
+            <div class="meta">{{ status.usage_count }} lead(s) using this status</div>
+          </div>
+          <form method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_status">
+            <input type="hidden" name="status_id" value="{{ status.id }}">
+            <button type="submit" class="btn" style="color: #f87171; border-color: #f87171;" 
+                    onclick="return confirm('Are you sure you want to delete status \"{{ status.name }}\"?')"
+                    {% if status.usage_count > 0 %}disabled title="Cannot delete - status is in use by {{ status.usage_count }} lead(s)"{% endif %}>
+              Delete
+            </button>
+          </form>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+          <p>No statuses defined yet</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Lead Sources -->
+  <div class="span-6">
+    <div class="card">
+      <h3>Lead Sources</h3>
+      
+      <!-- Add New Source -->
+      <form method="post" style="margin-bottom: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_source">
+        <div style="display: flex; gap: 10px; align-items: end;">
+          <div style="flex: 1;">
+            <label for="source_name">New Source Name</label>
+            <input type="text" id="source_name" name="source_name" required placeholder="Enter source name" class="form-input">
+          </div>
+          <button type="submit" class="btn primary">Add Source</button>
+        </div>
+      </form>
+      
+      <!-- Source List -->
+      <div class="list">
+        {% for source in lead_sources %}
+        <div class="list-item">
+          <div>
+            <div class="title">{{ source.name }}</div>
+            <div class="meta">{{ source.usage_count }} lead(s) using this source</div>
+          </div>
+          <form method="post" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_source">
+            <input type="hidden" name="source_id" value="{{ source.id }}">
+            <button type="submit" class="btn" style="color: #f87171; border-color: #f87171;" 
+                    onclick="return confirm('Are you sure you want to delete source \"{{ source.name }}\"?')"
+                    {% if source.usage_count > 0 %}disabled title="Cannot delete - source is in use by {{ source.usage_count }} lead(s)"{% endif %}>
+              Delete
+            </button>
+          </form>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+          <p>No sources defined yet</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 20px;">
+  <a href="/ui/leads/" class="btn">Back to Leads</a>
+</div>
+{% endblock %}
+

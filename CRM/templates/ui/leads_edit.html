@@ -1,0 +1,22 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Edit Lead</div>
+  <div class="quick-actions">
+    <a class="btn" href="/ui/leads/">Back to Leads</a>
+  </div>
+</div>
+<form method="post">
+  {% csrf_token %}
+  <div class="card">
+    <div class="form-grid">
+      {{ form.as_p }}
+    </div>
+  </div>
+  <div style="margin-top:14px;">
+    <button class="btn primary" type="submit">Save Changes</button>
+  </div>
+</form>
+{% endblock %}
+
+

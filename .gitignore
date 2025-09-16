@@ -1,0 +1,48 @@
+# Python
+*.pyc
+__pycache__/
+
+# Editors / IDE
+*~
+*.swo
+*.swp
+.idea/
+.vscode/
+
+# Django
+db.sqlite3
+local_settings.py
+crm/dev_settings.py
+
+# Media (user uploads, not versioned)
+media/
+media-images/
+
+# Static (collected/static build output)
+staticfiles/
+static/CACHE/
+
+# Sass / CSS build
+.sass-cache/
+main.css
+main.css.map
+ref.css
+ref.css.map
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Env vars
+.env
+
+# Coverage / Testing
+.coverage
+
+# Logs
+server.log
+celerybeat-schedule
+
+# Docs
+docs/build/

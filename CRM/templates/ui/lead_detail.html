@@ -1,0 +1,207 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Lead Details</div>
+  <div class="quick-actions">
+    <a class="btn" href="/ui/leads/">Back</a>
+    {% if user_role.role == 'MANAGER' %}
+      <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
+    {% endif %}
+    <button class="btn" onclick="openNotesModal()">Notes</button>
+  </div>
+</div>
+
+<div class="row" style="margin-bottom:14px;">
+  <div class="span-8 card">
+    <h3>Lead</h3>
+    <div class="list">
+      <div class="list-item"><div class="title">Title</div><div class="meta">{{ lead.title|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Status</div><div class="meta">{{ lead.status|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Source</div><div class="meta">{{ lead.source|default:"NA" }}</div></div>
+      {% if user_role.role == 'MANAGER' %}
+                    <div class="list-item"><div class="title">Assigned To</div><div class="meta">{{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email|default:"Unassigned" }}</div></div>
+        <div class="list-item"><div class="title">Developer</div><div class="meta">{{ lead.assigned_developer|default:"NA" }}</div></div>
+      {% endif %}
+      <div class="list-item"><div class="title">Follow-up</div><div class="meta">{{ lead.follow_up_at|default:"NA" }} • {{ lead.follow_up_status|capfirst }}</div></div>
+      <div class="list-item"><div class="title">Description</div><div class="meta">{{ lead.description|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Company</div><div class="meta">{{ lead.company_name|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Contact</div><div class="meta">{{ lead.contact_first_name|default:"" }} {{ lead.contact_last_name|default:"" }}</div></div>
+      <div class="list-item"><div class="title">Email</div><div class="meta">{{ lead.contact_email|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Phone</div><div class="meta">{{ lead.contact_phone|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">Position</div><div class="meta">{{ lead.contact_position_title|default:"NA" }}</div></div>
+      <div class="list-item"><div class="title">LinkedIn</div><div class="meta">{% if lead.contact_linkedin_url %}<a class="btn ghost" href="{{ lead.contact_linkedin_url }}" target="_blank">Open</a>{% else %}NA{% endif %}</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Notes Modal -->
+<div id="notesModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Lead Notes</h3>
+      <span class="close" onclick="closeNotesModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div id="notesList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+        <!-- Notes will be loaded here -->
+      </div>
+      <form id="noteForm">
+        {% csrf_token %}
+        <div style="margin-bottom: 10px;">
+          <textarea name="message" placeholder="Add your note..." style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <label>
+            <input type="checkbox" name="is_internal" value="true">
+            Internal note (not visible to clients)
+          </label>
+        </div>
+        <button type="submit" class="btn primary">Add Note</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto;
+  padding: 0;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 600px;
+  border-radius: 8px;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.close {
+  color: #aaa;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: #000;
+}
+
+.note-item {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #666;
+}
+
+.note-message {
+  margin-bottom: 5px;
+}
+
+.note-internal {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+}
+</style>
+
+<script>
+function openNotesModal() {
+  document.getElementById('notesModal').style.display = 'block';
+  loadNotes();
+}
+
+function closeNotesModal() {
+  document.getElementById('notesModal').style.display = 'none';
+}
+
+function loadNotes() {
+  fetch('/ui/leads/{{ lead.pk }}/notes/')
+    .then(response => response.json())
+    .then(data => {
+      const notesList = document.getElementById('notesList');
+      notesList.innerHTML = '';
+      
+      data.notes.forEach(note => {
+        const noteDiv = document.createElement('div');
+        noteDiv.className = `note-item ${note.is_internal ? 'note-internal' : ''}`;
+        noteDiv.innerHTML = `
+          <div class="note-header">
+            <span><strong>${note.author}</strong></span>
+            <span>${note.created_on_arrow}</span>
+          </div>
+          <div class="note-message">${note.message}</div>
+          ${note.is_internal ? '<div style="font-size: 11px; color: #856404;"><em>Internal note</em></div>' : ''}
+        `;
+        notesList.appendChild(noteDiv);
+      });
+    });
+}
+
+document.getElementById('noteForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const data = new URLSearchParams();
+  for (let [key, value] of formData.entries()) {
+    data.append(key, value);
+  }
+  
+  fetch('/ui/leads/{{ lead.pk }}/notes/', {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: data
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.ok) {
+      this.reset();
+      loadNotes();
+    } else {
+      alert('Error adding note: ' + JSON.stringify(data.errors));
+    }
+  });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('notesModal');
+  if (event.target == modal) {
+    closeNotesModal();
+  }
+}
+</script>
+
+{% endblock %}
+
+

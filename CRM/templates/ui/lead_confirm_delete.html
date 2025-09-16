@@ -1,0 +1,18 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">Delete Lead</div>
+  <div class="quick-actions">
+    <a class="btn" href="/ui/leads/">Cancel</a>
+  </div>
+</div>
+<div class="card">
+  <p>Are you sure you want to delete this lead?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn" type="submit">Confirm Delete</button>
+  </form>
+</div>
+{% endblock %}
+
+
