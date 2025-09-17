@@ -1,3 +1,4 @@
+from multiprocessing import context
 from django.views.generic import TemplateView
 from django.db.models import Q, Count, Min
 from django.db.models.functions import TruncDate
@@ -18,16 +19,18 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         if not request.user.is_authenticated:
             return redirect('/login/')
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             return redirect('/login/')
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
 
         # Get user profile and role
-        user_profile = self.request.profile
+        user_profile = self.request.user.profile
         user_role = user_profile.role
         
         # Role-based data filtering
@@ -115,7 +118,7 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         # Get notes that are NOT sent by the current user (i.e., sent TO the current user)
         # and that the current user hasn't read yet
         unread_notes = LeadNote.objects.select_related('lead', 'author__user').exclude(
-            author=self.request.profile  # Exclude notes sent BY the current user
+            author=self.request.user.profile  # Exclude notes sent BY the current user
         ).exclude(
             id__in=read_note_ids  # Exclude notes already read by the current user
         ).order_by('-created_at')[:10]
@@ -170,6 +173,8 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             counts.append(day_to_count.get(d, 0))
         context["leads_over_time_labels_json"] = json.dumps(labels)
         context["leads_over_time_counts_json"] = json.dumps(counts)
+
+        print("Context in SiteAdminView:", context)  # Debug print statement
 
         return context
 

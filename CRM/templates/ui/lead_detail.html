@@ -4,7 +4,7 @@
   <div class="page-title">Lead Details</div>
   <div class="quick-actions">
     <a class="btn" href="/ui/leads/">Back</a>
-    {% if user_role.role == UserRole.MANAGER %}
+    {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
       <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
     {% endif %}
     <button class="btn" onclick="openNotesModal()">Notes</button>
@@ -18,7 +18,7 @@
       <div class="list-item"><div class="title">Title</div><div class="meta">{{ lead.title|default:"NA" }}</div></div>
       <div class="list-item"><div class="title">Status</div><div class="meta">{{ lead.status|default:"NA" }}</div></div>
       <div class="list-item"><div class="title">Source</div><div class="meta">{{ lead.source|default:"NA" }}</div></div>
-      {% if user_role.role == UserRole.MANAGER %}
+      {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
                     <div class="list-item"><div class="title">Assigned To</div><div class="meta">{{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email|default:"Unassigned" }}</div></div>
         <div class="list-item"><div class="title">Developer</div><div class="meta">{{ lead.assigned_developer|default:"NA" }}</div></div>
       {% endif %}

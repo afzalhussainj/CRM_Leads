@@ -20,6 +20,6 @@ class CustomDualAuthentication(BaseAuthentication):
                         user_id=jwt_payload['user_id'], is_active=True
                     )
                     if profile:
-                        request.profile = profile
+                        request.user.profile = profile
 
         return jwt_user or profile

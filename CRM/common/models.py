@@ -44,11 +44,11 @@ def generate_unique_key():
 
 
 class Profile(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone = PhoneNumberField(null=True, unique=True)
     alternate_phone = PhoneNumberField(null=True, blank=True)
     role = models.IntegerField(
-        choices=[(role.value, role.name.title) for role in UserRole],
+        choices=[(role.value, role.name) for role in UserRole],
         default=UserRole.EMPLOYEE.value
         )
     is_active = models.BooleanField(default=True)

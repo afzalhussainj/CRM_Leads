@@ -1,3 +1,4 @@
+from multiprocessing import context
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView, View
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, get_object_or_404
@@ -23,20 +24,19 @@ class LeadListUI(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset().order_by("-created_at")
         
+        
         # Check if user is authenticated and has profile
         if not self.request.user.is_authenticated:
             return queryset.none()
-        
-        if not hasattr(self.request, 'profile') or self.request.profile is None:
+
+        if not hasattr(self.request.user, 'profile') or self.request.user.profile is None:
             return queryset.none()
         
         # Role-based filtering
-        if self.request.profile.role == UserRole.EMPLOYEE.value:
-            # Employees can only see leads assigned to them
-            queryset = queryset.filter(assigned_to=self.request.profile)
-        elif self.request.profile.role == UserRole.DEV_LEAD.value:
-            # Development leads can see all leads but only update status to 'closed'
-            pass  # No filtering needed
+        if self.request.user.profile.role == UserRole.EMPLOYEE.value:
+            queryset = queryset.filter(assigned_to=self.request.user.profile)
+        elif self.request.user.profile.role == UserRole.DEV_LEAD.value:
+            pass
         # Managers can see all leads
         
         # Search functionality
@@ -60,8 +60,11 @@ class LeadListUI(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["lead_status_choices"] = list(Lead._meta.get_field("status").choices or [])
-        context["user_role"] = getattr(self.request, 'profile', None)
-        context["UserRole"] = UserRole
+        context["user_role"] = getattr(self.request.user, 'profile', None)
+        context['ROLE_MANAGER_VALUE'] = UserRole.MANAGER.value
+        context['ROLE_EMPLOYEE_VALUE'] = UserRole.EMPLOYEE.value
+        context['ROLE_DEV_LEAD_VALUE'] = UserRole.DEV_LEAD.value
+
         
         # Add available profiles for assignment dropdown
         if context["user_role"]:
@@ -80,7 +83,7 @@ class LeadListUI(LoginRequiredMixin, ListView):
                     is_active=True
                 )
                 context["available_profiles"] = available_profiles
-        
+        print(context)
         return context
 
 
@@ -95,12 +98,12 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Managers and employees can create leads
-        if request.profile.role not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
+        if request.user.profile.role not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
             raise PermissionDenied("Only managers and employees can create leads.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -111,7 +114,9 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         return context
 
     def post(self, request, *args, **kwargs):
@@ -119,7 +124,7 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
         form = self.get_form()
         
         # Handle "Add New" options for status and source
-        if request.profile.role == UserRole.MANAGER.value:
+        if request.user.profile.role == UserRole.MANAGER.value:
             status = request.POST.get('status')
             source = request.POST.get('source')
             
@@ -180,16 +185,16 @@ class LeadUpdateUI(LoginRequiredMixin, UpdateView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Check permissions based on role
         lead = self.get_object()
-        if request.profile.role == UserRole.EMPLOYEE.value:
+        if request.user.profile.role == UserRole.EMPLOYEE.value:
             # Employees cannot edit leads - they can only update status and assignment through dropdowns
             raise PermissionDenied("Employees cannot edit leads. Use the inline dropdowns to update status and assignment.")
-        elif request.profile.role == UserRole.DEV_LEAD.value:
+        elif request.user.profile.role == UserRole.DEV_LEAD.value:
             # Development leads cannot edit leads - they can only update status to 'closed' through dropdown
             raise PermissionDenied("Development leads cannot edit leads. Use the status dropdown to update status.")
         return super().dispatch(request, *args, **kwargs)
@@ -211,12 +216,12 @@ class LeadDeleteUI(LoginRequiredMixin, DeleteView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Only managers can delete leads
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             raise PermissionDenied("Only managers can delete leads.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -230,7 +235,7 @@ class LeadFollowUpStatusUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check if user can update this lead
-        if request.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.profile:
+        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         status_value = request.POST.get("status")
@@ -252,13 +257,13 @@ class LeadStatusUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check if user can update this lead
-        if request.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.profile:
+        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         status_value = request.POST.get("status")
         
         # Role-based status restrictions
-        if request.profile.role == UserRole.DEV_LEAD.value and status_value != 'closed':
+        if request.user.profile.role == UserRole.DEV_LEAD.value and status_value != 'closed':
             return JsonResponse({"ok": False, "error": "development_lead_can_only_close"}, status=400)
         
         from common.utils import get_lead_status_choices
@@ -282,19 +287,21 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Check permissions
         lead = self.get_object()
-        if request.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.profile:
+        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             raise PermissionDenied("You can only view leads assigned to you.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["notes"] = self.object.notes.all()
         context["note_form"] = LeadNoteForm()
         context["user_role"] = getattr(self.request, 'profile', None)
@@ -310,7 +317,7 @@ class LeadNotesView(LoginRequiredMixin, View):
             return JsonResponse({"error": "unauthorized"}, status=401)
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             return JsonResponse({"error": "profile_not_found"}, status=403)
         
         return super().dispatch(request, *args, **kwargs)
@@ -319,7 +326,7 @@ class LeadNotesView(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check permissions - allow all roles to view notes, but employees can only see notes for their assigned leads
-        if request.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.profile:
+        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"error": "unauthorized"}, status=403)
         
         notes = lead.notes.all()
@@ -328,7 +335,7 @@ class LeadNotesView(LoginRequiredMixin, View):
         from leads.models import LeadNoteRead
         for note in notes:
             # Only mark as read if the current user is not the author
-            if note.author != request.profile:
+            if note.author != request.user.profile:
                 LeadNoteRead.objects.get_or_create(
                     note=note,
                     user=request.user
@@ -351,14 +358,14 @@ class LeadNotesView(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check permissions - allow all roles to add notes, but employees can only add notes to their assigned leads
-        if request.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.profile:
+        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
         
         form = LeadNoteForm(request.POST)
         if form.is_valid():
             note = form.save(commit=False)
             note.lead = lead
-            note.author = request.profile
+            note.author = request.user.profile
             note.save()
             
             return JsonResponse({
@@ -383,24 +390,24 @@ class RemindersView(LoginRequiredMixin, View):
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Only employees and managers can access reminders
-        if request.profile.role not in [UserRole.EMPLOYEE.value, UserRole.MANAGER.value]:
+        if request.user.profile.role not in [UserRole.EMPLOYEE.value, UserRole.MANAGER.value]:
             raise PermissionDenied("Only employees and managers can access reminders.")
         return super().dispatch(request, *args, **kwargs)
     
     def get(self, request):
         now = timezone.now()
         
-        if request.profile.role == UserRole.EMPLOYEE.value:
+        if request.user.profile.role == UserRole.EMPLOYEE.value:
             # Get leads assigned to this employee
-            assigned_leads = Lead.objects.filter(assigned_to=request.profile)
+            assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
         else:  # MANAGER
             # Get leads assigned to the manager
-            assigned_leads = Lead.objects.filter(assigned_to=request.profile)
+            assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
         
         # Past reminders: passed date, still pending
         past_reminders = assigned_leads.filter(
@@ -409,7 +416,7 @@ class RemindersView(LoginRequiredMixin, View):
         ).order_by('follow_up_at')
         
         # Done reminders: status is done (only show if manager updated them)
-        if request.profile.role == UserRole.EMPLOYEE.value:
+        if request.user.profile.role == UserRole.EMPLOYEE.value:
             done_reminders = assigned_leads.filter(
                 follow_up_status='done'
             ).order_by('-follow_up_at')
@@ -429,7 +436,7 @@ class RemindersView(LoginRequiredMixin, View):
             'past_reminders': past_reminders,
             'done_reminders': done_reminders,
             'upcoming_reminders': upcoming_reminders,
-            'user_role': request.profile,
+            'user_role': request.user.profile,
             'UserRole': UserRole,
         }
         
@@ -447,7 +454,7 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Only managers can reassign leads
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             return JsonResponse({"success": False, "error": "only_managers_can_reassign"}, status=403)
         
         assigned_to_id = request.POST.get("assigned_to")

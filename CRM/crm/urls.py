@@ -18,13 +18,6 @@ from rest_framework import permissions
 app_name = "crm"
 
 urlpatterns = [
-    url(
-        r"^healthz/$",
-        TemplateView.as_view(template_name="healthz.html"),
-        name="healthz",
-    ),
-    # API routes removed after pruning accounts/contacts apps
-
     path("django-admin/", admin.site.urls),
 
     path("dashboard/", TemplateView.as_view(template_name="dashboard.html"), name="dashboard"),

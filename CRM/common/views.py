@@ -1,4 +1,5 @@
 import json
+from multiprocessing import context
 import secrets
 
 import requests
@@ -117,7 +118,7 @@ class LoginUIView(View):
             try:
                 profile = Profile.objects.get(user=user, is_active=True)
                 login(request, user)
-                request.profile = profile  # Set profile for middleware compatibility
+                request.user.profile = profile  # Set profile for middleware compatibility
                 messages.success(request, f'Welcome back, {user.first_name or user.email}!')
                 return redirect('/')
             except Profile.DoesNotExist:
@@ -143,12 +144,12 @@ class AddEmployeeView(View):
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Only managers can add employees
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             raise PermissionError("Only managers can add employees.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -204,12 +205,12 @@ class ManageLeadOptionsView(View):
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        if not hasattr(request, 'profile') or request.profile is None:
+        if not hasattr(request, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Only managers can manage lead options
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             raise PermissionError("Only managers can manage lead options.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -296,8 +297,8 @@ class UsersListView(APIView, LimitOffsetPagination):
 
     permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
-        print(request.profile.role, request.user.is_superuser)
-        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        print(request.user.profile.role, request.user.is_superuser)
+        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -344,14 +345,16 @@ class UsersListView(APIView, LimitOffsetPagination):
 
 
     def get(self, request, format=None):
-        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         context = {}
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         queryset = Profile.objects.filter().order_by("user__email")
         queryset_active_users = queryset.filter(is_active=True)
         results_active_users = self.paginate_queryset(
@@ -407,16 +410,18 @@ class UserDetailView(APIView):
     def get(self, request, pk, format=None):
         profile_obj = self.get_object(pk)
         if (
-            self.request.profile.role != UserRole.DEV_LEAD.value
-            and not self.request.profile.is_admin
-            and self.request.profile.id != profile_obj.id
+            self.request.user.profile.role != UserRole.DEV_LEAD.value
+            and not self.request.user.profile.is_admin
+            and self.request.user.profile.id != profile_obj.id
         ):
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         context = {}
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["profile_obj"] = ProfileSerializer(profile_obj).data
         return Response(
             {"error": False, "data": context},
@@ -428,9 +433,9 @@ class UserDetailView(APIView):
         profile = self.get_object(pk)
         address_obj = profile.address
         if (
-            self.request.profile.role != UserRole.DEV_LEAD.value
+            self.request.user.profile.role != UserRole.DEV_LEAD.value
             and not self.request.user.is_superuser
-            and self.request.profile.id != profile.id
+            and self.request.user.profile.id != profile.id
         ):
             return Response(
                 {"error": True, "errors": "Permission Denied"},
@@ -469,18 +474,18 @@ class UserDetailView(APIView):
         )
 
     def delete(self, request, pk, format=None):
-        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.profile.is_admin:
+        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.profile.is_admin:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         self.object = self.get_object(pk)
-        if self.object.id == request.profile.id:
+        if self.object.id == request.user.profile.id:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        deleted_by = self.request.profile.user.email
+        deleted_by = self.request.user.profile.user.email
         send_email_user_delete.delay(
             self.object.user.email,
             deleted_by=deleted_by,
@@ -498,14 +503,16 @@ class ApiHomeView(APIView):
         # Accounts/Contacts removed
         
 
-        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             leads = leads.filter(
-                Q(assigned_to__id__in=self.request.profile)
-                | Q(created_by=self.request.profile.user)
+                Q(assigned_to__id__in=self.request.user.profile)
+                | Q(created_by=self.request.user.profile.user)
             ).exclude(status="closed")
             opportunities = opportunities
         context = {}
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["leads_count"] = leads.count()
         context["opportunities_count"] = 0
         context["leads"] = LeadSerializer(leads, many=True).data
@@ -519,8 +526,10 @@ class ProfileView(APIView):
     def get(self, request, format=None):
         # profile=Profile.objects.get(user=request.user)
         context = {}
-        context['UserRole'] = UserRole
-        context["user_obj"] = ProfileSerializer(self.request.profile).data
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
+        context["user_obj"] = ProfileSerializer(self.request.user.profile).data
         return Response(context, status=status.HTTP_200_OK)
 
 
@@ -528,7 +537,7 @@ class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, format=None):
-        if self.request.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {
                     "error": True,
@@ -554,7 +563,9 @@ class UserStatusView(APIView):
             profile.save()
 
         context = {}
-        context['UserRole'] = UserRole
+        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
+        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
+        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         active_profiles = profiles.filter(is_active=True)
         inactive_profiles = profiles.filter(is_active=False)
         context["active_profiles"] = ProfileSerializer(active_profiles, many=True).data
@@ -589,7 +600,7 @@ class DomainList(APIView):
             assign_to_list = params.get("lead_assigned_to")
         serializer = LeadsSerializer(data=params)
         if serializer.is_valid():
-            settings_obj = serializer.save(created_by=request.profile.user)
+            settings_obj = serializer.save(created_by=request.user.profile.user)
             if assign_to_list:
                 settings_obj.lead_assigned_to.add(*assign_to_list)
             return Response(
@@ -685,7 +696,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def get(self, request):
         # Only managers can test emails
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         
@@ -700,7 +711,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def post(self, request):
         # Only managers can test emails
-        if request.profile.role != UserRole.MANAGER.value:
+        if request.user.profile.role != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         

@@ -34,14 +34,14 @@ class LeadCreateForm(forms.ModelForm):
         # Set choices and widget type for status and source fields
         status_choices = [('', '---------')] + get_lead_status_choices()
         # Add "Add New" option for managers
-        if request and hasattr(request, 'profile') and request.profile.role == UserRole.MANAGER.value:
+        if request and hasattr(request, 'profile') and request.user.profile.role == UserRole.MANAGER.value:
             status_choices.append(('__add_new__', '+ Add New Status'))
         self.fields['status'].choices = status_choices
         self.fields['status'].widget = forms.Select(choices=status_choices, attrs={"class": "form-input"})
         
         source_choices = [('', '---------')] + get_lead_source_choices()
         # Add "Add New" option for managers
-        if request and hasattr(request, 'profile') and request.profile.role == UserRole.MANAGER.value:
+        if request and hasattr(request, 'profile') and request.user.profile.role == UserRole.MANAGER.value:
             source_choices.append(('__add_new__', '+ Add New Source'))
         self.fields['source'].choices = source_choices
         self.fields['source'].widget = forms.Select(choices=source_choices, attrs={"class": "form-input"})
@@ -53,7 +53,7 @@ class LeadCreateForm(forms.ModelForm):
             # Check if this is an edit form (instance exists)
             is_edit = kwargs.get('instance') is not None
             
-            if request.profile.role == UserRole.MANAGER.value:
+            if request.user.profile.role == UserRole.MANAGER.value:
                 # Manager can assign to any employee OR to themselves during creation and editing
                 employee_choices = Profile.objects.filter(
                     role='EMPLOYEE',
@@ -64,7 +64,7 @@ class LeadCreateForm(forms.ModelForm):
                 choices = [('', '---------')]
                 
                 # Add manager's own profile as an option
-                manager_profile = request.profile
+                manager_profile = request.user.profile
                 manager_display = manager_profile.user.first_name or manager_profile.user.email
                 choices.append((manager_profile.id, f"{manager_display} (Me)"))
                 
@@ -85,7 +85,7 @@ class LeadCreateForm(forms.ModelForm):
                 # Hide assigned_developer field for managers
                 self.fields['assigned_developer'].widget = forms.HiddenInput()
                 self.fields['assigned_developer'].required = False
-            elif request.profile.role == UserRole.EMPLOYEE.value:
+            elif request.user.profile.role == UserRole.EMPLOYEE.value:
                 if is_edit:
                     # Employee can only reassign to manager during editing
                     manager_choices = Profile.objects.filter(

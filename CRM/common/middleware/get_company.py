@@ -23,12 +23,12 @@ class GetProfile(object):
             
             
             # Handle session authentication (for UI requests)
-            if request.user.is_authenticated and not request.profile:
+            if request.user.is_authenticated and not request.user.profile:
                 try:
                     # Get the first active profile for the user
                     profile = Profile.objects.filter(user=request.user, is_active=True).first()
                     if profile:
-                        request.profile = profile
+                        request.user.profile = profile
                         print(f"Profile set for user {request.user.email}: {profile.role}")
                     else:
                         print(f"No active profile found for user {request.user.email}")
