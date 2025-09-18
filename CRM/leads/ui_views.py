@@ -61,9 +61,6 @@ class LeadListUI(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["lead_status_choices"] = list(Lead._meta.get_field("status").choices or [])
         context["user_role"] = getattr(self.request.user, 'profile', None)
-        context['ROLE_MANAGER_VALUE'] = UserRole.MANAGER.value
-        context['ROLE_EMPLOYEE_VALUE'] = UserRole.EMPLOYEE.value
-        context['ROLE_DEV_LEAD_VALUE'] = UserRole.DEV_LEAD.value
 
         
         # Add available profiles for assignment dropdown
@@ -83,7 +80,6 @@ class LeadListUI(LoginRequiredMixin, ListView):
                     is_active=True
                 )
                 context["available_profiles"] = available_profiles
-        print(context)
         return context
 
 
@@ -114,9 +110,6 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         return context
 
     def post(self, request, *args, **kwargs):
@@ -299,9 +292,6 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["notes"] = self.object.notes.all()
         context["note_form"] = LeadNoteForm()
         context["user_role"] = getattr(self.request, 'profile', None)

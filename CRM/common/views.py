@@ -144,12 +144,12 @@ class AddEmployeeView(View):
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Only managers can add employees
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != int(UserRole.MANAGER.value):
             raise PermissionError("Only managers can add employees.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -182,14 +182,14 @@ class AddEmployeeView(View):
             user.save()
             
             # Create profile
-            profile = Profile.objects.create(
+            Profile.objects.create(
                 user=user,
                 role=UserRole.EMPLOYEE.value,
                 is_active=True,
             )
             
             messages.success(request, f'Employee {first_name if first_name else email} {last_name if last_name else ""} added successfully!')
-            return render(request, self.template_name, {"form": None})
+            return redirect('add-employee')
 
             
         except Exception as e:
@@ -352,9 +352,6 @@ class UsersListView(APIView, LimitOffsetPagination):
             )
 
         context = {}
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         queryset = Profile.objects.filter().order_by("user__email")
         queryset_active_users = queryset.filter(is_active=True)
         results_active_users = self.paginate_queryset(
@@ -419,9 +416,6 @@ class UserDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         context = {}
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["profile_obj"] = ProfileSerializer(profile_obj).data
         return Response(
             {"error": False, "data": context},
@@ -510,9 +504,6 @@ class ApiHomeView(APIView):
             ).exclude(status="closed")
             opportunities = opportunities
         context = {}
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["leads_count"] = leads.count()
         context["opportunities_count"] = 0
         context["leads"] = LeadSerializer(leads, many=True).data
@@ -526,9 +517,6 @@ class ProfileView(APIView):
     def get(self, request, format=None):
         # profile=Profile.objects.get(user=request.user)
         context = {}
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
-        context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         context["user_obj"] = ProfileSerializer(self.request.user.profile).data
         return Response(context, status=status.HTTP_200_OK)
 
@@ -563,7 +551,6 @@ class UserStatusView(APIView):
             profile.save()
 
         context = {}
-        context["ROLE_MANAGER_VALUE"] = UserRole.MANAGER.value
         context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
         context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         active_profiles = profiles.filter(is_active=True)
