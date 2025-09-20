@@ -225,14 +225,10 @@ class LeadDeleteUI(LoginRequiredMixin, DeleteView):
 class LeadFollowUpStatusUpdateUI(LoginRequiredMixin, View):
     def post(self, request, pk):
         # Check permissions
-        if not hasattr(request, 'profile'):
+        if not hasattr(request.user, 'profile'):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         lead = get_object_or_404(Lead, pk=pk)
-        
-        # Check if user can update this lead
-        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
-            return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         status_value = request.POST.get("status")
         valid_statuses = dict(Lead.FOLLOW_UP_STATUS_CHOICES)
