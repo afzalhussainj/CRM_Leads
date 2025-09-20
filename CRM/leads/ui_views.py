@@ -60,26 +60,29 @@ class LeadListUI(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["lead_status_choices"] = list(Lead._meta.get_field("status").choices or [])
-        context["user_role"] = getattr(self.request.user, 'profile', None)
+        context["user_profile"] = getattr(self.request.user, 'profile', None)
 
         
-        # Add available profiles for assignment dropdown
-        if context["user_role"]:
+        # Add available profiles for assignment dropdown based on user role
+        if context["user_profile"]:
             from common.models import Profile
-            if context["user_role"].role == 'MANAGER':
-                # Managers can assign to any employee OR to themselves
+            user_role_value = int(context["user_profile"].role)
+            
+            if user_role_value == UserRole.MANAGER.value:
                 available_profiles = Profile.objects.filter(
-                    role='EMPLOYEE',
+                    role=UserRole.EMPLOYEE.value,
                     is_active=True
-                )
+                ).order_by('user__first_name', 'user__email')
                 context["available_profiles"] = available_profiles
-            elif context["user_role"].role == 'EMPLOYEE':
-                # Employees can only assign to managers OR to themselves
+            elif user_role_value == UserRole.EMPLOYEE.value:
                 available_profiles = Profile.objects.filter(
-                    role='MANAGER',
+                    role=UserRole.MANAGER.value,
                     is_active=True
-                )
+                ).order_by('user__first_name', 'user__email')
                 context["available_profiles"] = available_profiles
+            else:
+                # Developers and other roles don't get assignment options
+                context["available_profiles"] = Profile.objects.none()
         return context
 
 
@@ -438,14 +441,15 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
     
     def post(self, request, pk):
         # Check permissions
-        if not hasattr(request, 'profile'):
+        if not hasattr(request.user, 'profile'):
             return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
         
         lead = get_object_or_404(Lead, pk=pk)
         
-        # Only managers can reassign leads
-        if int(request.user.profile.role) != UserRole.MANAGER.value:
-            return JsonResponse({"success": False, "error": "only_managers_can_reassign"}, status=403)
+        # Check if user has permission to reassign
+        user_role = int(request.user.profile.role)
+        if user_role not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
+            return JsonResponse({"success": False, "error": "insufficient_permissions"}, status=403)
         
         assigned_to_id = request.POST.get("assigned_to")
         
@@ -457,7 +461,16 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
                     id=assigned_to_id,
                     is_active=True
                 )
+                
+                # Additional validation, managers can assign to anyone while employees can only reassign to managers
+                if user_role == UserRole.EMPLOYEE.value:
+                    if int(assigned_profile.role) != UserRole.MANAGER.value:
+                        return JsonResponse({"success": False, "error": "employees_can_only_reassign_to_managers"}, status=403)
+                elif user_role == UserRole.MANAGER.value:
+                    pass
+                
                 lead.assigned_to = assigned_profile
+                lead.save()
             except Profile.DoesNotExist:
                 return JsonResponse({"success": False, "error": "invalid_profile"}, status=400)
         else:

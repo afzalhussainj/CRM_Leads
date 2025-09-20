@@ -65,13 +65,11 @@
                 {% csrf_token %}
                 <select name="assigned_to" id="assigned-select-{{ lead.pk }}" class="assigned-select">
                   <option value="">Unassigned</option>
-                  <option value="{{ user_role.id }}" {% if lead.assigned_to == user_role %}selected{% endif %}>{{ user_role.user.first_name|default:user_role.user.email }} (Me)</option>
+                  <option value="{{ user_profile.id }}" {% if lead.assigned_to == user_profile %}selected{% endif %}>{{ user_profile.user.first_name|default:user_profile.user.email }} (Me)</option>
+                  
+                  <!-- available_profiles is already filtered by role in the view -->
                   {% for profile in available_profiles %}
-                    {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE and profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-                      <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
-                    {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE and profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-                      <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
-                    {% endif %}
+                    <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
                   {% endfor %}
                 </select>
               </form>
