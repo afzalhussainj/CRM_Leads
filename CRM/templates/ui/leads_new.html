@@ -21,7 +21,7 @@
         {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
         <div id="new_status_input" style="display: none; margin-top: 10px;">
           <input type="text" name="new_status_name" placeholder="Enter new status name" class="form-input" style="margin-bottom: 5px;">
-          <div class="muted" style="font-size: 12px;">Enter the name for the new status</div>
+          
         </div>
         {% endif %}
         {% if field.help_text %}

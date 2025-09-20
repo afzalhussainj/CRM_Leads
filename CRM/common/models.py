@@ -75,10 +75,9 @@ class Profile(BaseModel):
 def generate_key():
     return binascii.hexlify(os.urandom(8)).decode()
 
-class LeadStatus(BaseModel):
+class LeadStatus(models.Model):
     """Model to store lead status options that can be managed through admin"""
     name = models.CharField(max_length=100, unique=True)
-    is_active = models.BooleanField(default=True)
     sort_order = models.IntegerField(default=0)
     
     class Meta:
@@ -91,8 +90,25 @@ class LeadStatus(BaseModel):
         return self.name
     
 
+class LeadSource(models.Model):
+    """Model to store lead source options that can be managed through admin"""
+    source = models.CharField(max_length=100, unique=True)
+
+    class Meta:
+        verbose_name = "Lead Source"
+        verbose_name_plural = "Lead Sources"
+        db_table = "lead_source"
+        ordering = ["source"]
+    
+    def __str__(self):
+        return self.source
+
+
+
+
 class Leads(BaseModel):
     status = models.ForeignKey(LeadStatus, on_delete=models.CASCADE)
+    source = models.ForeignKey(LeadSource, on_delete=models.CASCADE)
     title = models.TextField()
     lead_assigned_to = models.ManyToManyField(
         Profile, related_name="lead_assignee_users"
@@ -104,6 +120,15 @@ class Leads(BaseModel):
         null=True,
         blank=True,
     )
+    contact_name = models.CharField(max_length=100, unique=True)
+    phone = PhoneNumberField(null=True, unique=True)
+    linkdein = models.CharField(
+        max_length=150
+    )
+    company = models.CharField(
+        max_length=30,
+        null=True
+        )
 
     class Meta:
         verbose_name = "Leads"
@@ -113,28 +138,4 @@ class Leads(BaseModel):
 
     def __str__(self):
         return f"{self.title}"
-
-
-class LeadSource(BaseModel):
-    """Model to store lead source options that can be managed through admin"""
-    name = models.CharField(max_length=100, unique=True)
-    phone = PhoneNumberField(null=True, unique=True)
-    linkdein = models.CharField(
-        max_length=150
-    )
-    lead = models.ForeignKey(Leads, on_delete=models.CASCADE)
-    company = models.CharField(
-        max_length=30,
-        null=True
-        )
-
-    
-    class Meta:
-        verbose_name = "Lead Source"
-        verbose_name_plural = "Lead Sources"
-        db_table = "lead_source"
-        ordering = ["name"]
-    
-    def __str__(self):
-        return self.name
 

@@ -210,7 +210,7 @@ class ManageLeadOptionsView(View):
             return redirect('/login/')
         
         # Only managers can manage lead options
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
             raise PermissionError("Only managers can manage lead options.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -219,7 +219,7 @@ class ManageLeadOptionsView(View):
         
         context = {
             'lead_statuses': LeadStatus.objects.all().order_by('name'),
-            'lead_sources': LeadSource.objects.all().order_by('name'),
+            'lead_sources': LeadSource.objects.all().order_by('source'),
             'UserRole': UserRole,
         }
         return render(request, self.template_name, context)
@@ -240,7 +240,7 @@ class ManageLeadOptionsView(View):
         elif action == 'add_source':
             source_name = request.POST.get('source_name', '').strip()
             if source_name:
-                LeadSource.objects.get_or_create(name=source_name)
+                LeadSource.objects.get_or_create(source=source_name)
                 messages.success(request, f'Source "{source_name}" added successfully!')
             else:
                 messages.error(request, 'Source name is required.')
@@ -297,8 +297,7 @@ class UsersListView(APIView, LimitOffsetPagination):
 
     permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
-        print(request.user.profile.role, request.user.is_superuser)
-        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -345,7 +344,7 @@ class UsersListView(APIView, LimitOffsetPagination):
 
 
     def get(self, request, format=None):
-        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -407,7 +406,7 @@ class UserDetailView(APIView):
     def get(self, request, pk, format=None):
         profile_obj = self.get_object(pk)
         if (
-            self.request.user.profile.role != UserRole.DEV_LEAD.value
+            int(self.request.user.profile.role) != UserRole.DEV_LEAD.value
             and not self.request.user.profile.is_admin
             and self.request.user.profile.id != profile_obj.id
         ):
@@ -427,7 +426,7 @@ class UserDetailView(APIView):
         profile = self.get_object(pk)
         address_obj = profile.address
         if (
-            self.request.user.profile.role != UserRole.DEV_LEAD.value
+            int(self.request.user.profile.role) != UserRole.DEV_LEAD.value
             and not self.request.user.is_superuser
             and self.request.user.profile.id != profile.id
         ):
@@ -468,7 +467,7 @@ class UserDetailView(APIView):
         )
 
     def delete(self, request, pk, format=None):
-        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.profile.is_admin:
+        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.profile.is_admin:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -497,7 +496,7 @@ class ApiHomeView(APIView):
         # Accounts/Contacts removed
         
 
-        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             leads = leads.filter(
                 Q(assigned_to__id__in=self.request.user.profile)
                 | Q(created_by=self.request.user.profile.user)
@@ -525,7 +524,7 @@ class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, format=None):
-        if self.request.user.profile.role != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
             return Response(
                 {
                     "error": True,
@@ -683,7 +682,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def get(self, request):
         # Only managers can test emails
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         
@@ -698,7 +697,7 @@ class TestEmailView(LoginRequiredMixin, View):
     
     def post(self, request):
         # Only managers can test emails
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
             messages.error(request, "Only managers can test email functionality.")
             return redirect('site-admin')
         

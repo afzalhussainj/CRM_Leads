@@ -6,32 +6,21 @@ from .models import (
 
 @admin.register(LeadSource)
 class LeadSourceAdmin(admin.ModelAdmin):
-    list_display = ['name','lead', 'linkdein', 'phone', 'company']
-    list_filter = ['name']
-    search_fields = ['name']
-    ordering = ['name']
-    
+    list_display = ['source']
+    search_fields = ['source']
+    ordering = ['source']
+
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('sort_order')
 
 
 @admin.register(LeadStatus)
 class LeadStatusAdmin(admin.ModelAdmin):
-    list_display = ['name', 'is_active', 'sort_order', 'created_at']
-    list_editable = ['is_active', 'sort_order']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['name', 'sort_order']
+    list_editable = ['sort_order']
     search_fields = ['name']
     ordering = ['sort_order']
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ['name']
-        }),
-        ('Settings', {
-            'fields': ('is_active', 'sort_order')
-        }),
-    )
-    
+        
     def get_queryset(self, request):
         return super().get_queryset(request).order_by('sort_order')
 
@@ -53,6 +42,6 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Leads)
 class Leads(admin.ModelAdmin):
-    list_display = ['title', 'status', 'created_by']
+    list_display = ['title', 'status', 'source', 'created_by', 'contact_name', 'linkdein', 'phone', 'company']
     list_filter = ['title']
     search_fields = ['title']

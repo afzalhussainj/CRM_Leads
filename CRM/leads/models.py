@@ -77,13 +77,13 @@ class Lead(BaseModel):
 
     def get_status_display(self):
         """Get the display name for the status"""
-        from common.utils.utils import get_lead_status_choices
+        from leads.utils.choices import get_lead_status_choices
         choices = dict(get_lead_status_choices())
         return choices.get(self.status, self.status)
 
     def get_source_display(self):
         """Get the display name for the source"""
-        from common.utils.utils import get_lead_source_choices
+        from leads.utils.choices import get_lead_source_choices
         choices = dict(get_lead_source_choices())
         return choices.get(self.source, self.source)
     

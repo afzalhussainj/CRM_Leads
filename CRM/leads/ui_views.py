@@ -33,9 +33,9 @@ class LeadListUI(LoginRequiredMixin, ListView):
             return queryset.none()
         
         # Role-based filtering
-        if self.request.user.profile.role == UserRole.EMPLOYEE.value:
+        if int(self.request.user.profile.role) == UserRole.EMPLOYEE.value:
             queryset = queryset.filter(assigned_to=self.request.user.profile)
-        elif self.request.user.profile.role == UserRole.DEV_LEAD.value:
+        elif int(self.request.user.profile.role) == UserRole.DEV_LEAD.value:
             pass
         # Managers can see all leads
         
@@ -94,12 +94,12 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
         # Managers and employees can create leads
-        if request.user.profile.role not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
+        if int(request.user.profile.role) not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
             raise PermissionDenied("Only managers and employees can create leads.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -117,7 +117,7 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
         form = self.get_form()
         
         # Handle "Add New" options for status and source
-        if request.user.profile.role == UserRole.MANAGER.value:
+        if int(request.user.profile.role) == UserRole.MANAGER.value:
             status = request.POST.get('status')
             source = request.POST.get('source')
             
@@ -125,7 +125,7 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
             if status == '__add_new__':
                 new_status_name = request.POST.get('new_status_name', '').strip()
                 if new_status_name:
-                    from leads.models import LeadStatus
+                    from common.models import LeadStatus
                     status_obj, created = LeadStatus.objects.get_or_create(name=new_status_name)
                     if created:
                         messages.success(request, f'New status "{new_status_name}" created successfully!')
@@ -140,8 +140,8 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
             if source == '__add_new__':
                 new_source_name = request.POST.get('new_source_name', '').strip()
                 if new_source_name:
-                    from leads.models import LeadSource
-                    source_obj, created = LeadSource.objects.get_or_create(name=new_source_name)
+                    from common.models import LeadSource
+                    source_obj, created = LeadSource.objects.get_or_create(source=new_source_name)
                     if created:
                         messages.success(request, f'New source "{new_source_name}" created successfully!')
                     # Update the form data to use the new source
@@ -184,10 +184,10 @@ class LeadUpdateUI(LoginRequiredMixin, UpdateView):
         
         # Check permissions based on role
         lead = self.get_object()
-        if request.user.profile.role == UserRole.EMPLOYEE.value:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Employees cannot edit leads - they can only update status and assignment through dropdowns
             raise PermissionDenied("Employees cannot edit leads. Use the inline dropdowns to update status and assignment.")
-        elif request.user.profile.role == UserRole.DEV_LEAD.value:
+        elif int(request.user.profile.role) == UserRole.DEV_LEAD.value:
             # Development leads cannot edit leads - they can only update status to 'closed' through dropdown
             raise PermissionDenied("Development leads cannot edit leads. Use the status dropdown to update status.")
         return super().dispatch(request, *args, **kwargs)
@@ -214,7 +214,7 @@ class LeadDeleteUI(LoginRequiredMixin, DeleteView):
             return redirect('/login/')
         
         # Only managers can delete leads
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
             raise PermissionDenied("Only managers can delete leads.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -228,7 +228,7 @@ class LeadFollowUpStatusUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check if user can update this lead
-        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         status_value = request.POST.get("status")
@@ -250,13 +250,13 @@ class LeadStatusUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check if user can update this lead
-        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         status_value = request.POST.get("status")
         
         # Role-based status restrictions
-        if request.user.profile.role == UserRole.DEV_LEAD.value and status_value != 'closed':
+        if int(request.user.profile.role) == UserRole.DEV_LEAD.value and status_value != 'closed':
             return JsonResponse({"ok": False, "error": "development_lead_can_only_close"}, status=400)
         
         from common.utils import get_lead_status_choices
@@ -286,7 +286,7 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
         
         # Check permissions
         lead = self.get_object()
-        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             raise PermissionDenied("You can only view leads assigned to you.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -316,7 +316,7 @@ class LeadNotesView(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check permissions - allow all roles to view notes, but employees can only see notes for their assigned leads
-        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"error": "unauthorized"}, status=403)
         
         notes = lead.notes.all()
@@ -348,7 +348,7 @@ class LeadNotesView(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Check permissions - allow all roles to add notes, but employees can only add notes to their assigned leads
-        if request.user.profile.role == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
         
         form = LeadNoteForm(request.POST)
@@ -385,14 +385,14 @@ class RemindersView(LoginRequiredMixin, View):
             return redirect('/login/')
         
         # Only employees and managers can access reminders
-        if request.user.profile.role not in [UserRole.EMPLOYEE.value, UserRole.MANAGER.value]:
+        if int(request.user.profile.role) not in [UserRole.EMPLOYEE.value, UserRole.MANAGER.value]:
             raise PermissionDenied("Only employees and managers can access reminders.")
         return super().dispatch(request, *args, **kwargs)
     
     def get(self, request):
         now = timezone.now()
         
-        if request.user.profile.role == UserRole.EMPLOYEE.value:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Get leads assigned to this employee
             assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
         else:  # MANAGER
@@ -406,7 +406,7 @@ class RemindersView(LoginRequiredMixin, View):
         ).order_by('follow_up_at')
         
         # Done reminders: status is done (only show if manager updated them)
-        if request.user.profile.role == UserRole.EMPLOYEE.value:
+        if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             done_reminders = assigned_leads.filter(
                 follow_up_status='done'
             ).order_by('-follow_up_at')
@@ -444,7 +444,7 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
         lead = get_object_or_404(Lead, pk=pk)
         
         # Only managers can reassign leads
-        if request.user.profile.role != UserRole.MANAGER.value:
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
             return JsonResponse({"success": False, "error": "only_managers_can_reassign"}, status=403)
         
         assigned_to_id = request.POST.get("assigned_to")
