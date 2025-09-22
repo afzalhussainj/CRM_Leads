@@ -2,17 +2,13 @@ import os
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth import views
-from django.urls import include, path
-from django.urls import re_path as url
+from django.urls import path
 from django.views.generic import TemplateView
 from .views import SiteAdminView
 from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI
-from common.views import LoginUIView, logout_ui_view, AddEmployeeView, ManageLeadOptionsView, TestEmailView
+from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
+from common.views import LoginUIView, logout_ui_view, AddEmployeeView, TestEmailView
 
-# from drf_yasg import openapi
-# from drf_yasg.views import get_schema_view
-from rest_framework import permissions
  
 
 app_name = "crm"
@@ -31,10 +27,15 @@ urlpatterns = [
     path("ui/leads/<uuid:pk>/assign/", LeadAssignmentUpdateUI.as_view(), name="ui-leads-assign"),
     path("ui/leads/<uuid:pk>/", LeadDetailUI.as_view(), name="ui-leads-detail"),
     path("ui/leads/<uuid:pk>/notes/", LeadNotesView.as_view(), name="ui-leads-notes"),
+    # Combined Options Management URLs
+    path("ui/options/", CombinedManagementView.as_view(), name="ui-options"),
+    path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),
+    path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
+    path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
+    path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
     path("login/", LoginUIView.as_view(), name="login"),
     path("logout/", logout_ui_view, name="logout"),
     path("add-employee/", AddEmployeeView.as_view(), name="add-employee"),
-    path("manage-lead-options/", ManageLeadOptionsView.as_view(), name="manage-lead-options"),
     path("reminders/", RemindersView.as_view(), name="reminders"),
     path("test-email/", TestEmailView.as_view(), name="test-email"),
     path("", SiteAdminView.as_view(), name="site-admin"),

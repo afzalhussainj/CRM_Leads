@@ -59,7 +59,9 @@ class LeadListUI(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["lead_status_choices"] = list(Lead._meta.get_field("status").choices or [])
+        # Get dynamic status choices from LeadStatus model
+        from leads.utils.choices import get_lead_status_choices
+        context["lead_status_choices"] = get_lead_status_choices()
         context["user_profile"] = getattr(self.request.user, 'profile', None)
 
         
@@ -84,6 +86,7 @@ class LeadListUI(LoginRequiredMixin, ListView):
                 # Developers and other roles don't get assignment options
                 context["available_profiles"] = Profile.objects.none()
         return context
+    print("context")
 
 
 class LeadCreateUI(LoginRequiredMixin, CreateView):
@@ -119,40 +122,6 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
         self.object = None
         form = self.get_form()
         
-        # Handle "Add New" options for status and source
-        if int(request.user.profile.role) == UserRole.MANAGER.value:
-            status = request.POST.get('status')
-            source = request.POST.get('source')
-            
-            # Handle new status
-            if status == '__add_new__':
-                new_status_name = request.POST.get('new_status_name', '').strip()
-                if new_status_name:
-                    from common.models import LeadStatus
-                    status_obj, created = LeadStatus.objects.get_or_create(name=new_status_name)
-                    if created:
-                        messages.success(request, f'New status "{new_status_name}" created successfully!')
-                    # Update the form data to use the new status
-                    form.data = form.data.copy()
-                    form.data['status'] = status_obj.name
-                else:
-                    messages.error(request, 'Please enter a status name.')
-                    return self.render_to_response(self.get_context_data(form=form))
-            
-            # Handle new source
-            if source == '__add_new__':
-                new_source_name = request.POST.get('new_source_name', '').strip()
-                if new_source_name:
-                    from common.models import LeadSource
-                    source_obj, created = LeadSource.objects.get_or_create(source=new_source_name)
-                    if created:
-                        messages.success(request, f'New source "{new_source_name}" created successfully!')
-                    # Update the form data to use the new source
-                    form.data = form.data.copy()
-                    form.data['source'] = source_obj.name
-                else:
-                    messages.error(request, 'Please enter a source name.')
-                    return self.render_to_response(self.get_context_data(form=form))
         
         forms_valid = form.is_valid()
         if not forms_valid:
@@ -258,14 +227,16 @@ class LeadStatusUpdateUI(LoginRequiredMixin, View):
         if int(request.user.profile.role) == UserRole.DEV_LEAD.value and status_value != 'closed':
             return JsonResponse({"ok": False, "error": "development_lead_can_only_close"}, status=400)
         
-        from common.utils import get_lead_status_choices
-        choices = dict(get_lead_status_choices())
-        if status_value not in choices:
+        # Get the LeadStatus object by name
+        from common.models import LeadStatus
+        try:
+            status_obj = LeadStatus.objects.get(name=status_value)
+        except LeadStatus.DoesNotExist:
             return JsonResponse({"ok": False, "error": "invalid_status"}, status=400)
         
-        lead.status = status_value
+        lead.status = status_obj
         lead.save(update_fields=["status"])
-        return JsonResponse({"ok": True, "status": status_value, "label": choices[status_value]})
+        return JsonResponse({"ok": True, "status": status_value, "label": status_obj.name})
 
 
 class LeadDetailUI(LoginRequiredMixin, DetailView):
@@ -480,4 +451,8 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
             "assigned_to": assigned_to_id,
             "assigned_to_name": lead.assigned_to.user.first_name if lead.assigned_to else "Unassigned"
         })
+
+
+
+
 

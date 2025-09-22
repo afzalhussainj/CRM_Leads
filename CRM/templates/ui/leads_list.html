@@ -45,6 +45,8 @@
         <tr>
           <td>{{ lead.title|default:"—" }}</td>
           <td>{% if lead.contact_linkedin_url %}<a class="btn ghost" href="{{ lead.contact_linkedin_url }}" target="_blank">Open</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+
+          <!-- Lead status -->
           <td>
             <form method="post" class="inline-lead-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
               {% csrf_token %}
@@ -53,12 +55,14 @@
                   {% if request.user.profile.role|add:"0" == UserRole.DEV_LEAD and value != 'closed' %}
                     <!-- Development leads can only set status to 'closed' -->
                   {% else %}
-                    <option value="{{ value }}" {% if lead.status == value %}selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}" {% if lead.status.name == value %}selected{% endif %}>{{ label }}</option>
                   {% endif %}
                 {% endfor %}
               </select>
             </form>
           </td>
+
+          <!-- Managers and employees can assign leads -->
           {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE or request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
             <td>
               <form method="post" class="inline-assigned-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
@@ -75,6 +79,8 @@
               </form>
             </td>
           {% endif %}
+
+          <!-- Follow-up date -->
           <td>
             {% if lead.follow_up_at %}
               <span class="chip">{{ lead.follow_up_at }}</span>
@@ -82,6 +88,8 @@
               <span class="muted">—</span>
             {% endif %}
           </td>
+
+          <!-- Follow-up status -->
           <td>
             <form method="post" class="inline-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
               {% csrf_token %}
@@ -91,6 +99,7 @@
               </select>
             </form>
           </td>
+          
           <td style="text-align:right; white-space:nowrap;">
             <button class="btn small notes-btn" onclick="openNotesModal('{{ lead.pk }}', '{{ lead.title }}')" title="Notes" data-lead="{{ lead.pk }}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -145,6 +154,8 @@
           if(e.target.name !== 'status') return;
           var leadId = form.getAttribute('data-lead');
           var status = e.target.value;
+          
+          
           var csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
           post('/ui/leads/' + leadId + '/lead-status/', {status: status, csrfmiddlewaretoken: csrf}).then(function(json){
             // No color mapping for general lead status; styled as chip-like select
@@ -202,6 +213,7 @@
     </div>
   </div>
 </div>
+
 
 <script>
   let currentLeadId = null;
@@ -306,6 +318,7 @@
       closeNotesModal();
     }
   }
+  
 </script>
 
 <style>
@@ -400,7 +413,7 @@
   }
   
   /* Fix status dropdown container issues - use more specific selectors */
-  .inline-status-form .status-select {
+  /* .inline-status-form .status-select {
     padding: 4px 8px !important;
     border: 1px solid #d1d5db !important;
     border-radius: 4px !important;
@@ -411,16 +424,16 @@
     position: relative !important;
     z-index: 200 !important;
     /* Override base template styles */
-    appearance: auto !important;
+    /* appearance: auto !important;
     -webkit-appearance: auto !important;
     -moz-appearance: auto !important;
     background-image: none !important;
     background-position: unset !important;
     background-size: unset !important;
-    background-repeat: unset !important;
+    background-repeat: unset !important; */
     /* Force dropdown to be visible */
-    overflow: visible !important;
-  }
+    /* overflow: visible !important; */
+  /* } */
   
   .inline-status-form .status-select.pending {
     background-color: #fef3c7 !important;
@@ -455,11 +468,44 @@
     overflow: visible !important;
   }
   
+  /* Ensure table cells allow dropdown overflow */
+  table td {
+    overflow: visible !important;
+    position: relative;
+  }
+  
+  /* Ensure table allows dropdown overflow */
+  table {
+    overflow: visible !important;
+  }
+  
   /* Override base template status-select styles completely */
   .inline-status-form .status-select {
     border-radius: 4px !important;
     background: white !important;
     color: #374151 !important;
+  }
+  
+  /* Fix lead status dropdown z-index and styling */
+  .inline-lead-status-form .status-select {
+    padding: 4px 8px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    min-width: 120px !important;
+    position: relative !important;
+    z-index: 1000 !important;
+    /* Override base template styles */
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+    -moz-appearance: auto !important;
+    background-image: none !important;
+    background-position: unset !important;
+    background-size: unset !important;
+    background-repeat: unset !important;
+    /* Force dropdown to be visible */
+    overflow: visible !important;
   }
 </style>
 {% endblock %}

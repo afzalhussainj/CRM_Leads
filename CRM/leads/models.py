@@ -4,20 +4,18 @@ from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
 from phonenumber_field.modelfields import PhoneNumberField
 
-from common.models import Profile
-from common.base import BaseModel
-# Removed unused imports - using embedded fields instead of separate models
-# Contacts app removed – embedded fields are used instead
-
-
-## Simple Company model no longer used; removed
+from common.models import Profile, LeadStatus
+from common.base import BaseModel 
 
 class Lead(BaseModel):
     title = models.CharField(
         pgettext_lazy("Treatment Pronouns for the customer", "Title"), max_length=64
     )
-    status = models.CharField(
-        _("Status of Lead"), max_length=255, blank=True, null=True
+    status = models.ForeignKey(
+        LeadStatus, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True
     )
     source = models.CharField(
         _("Source of Lead"), max_length=255, blank=True, null=True
