@@ -350,7 +350,7 @@ class RemindersView(LoginRequiredMixin, View):
         if not request.user.is_authenticated:
             return redirect('/login/')
         
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         

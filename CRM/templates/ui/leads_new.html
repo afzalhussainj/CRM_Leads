@@ -18,19 +18,7 @@
       <!-- Lead status -->
       {% elif field.name == 'status' %}
       <p>
-        <label for="id_{{ field.name }}">{{ field.label }}</label>
-        {% for value, label in field.choices %}
-        <option value="{{ value }}" {% if field.value == value %}selected{% endif %}>
-          {{ label }}
-          {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-          <button type="button" class="delete-status-btn" onclick="deleteStatus('{{ value }}', event)" title="Delete Status">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          {% endif %}
-        </option>
-        {% endfor %}
+        {{ field }}
         
         
         <!-- Add New Status -->
