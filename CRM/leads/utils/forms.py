@@ -41,7 +41,7 @@ class LeadCreateForm(forms.ModelForm):
         self.fields['source'].widget = forms.Select(choices=source_choices, attrs={"class": "form-input"})
         
         # Set up assigned_to field based on role and context
-        if request and hasattr(request, 'profile'):
+        if request and hasattr(request.user, 'profile'):
             from common.models import Profile
             
             # Check if this is an edit form (instance exists)
@@ -50,7 +50,7 @@ class LeadCreateForm(forms.ModelForm):
             if int(request.user.profile.role) == UserRole.MANAGER.value:
                 # Manager can assign to any employee OR to themselves during creation and editing
                 employee_choices = Profile.objects.filter(
-                    role='EMPLOYEE',
+                    role=UserRole.EMPLOYEE.value,
                     is_active=True
                 ).values_list('id', 'user__first_name', 'user__email')
                 
@@ -76,14 +76,11 @@ class LeadCreateForm(forms.ModelForm):
                 # Ensure the field is not disabled
                 self.fields['assigned_to'].disabled = False
                 self.fields['assigned_to'].required = False
-                # Hide assigned_developer field for managers
-                self.fields['assigned_developer'].widget = forms.HiddenInput()
-                self.fields['assigned_developer'].required = False
             elif int(request.user.profile.role) == UserRole.EMPLOYEE.value:
                 if is_edit:
                     # Employee can only reassign to manager during editing
                     manager_choices = Profile.objects.filter(
-                        role='MANAGER',
+                        role=UserRole.MANAGER.value,
                         is_active=True
                     ).values_list('id', 'user__first_name', 'user__email')
                     # Create choices with name (or email if no name)
@@ -112,8 +109,7 @@ class LeadCreateForm(forms.ModelForm):
                 "contact_position_title": "Position title",
                 "contact_linkedin_url": "https://www.linkedin.com/in/username",
                 "description": "Notes about the lead, context, next steps...",
-                "follow_up_at": "Select date & time",
-                "assigned_developer": "Developer name (optional)",
+                "follow_up_at": "Select date & time"
             }
             attrs = {"class": "form-input"}
             if name in placeholder_map:

@@ -1,0 +1,432 @@
+{% extends "base_admin.html" %}
+{% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<div class="page-header">
+    <div class="page-title">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+            style="width: 24px; height: 24px; stroke: currentColor;">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM20 8v6M23 11h-6"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Employee Management
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon active">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM20 8v6M23 11h-6"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ active_employees }}</div>
+            <div class="stat-label">Active Employees</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon inactive">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM20 8v6M23 11h-6"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-number">{{ inactive_employees }}</div>
+            <div class="stat-label">Inactive Employees</div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee List -->
+<div class="management-container">
+    <div class="management-header">
+        <h3>All Employees</h3>
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="active">Active</button>
+            <button class="filter-tab" data-filter="inactive">Inactive</button>
+        </div>
+    </div>
+
+    {% if employees %}
+    <div class="employee-list">
+        {% for employee in employees %}
+        <div class="employee-card" data-id="{{ employee.pk }}"
+            data-status="{% if employee.is_active %}active{% else %}inactive{% endif %}">
+            <div class="employee-info">
+                <div class="employee-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <div class="employee-details">
+                    <h4>{{ employee.user.first_name|default:employee.user.email }}</h4>
+                    <p>{{ employee.user.email }}</p>
+                    <div class="employee-meta">
+                        <span class="role-badge role-{{ employee.role|add:'0' }}">
+                            {% if employee.role|add:'0' == ROLE_MANAGER_VALUE %}Manager{% elif employee.role|add:'0' == ROLE_EMPLOYEE_VALUE %}Employee{% else %}Dev Lead{% endif %}
+                        </span>
+                        <span
+                            class="status-badge status-{% if employee.is_active %}active{% else %}inactive{% endif %}">
+                            {% if employee.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="employee-actions">
+                <button class="btn small ghost toggle-status-btn" data-id="{{ employee.pk }}"
+                    data-active="{{ employee.is_active|yesno:'true,false' }}"
+                    aria-label="{% if employee.is_active %}Deactivate{% else %}Activate{% endif %} employee">
+                    {% if employee.is_active %}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    Deactivate
+                    {% else %}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    Activate
+                    {% endif %}
+                </button>
+
+                <button class="btn small danger delete-employee-btn" data-id="{{ employee.pk }}"
+                    data-name="{{ employee.user.first_name|default:employee.user.email }}" aria-label="Delete employee">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h3>No employees found</h3>
+        <p>There are no employees to manage yet.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Filter employees
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function () {
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            const status = this.dataset.filter;
+            document.querySelectorAll('.employee-card').forEach(card => {
+                card.style.display = (status === 'all' || card.dataset.status === status) ? 'flex' : 'none';
+            });
+        });
+    });
+
+    // Toggle employee status
+    document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const isActive = this.dataset.active === "true";
+            const action = isActive ? "deactivate" : "activate";
+            if (!confirm(`Are you sure you want to ${action} this employee?`)) return;
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/ui/employees/${id}/toggle-active/`, { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const card = this.closest('.employee-card');
+                        const badge = card.querySelector('.status-badge');
+                        if (isActive) {
+                            badge.textContent = "Inactive";
+                            badge.classList.remove("status-active");
+                            badge.classList.add("status-inactive");
+                            this.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Activate`;
+                            this.dataset.active = "false";
+                            card.dataset.status = "inactive";
+                        } else {
+                            badge.textContent = "Active";
+                            badge.classList.remove("status-inactive");
+                            badge.classList.add("status-active");
+                            this.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Deactivate`;
+                            this.dataset.active = "true";
+                            card.dataset.status = "active";
+                        }
+                    } else {
+                        alert("Error: " + (data.error || "Unknown error"));
+                    }
+                })
+                .catch(err => alert("Error: " + err));
+        });
+    });
+
+    // Delete employee
+    document.querySelectorAll('.delete-employee-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const name = this.dataset.name;
+            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/ui/employees/${id}/delete/`, { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        this.closest('.employee-card').remove();
+                    } else {
+                        alert("Error: " + (data.error || "Unknown error"));
+                    }
+                })
+                .catch(err => alert("Error: " + err));
+        });
+    });
+</script>
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stat-icon.active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .stat-icon.inactive {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .stat-icon.deleted {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .management-container {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+
+    .management-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+    }
+
+    .filter-tab {
+        padding: 8px 16px;
+        border: 1px solid #d1d5db;
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .filter-tab:hover {
+        background: #f9fafb;
+    }
+
+    .filter-tab.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+
+    .employee-list {
+        padding: 0;
+    }
+
+    .employee-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background-color 0.2s;
+    }
+
+    .employee-card:hover {
+        background: #f9fafb;
+    }
+
+    .employee-card:last-child {
+        border-bottom: none;
+    }
+
+    .employee-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .employee-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+    }
+
+    .employee-details h4 {
+        margin: 0 0 4px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .employee-details p {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+    .employee-meta {
+        display: flex;
+        gap: 8px;
+    }
+
+    .role-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .role-1 {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .role-2 {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .role-3 {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-deleted {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .employee-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn.danger {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .btn.danger:hover {
+        background: #fecaca;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .empty-state p {
+        margin: 0;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}

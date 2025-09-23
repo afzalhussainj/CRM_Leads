@@ -19,7 +19,7 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         if not request.user.is_authenticated:
             return redirect('/login/')
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             return redirect('/login/')
         return super().dispatch(request, *args, **kwargs)
 

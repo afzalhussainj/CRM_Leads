@@ -7,6 +7,7 @@ from django.views.generic import TemplateView
 from .views import SiteAdminView
 from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
+from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
 from common.views import LoginUIView, logout_ui_view, AddEmployeeView, TestEmailView
 
  
@@ -33,6 +34,10 @@ urlpatterns = [
     path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
     path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
     path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
+    # Employee Management URLs
+    path("ui/employees/", EmployeeManagementView.as_view(), name="ui-employees"),
+    path("ui/employees/<uuid:pk>/toggle-active/", EmployeeToggleActiveView.as_view(), name="ui-employees-toggle-active"),
+    path("ui/employees/<uuid:pk>/delete/", EmployeeSoftDeleteView.as_view(), name="ui-employees-delete"),
     path("login/", LoginUIView.as_view(), name="login"),
     path("logout/", logout_ui_view, name="logout"),
     path("add-employee/", AddEmployeeView.as_view(), name="add-employee"),

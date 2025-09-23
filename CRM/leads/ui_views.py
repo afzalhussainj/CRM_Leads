@@ -150,18 +150,14 @@ class LeadUpdateUI(LoginRequiredMixin, UpdateView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
-        
-        # Check permissions based on role
-        lead = self.get_object()
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Employees cannot edit leads - they can only update status and assignment through dropdowns
             raise PermissionDenied("Employees cannot edit leads. Use the inline dropdowns to update status and assignment.")
-        elif int(request.user.profile.role) == UserRole.DEV_LEAD.value:
-            # Development leads cannot edit leads - they can only update status to 'closed' through dropdown
-            raise PermissionDenied("Development leads cannot edit leads. Use the status dropdown to update status.")
+        
+        lead = self.get_object()
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
@@ -181,7 +177,7 @@ class LeadDeleteUI(LoginRequiredMixin, DeleteView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
@@ -212,7 +208,7 @@ class LeadFollowUpStatusUpdateUI(LoginRequiredMixin, View):
 class LeadStatusUpdateUI(LoginRequiredMixin, View):
     def post(self, request, pk):
         # Check permissions
-        if not hasattr(request, 'profile'):
+        if not hasattr(request.user, 'profile'):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
         lead = get_object_or_404(Lead, pk=pk)
@@ -277,7 +273,7 @@ class LeadNotesView(LoginRequiredMixin, View):
             return JsonResponse({"error": "unauthorized"}, status=401)
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             return JsonResponse({"error": "profile_not_found"}, status=403)
         
         return super().dispatch(request, *args, **kwargs)
