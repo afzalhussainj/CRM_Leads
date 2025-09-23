@@ -32,6 +32,9 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         user_profile = self.request.user.profile
         user_role = user_profile.role
         
+        # Initialize base_leads_queryset for all roles
+        base_leads_queryset = Lead.objects.none()
+        
         # Role-based data filtering
         if user_role == UserRole.MANAGER.value:
             # Manager sees all data
@@ -77,6 +80,12 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             context["companies_count"] = base_leads_queryset.exclude(company_name="").values("company_name").distinct().count()
             context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
         
+        else:
+            # Default case for any other roles - no leads
+            context["total_leads"] = 0
+            context["my_leads_count"] = 0
+            context["companies_count"] = 0
+            context["contacts_count"] = 0
         
         # Follow-up status breakdown (role-based)
         follow_up_counts = {

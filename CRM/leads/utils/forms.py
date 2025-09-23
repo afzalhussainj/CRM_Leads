@@ -64,7 +64,8 @@ class LeadCreateForm(forms.ModelForm):
                 
                 # Add all employees
                 for profile_id, first_name, email in employee_choices:
-                    choices.append((profile_id))
+                    display_name = first_name or email
+                    choices.append((profile_id, display_name))
                 
                 # If no employees exist, add a message
                 if len(choices) == 2:  # Only has empty choice and manager
@@ -85,8 +86,9 @@ class LeadCreateForm(forms.ModelForm):
                     ).values_list('id', 'user__first_name', 'user__email')
                     # Create choices with name (or email if no name)
                     choices = [('', '---------')]
-                    for profile_id in manager_choices:
-                        choices.append((profile_id))
+                    for profile_id, first_name, email in manager_choices:
+                        display_name = first_name or email
+                        choices.append((profile_id, display_name))
                     self.fields['assigned_to'].choices = choices
                     self.fields['assigned_to'].widget = forms.Select(choices=self.fields['assigned_to'].choices, attrs={"class": "form-input"})
                 else:
