@@ -150,36 +150,6 @@
         }
       });
     })();
-    
-    // Handle "Add New" options for status and source
-    {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-    document.addEventListener('DOMContentLoaded', function() {
-      const statusSelect = document.getElementById('id_status');
-      const sourceSelect = document.getElementById('id_source');
-      const newStatusInput = document.getElementById('new_status_input');
-      const newSourceInput = document.getElementById('new_source_input');
-      
-      if (statusSelect && newStatusInput) {
-        statusSelect.addEventListener('change', function() {
-          if (this.value === '__add_new__') {
-            newStatusInput.style.display = 'block';
-          } else {
-            newStatusInput.style.display = 'none';
-          }
-        });
-      }
-      
-      if (sourceSelect && newSourceInput) {
-        sourceSelect.addEventListener('change', function() {
-          if (this.value === '__add_new__') {
-            newSourceInput.style.display = 'block';
-          } else {
-            newSourceInput.style.display = 'none';
-          }
-        });
-      }
-    });
-    {% endif %}
   </script>
 </form>
 {% endblock %}

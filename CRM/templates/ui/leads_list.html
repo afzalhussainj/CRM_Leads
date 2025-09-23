@@ -1,5 +1,92 @@
 {% extends "base_admin.html" %}
+{% load lead_filters %}
 {% block content %}
+<style>
+  /* Column Customization Styles */
+  .column-customization {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .column-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1000;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    min-width: 280px;
+    margin-top: 8px;
+  }
+  
+  .column-dropdown-content {
+    padding: 16px;
+  }
+  
+  .column-dropdown h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .column-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  
+  .column-option:hover {
+    color: var(--primary);
+  }
+  
+  .column-option input[type="checkbox"] {
+    margin: 0;
+    accent-color: var(--primary);
+  }
+  
+  .column-option span {
+    font-size: 14px;
+    color: var(--text);
+  }
+  
+  .column-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  
+  .column-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  /* Hide columns dynamically */
+  .column-title { display: table-cell; }
+  .column-linkedin { display: table-cell; }
+  .column-status { display: table-cell; }
+  .column-assigned_to { display: table-cell; }
+  .column-follow_up_at { display: table-cell; }
+  .column-follow_up_status { display: table-cell; }
+  .column-company_name { display: table-cell; }
+  .column-contact_name { display: table-cell; }
+  .column-contact_email { display: table-cell; }
+  .column-contact_phone { display: table-cell; }
+  .column-source { display: table-cell; }
+  .column-description { display: table-cell; }
+  .column-created_at { display: table-cell; }
+  
+  /* Hidden state */
+  .column-hidden { display: none !important; }
+</style>
 <div class="page-header">
   <div class="page-title">
     {% if request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
@@ -11,6 +98,32 @@
     {% endif %}
   </div>
   <div class="quick-actions">
+    <div class="column-customization">
+      <button class="btn" onclick="toggleColumnCustomization()" id="customize-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 6h18M7 12h10M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Customize Columns
+      </button>
+      <div class="column-dropdown" id="column-dropdown" style="display: none;">
+        <div class="column-dropdown-content">
+          <h4>Select Columns to Display</h4>
+          <form id="column-form">
+            {% for column_key, column_label in available_columns.items %}
+              <label class="column-option">
+                <input type="checkbox" name="columns" value="{{ column_key }}" 
+                       {% if column_key in visible_columns %}checked{% endif %}>
+                <span>{{ column_label }}</span>
+              </label>
+            {% endfor %}
+            <div class="column-actions">
+              <button type="button" class="btn primary" onclick="applyColumnChanges()">Apply</button>
+              <button type="button" class="btn ghost" onclick="resetColumns()">Reset to Default</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
     {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
       <a class="btn primary" href="/ui/leads/new/">+ New Lead</a>
     {% endif %}
@@ -29,74 +142,22 @@
   <table>
     <thead>
       <tr>
-        <th>Lead Title</th>
-        <th>LinkedIn</th>
-        <th>Status</th>
-        <th>Assigned To</th>
-        <th>Follow-up At</th>
-        <th>Follow-up Status</th>
-        <th></th>
+        {% for column_key in visible_columns %}
+          <th class="column-{{ column_key }}">
+            {{ available_columns|lookup:column_key }}
+          </th>
+        {% endfor %}
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for lead in leads %}
         <tr>
-          <td>{{ lead.title|default:"—" }}</td>
-          <td>{% if lead.contact_linkedin_url %}<a class="btn ghost" href="{{ lead.contact_linkedin_url }}" target="_blank">Open</a>{% else %}<span class="muted">—</span>{% endif %}</td>
-
-          <!-- Lead status -->
-          <td>
-            <form method="post" class="inline-lead-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-              {% csrf_token %}
-              <select name="status" id="lead-status-select-{{ lead.pk }}" class="status-select">
-                {% for value, label in lead_status_choices %}
-                  {% if request.user.profile.role|add:"0" == UserRole.DEV_LEAD and value != 'closed' %}
-                    <!-- Development leads can only set status to 'closed' -->
-                  {% else %}
-                    <option value="{{ value }}" {% if lead.status.name == value %}selected{% endif %}>{{ label }}</option>
-                  {% endif %}
-                {% endfor %}
-              </select>
-            </form>
-          </td>
-
-          <!-- Managers and employees can assign leads -->
-          {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE or request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-            <td>
-              <form method="post" class="inline-assigned-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-                {% csrf_token %}
-                <select name="assigned_to" id="assigned-select-{{ lead.pk }}" class="assigned-select">
-                  <option value="">Unassigned</option>
-                  <option value="{{ user_profile.id }}" {% if lead.assigned_to == user_profile %}selected{% endif %}>{{ user_profile.user.first_name|default:user_profile.user.email }} (Me)</option>
-                  
-                  <!-- available_profiles is already filtered by role in the view -->
-                  {% for profile in available_profiles %}
-                    <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
-                  {% endfor %}
-                </select>
-              </form>
+          {% for column_key in visible_columns %}
+            <td class="column-{{ column_key }}">
+              {% include "ui/leads/column_cell.html" with column_key=column_key lead=lead %}
             </td>
-          {% endif %}
-
-          <!-- Follow-up date -->
-          <td>
-            {% if lead.follow_up_at %}
-              <span class="chip">{{ lead.follow_up_at }}</span>
-            {% else %}
-              <span class="muted">—</span>
-            {% endif %}
-          </td>
-
-          <!-- Follow-up status -->
-          <td>
-            <form method="post" class="inline-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-              {% csrf_token %}
-              <select name="status" id="status-select-{{ lead.pk }}" class="status-select {% if lead.follow_up_status %}{{ lead.follow_up_status }}{% endif %}">
-                <option value="pending" {% if lead.follow_up_status == 'pending' %}selected{% endif %}>Pending</option>
-                <option value="done" {% if lead.follow_up_status == 'done' %}selected{% endif %}>Done</option>
-              </select>
-            </form>
-          </td>
+          {% endfor %}
           
           <td style="text-align:right; white-space:nowrap;">
             <button class="btn small notes-btn" onclick="openNotesModal('{{ lead.pk }}', '{{ lead.title }}')" title="Notes" data-lead="{{ lead.pk }}">
@@ -506,5 +567,72 @@
     overflow: visible !important;
   }
 </style>
+
+<script>
+  // Column Customization JavaScript
+  function toggleColumnCustomization() {
+    const dropdown = document.getElementById('column-dropdown');
+    const isVisible = dropdown.style.display !== 'none';
+    
+    if (isVisible) {
+      dropdown.style.display = 'none';
+    } else {
+      dropdown.style.display = 'block';
+    }
+  }
+  
+  function applyColumnChanges() {
+    const form = document.getElementById('column-form');
+    const formData = new FormData(form);
+    
+    // Add CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    formData.append('csrfmiddlewaretoken', csrfToken);
+    
+    fetch('/ui/leads/customize-columns/', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload the page to show updated columns
+        window.location.reload();
+      } else {
+        alert('Error updating column preferences: ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error updating column preferences');
+    });
+  }
+  
+  function resetColumns() {
+    // Reset to default columns
+    const checkboxes = document.querySelectorAll('#column-form input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+      checkbox.checked = ['title', 'linkedin', 'status', 'assigned_to', 'follow_up_at', 'follow_up_status'].includes(checkbox.value);
+    });
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('column-dropdown');
+    const customizeBtn = document.getElementById('customize-btn');
+    
+    if (dropdown && !dropdown.contains(event.target) && !customizeBtn.contains(event.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+  
+  // Prevent dropdown from closing when clicking inside it
+  document.getElementById('column-dropdown').addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+</script>
 {% endblock %}
 

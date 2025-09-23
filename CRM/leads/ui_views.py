@@ -85,7 +85,63 @@ class LeadListUI(LoginRequiredMixin, ListView):
             else:
                 # Developers and other roles don't get assignment options
                 context["available_profiles"] = Profile.objects.none()
+        
+        # Column customization
+        context["available_columns"] = self.get_available_columns()
+        context["visible_columns"] = self.get_visible_columns()
+        
         return context
+    
+    def get_available_columns(self):
+        """Get all available columns for customization"""
+        return {
+            'title': 'Lead Title',
+            'linkedin': 'LinkedIn',
+            'status': 'Status',
+            'assigned_to': 'Assigned To',
+            'follow_up_at': 'Follow-up At',
+            'follow_up_status': 'Follow-up Status',
+            'company_name': 'Company',
+            'contact_name': 'Contact Name',
+            'contact_email': 'Contact Email',
+            'contact_phone': 'Contact Phone',
+            'source': 'Source',
+            'description': 'Description',
+            'created_at': 'Created Date',
+        }
+    
+    def get_visible_columns(self):
+        """Get currently visible columns from session or default"""
+        # Get from session or use defaults
+        visible_columns = self.request.session.get('leads_visible_columns', [
+            'title', 'linkedin', 'status', 'assigned_to', 'follow_up_at', 'follow_up_status'
+        ])
+        
+        # Ensure we have at least the title column
+        if 'title' not in visible_columns:
+            visible_columns.insert(0, 'title')
+            
+        return visible_columns
+
+
+class LeadColumnCustomizationView(LoginRequiredMixin, View):
+    """View for handling column customization updates"""
+    
+    def post(self, request):
+        """Update visible columns based on user selection"""
+        selected_columns = request.POST.getlist('columns')
+        
+        # Validate that at least title is selected
+        if 'title' not in selected_columns:
+            selected_columns.insert(0, 'title')
+        
+        # Save to session
+        request.session['leads_visible_columns'] = selected_columns
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Column preferences updated successfully'
+        })
 
 
 class LeadCreateUI(LoginRequiredMixin, CreateView):
