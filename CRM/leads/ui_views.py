@@ -86,7 +86,6 @@ class LeadListUI(LoginRequiredMixin, ListView):
                 # Developers and other roles don't get assignment options
                 context["available_profiles"] = Profile.objects.none()
         return context
-    print("context")
 
 
 class LeadCreateUI(LoginRequiredMixin, CreateView):

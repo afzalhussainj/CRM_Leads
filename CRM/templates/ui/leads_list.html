@@ -32,9 +32,7 @@
         <th>Lead Title</th>
         <th>LinkedIn</th>
         <th>Status</th>
-        {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-          <th>Assigned To</th>
-        {% endif %}
+        <th>Assigned To</th>
         <th>Follow-up At</th>
         <th>Follow-up Status</th>
         <th></th>
