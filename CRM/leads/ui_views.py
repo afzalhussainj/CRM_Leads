@@ -250,7 +250,7 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
             return redirect('/login/')
         
         # Check if user has a profile
-        if not hasattr(request, 'profile') or request.user.profile is None:
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
             return redirect('/login/')
         
