@@ -38,8 +38,8 @@
 <div id="notesModal" class="modal" style="display: none;">
   <div class="modal-content">
     <div class="modal-header">
-      <h3>Lead Notes</h3>
-      <span class="close" onclick="closeNotesModal()">&times;</span>
+      <h3 id="notesModalTitle">Notes - {{ lead.title }}</h3>
+      <button class="close-btn" onclick="closeNotesModal()">&times;</button>
     </div>
     <div class="modal-body">
       <div id="notesList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
@@ -95,92 +95,60 @@
   padding: 20px;
 }
 
-.close {
-  color: #aaa;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.close:hover {
-  color: #000;
-}
-
-.note-item {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 10px;
-  margin-bottom: 10px;
-  background-color: #f9f9f9;
-}
-
-.note-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 12px;
-  color: #666;
-}
-
-.note-message {
-  margin-bottom: 5px;
-}
-
-.note-internal {
-  background-color: #fff3cd;
-  border-color: #ffeaa7;
-}
 </style>
 
 <script>
+let currentLeadId = '{{ lead.pk }}';
+
 function openNotesModal() {
   document.getElementById('notesModal').style.display = 'block';
+  document.getElementById('noteForm').style.display = 'block';
   loadNotes();
 }
 
 function closeNotesModal() {
   document.getElementById('notesModal').style.display = 'none';
+  currentLeadId = '{{ lead.pk }}';
 }
 
 function loadNotes() {
-  fetch('/ui/leads/{{ lead.pk }}/notes/')
+  fetch(`/ui/leads/${currentLeadId}/notes/`)
     .then(response => response.json())
     .then(data => {
       const notesList = document.getElementById('notesList');
-      notesList.innerHTML = '';
-      
-      data.notes.forEach(note => {
-        const noteDiv = document.createElement('div');
-        noteDiv.className = `note-item ${note.is_internal ? 'note-internal' : ''}`;
-        noteDiv.innerHTML = `
-          <div class="note-header">
-            <span><strong>${note.author}</strong></span>
-            <span>${note.created_on_arrow}</span>
+      if (data.notes && data.notes.length > 0) {
+        notesList.innerHTML = data.notes.map(note => `
+          <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
+            <div style="font-weight: 500; color: #374151; margin-bottom: 5px;">
+              ${note.author_name} - ${note.created_on_arrow}
+            </div>
+            <div style="color: #6b7280; line-height: 1.5;">
+              ${note.message}
+            </div>
           </div>
-          <div class="note-message">${note.message}</div>
-          ${note.is_internal ? '<div style="font-size: 11px; color: #856404;"><em>Internal note</em></div>' : ''}
-        `;
-        notesList.appendChild(noteDiv);
-      });
+        `).join('');
+      } else {
+        notesList.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No notes yet</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading notes:', error);
+      notesList.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Error loading notes</div>';
     });
 }
 
 document.getElementById('noteForm').addEventListener('submit', function(e) {
   e.preventDefault();
+  const message = document.getElementById('noteMessage').value.trim();
+  if (!message) return;
   
-  const formData = new FormData(this);
-  const data = new URLSearchParams();
-  for (let [key, value] of formData.entries()) {
-    data.append(key, value);
-  }
+  const formData = new FormData();
+  formData.append('message', message);
+  formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
   
-  fetch('/ui/leads/{{ lead.pk }}/notes/', {
+  fetch(`/ui/leads/${currentLeadId}/notes/`, {
     method: 'POST',
-    headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: data
+    body: formData
   })
   .then(response => response.json())
   .then(data => {
@@ -188,8 +156,12 @@ document.getElementById('noteForm').addEventListener('submit', function(e) {
       this.reset();
       loadNotes();
     } else {
-      alert('Error adding note: ' + JSON.stringify(data.errors));
+      alert('Error adding note: ' + (data.error || 'Unknown error'));
     }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Error adding note');
   });
 });
 
