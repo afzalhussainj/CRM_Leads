@@ -167,29 +167,41 @@
             </td>
           {% endfor %}
           
-          <td style="text-align:right; white-space:nowrap;">
-            <button class="btn small notes-btn" onclick="openNotesModal('{{ lead.pk }}', '{{ lead.title }}')" title="Notes" data-lead="{{ lead.pk }}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              {% if lead.has_unread_notes %}
-                <span class="notification-dot"></span>
+            <td style="text-align:right; white-space:nowrap;">
+              <button class="btn small notes-btn" onclick="openNotesModal('{{ lead.pk }}', '{{ lead.title }}')" title="Notes" data-lead="{{ lead.pk }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {% if lead.has_unread_notes %}
+                  <span class="notification-dot"></span>
+                {% endif %}
+              </button>
+              <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
+              {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+                <button class="btn {% if lead.always_active %}ghost{% else %}primary{% endif %} small" 
+                        onclick="toggleAlwaysActive('{{ lead.pk }}')" 
+                        title="{% if lead.always_active %}Remove from Always Active{% else %}Add to Always Active{% endif %}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {% if lead.always_active %}
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    {% else %}
+                      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    {% endif %}
+                  </svg>
+                  {% if lead.always_active %}Remove{% else %}Add{% endif %}
+                </button>
+                <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
+                <a class="btn" href="/ui/leads/{{ lead.pk }}/delete/">Delete</a>
+              {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
+                <!-- Employee can only update status and assignment through dropdowns, no edit button -->
+              {% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}
+                <!-- Development Lead can only view, no edit/delete -->
               {% endif %}
-            </button>
-            <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
-            {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-              <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
-              <a class="btn" href="/ui/leads/{{ lead.pk }}/delete/">Delete</a>
-            {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-              <!-- Employee can only update status and assignment through dropdowns, no edit button -->
-            {% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}
-              <!-- Development Lead can only view, no edit/delete -->
-            {% endif %}
-          </td>
+            </td>
         </tr>
       {% endfor %}
     </tbody>
@@ -637,10 +649,34 @@
     }
   });
   
-  // Prevent dropdown from closing when clicking inside it
-  document.getElementById('column-dropdown').addEventListener('click', function(event) {
-    event.stopPropagation();
-  });
-</script>
+        // Prevent dropdown from closing when clicking inside it
+        document.getElementById('column-dropdown').addEventListener('click', function(event) {
+          event.stopPropagation();
+        });
+        
+        // Always Active Leads functionality
+        function toggleAlwaysActive(leadId) {
+          fetch(`/ui/leads/${leadId}/toggle-always-active/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+              'Content-Type': 'application/json',
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Reload the page to update the button states and always active status
+              window.location.reload();
+            } else {
+              alert('Error: ' + (data.error || 'Unknown error'));
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating always active status');
+          });
+        }
+      </script>
 {% endblock %}
 

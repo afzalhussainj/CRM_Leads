@@ -62,4 +62,10 @@
   {% if lead.description %}{{ lead.description|truncatechars:50 }}{% else %}<span class="muted">—</span>{% endif %}
 {% elif column_key == 'created_at' %}
   {{ lead.created_at|date:"M d, Y" }}
+{% elif column_key == 'always_active' %}
+  {% if lead.always_active %}
+    <span class="chip" style="background-color: #10b981; color: white;">Always Active</span>
+  {% else %}
+    <span class="muted">—</span>
+  {% endif %}
 {% endif %}

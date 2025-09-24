@@ -109,6 +109,7 @@ class LeadListUI(LoginRequiredMixin, ListView):
             'source': 'Source',
             'description': 'Description',
             'created_at': 'Created Date',
+            'always_active': 'Always Active',
         }
     
     def get_visible_columns(self):
@@ -569,6 +570,34 @@ class LeadCSVExportView(LoginRequiredMixin, View):
             writer.writerow(row)
 
         return response
+
+
+class LeadToggleAlwaysActiveView(LoginRequiredMixin, View):
+    """View for toggling always_active status of a lead - managers only"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            raise PermissionDenied("Only managers can toggle always active status")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def post(self, request, pk):
+        """Toggle always_active status of a lead"""
+        try:
+            lead = get_object_or_404(Lead, pk=pk)
+            lead.always_active = not lead.always_active
+            lead.save(update_fields=['always_active'])
+            
+            return JsonResponse({
+                'success': True,
+                'always_active': lead.always_active,
+                'message': f'Lead {"marked as" if lead.always_active else "removed from"} always active'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
 
 
 

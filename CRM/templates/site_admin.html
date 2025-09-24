@@ -119,6 +119,58 @@
 </section>
 {% endif %}
 
+{% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+<section class="row" style="margin-bottom:14px;">
+  <div class="span-12 card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="margin: 0;">Always Active Leads</h3>
+      <button class="btn primary" onclick="openAddAlwaysActiveModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Add Always Active Lead
+      </button>
+    </div>
+    <div class="list">
+      {% for lead in always_active_leads %}
+      <div class="list-item">
+        <div>
+          <div class="title">{{ lead.title }}</div>
+          <div class="meta">
+            {% if lead.assigned_to %}
+              Assigned to: {{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}
+            {% else %}
+              Unassigned
+            {% endif %}
+            • {{ lead.status.name|default:"No Status" }}
+            {% if lead.follow_up_at %}
+              • Follow-up: {{ lead.follow_up_at|date:"M d, g:i A" }}
+            {% endif %}
+          </div>
+          {% if lead.company_name %}
+            <div style="color: #6b7280; font-size: 13px; margin-top: 4px;">
+              {{ lead.company_name }}
+            </div>
+          {% endif %}
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn ghost" onclick="toggleAlwaysActive('{{ lead.pk }}')" title="Remove from Always Active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Remove
+          </button>
+          <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="muted">No always active leads</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section class="row" style="margin-bottom:14px;">
   <div class="span-12 card">
     <h3>Unread Notes</h3>
@@ -259,6 +311,36 @@
     if (event.target === modal) {
       closeNotesModal();
     }
+  }
+  
+  // Always Active Leads functionality
+  function toggleAlwaysActive(leadId) {
+    fetch(`/ui/leads/${leadId}/toggle-always-active/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload the page to update the always active leads list
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error updating always active status');
+    });
+  }
+  
+  function openAddAlwaysActiveModal() {
+    // For now, redirect to leads page where managers can select leads to make always active
+    // In a full implementation, you could create a modal with a list of available leads
+    window.location.href = '/ui/leads/';
   }
 </script>
 

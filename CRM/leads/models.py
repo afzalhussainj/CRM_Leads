@@ -29,7 +29,7 @@ class Lead(BaseModel):
     )
     follow_up_status = models.CharField(max_length=16, choices=FOLLOW_UP_STATUS_CHOICES, default="pending")
     is_active = models.BooleanField(default=False)
-    # Embedded company/contact snapshot fields (self-contained lead)
+    always_active = models.BooleanField(default=False)
     company_name = models.CharField(max_length=255, blank=True, default="")
     contact_first_name = models.CharField(max_length=255, blank=True, default="")
     contact_last_name = models.CharField(max_length=255, blank=True, default="")
