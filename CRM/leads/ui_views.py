@@ -25,6 +25,8 @@ class LeadListUI(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = super().get_queryset().order_by("-created_at")
         
+        # Exclude projects from leads list
+        queryset = queryset.filter(is_project=False)
         
         # Check if user is authenticated and has profile
         if not self.request.user.is_authenticated:
@@ -518,8 +520,8 @@ class LeadCSVExportView(LoginRequiredMixin, View):
     def get(self, request):
         """Export leads to CSV"""
         
-        # Get all leads (managers can see all)
-        leads = Lead.objects.all().order_by('-created_at')
+        # Get all leads (managers can see all, excluding projects)
+        leads = Lead.objects.filter(is_project=False).order_by('-created_at')
         
         # Apply search filter if provided
         search_query = request.GET.get('q', '').strip()
@@ -661,13 +663,126 @@ class ProjectsListView(LoginRequiredMixin, ListView):
         return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
-        """Get all projects (leads with is_project=True)"""
-        return Lead.objects.filter(is_project=True).order_by('-created_at')
+        """Get all projects (leads with is_project=True) with search functionality"""
+        queryset = Lead.objects.filter(is_project=True).order_by('-created_at')
+        
+        # Apply search filter if provided
+        search_query = self.request.GET.get('q', '').strip()
+        if search_query:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(title__icontains=search_query)
+                | Q(company_name__icontains=search_query)
+                | Q(contact_first_name__icontains=search_query)
+                | Q(contact_last_name__icontains=search_query)
+                | Q(contact_email__icontains=search_query)
+            )
+        
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["total_projects"] = Lead.objects.filter(is_project=True).count()
+        context["available_columns"] = self.get_available_columns()
+        context["visible_columns"] = self.get_visible_columns()
         return context
+    
+    def get_available_columns(self):
+        """Get available columns for projects (excluding restricted ones)"""
+        return {
+            'title': 'Project Title',
+            'linkedin': 'LinkedIn',
+            'company_name': 'Company',
+            'contact_name': 'Contact Name',
+            'contact_email': 'Contact Email',
+            'contact_phone': 'Contact Phone',
+            'source': 'Source',
+            'description': 'Description',
+            'created_at': 'Created Date',
+            'is_project': 'Project Status',
+        }
+    
+    def get_visible_columns(self):
+        """Get currently visible columns from session or default"""
+        # Get from session or use defaults
+        visible_columns = self.request.session.get('projects_visible_columns', [
+            'title', 'company_name', 'contact_name', 'contact_email', 'created_at'
+        ])
+        
+        # Ensure all visible columns are valid
+        available_columns = self.get_available_columns()
+        return [col for col in visible_columns if col in available_columns]
 
+
+class ProjectsColumnCustomizationView(LoginRequiredMixin, View):
+    """View for customizing project columns"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return redirect('/login/')
+        
+        # Check if user has a profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            messages.error(request, "User profile not found. Please contact administrator.")
+            return redirect('/login/')
+        
+        # Only managers can customize project columns
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
+            raise PermissionDenied("Only managers can customize project columns")
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get(self, request):
+        """Show column customization form"""
+        available_columns = {
+            'title': 'Project Title',
+            'linkedin': 'LinkedIn',
+            'company_name': 'Company',
+            'contact_name': 'Contact Name',
+            'contact_email': 'Contact Email',
+            'contact_phone': 'Contact Phone',
+            'source': 'Source',
+            'description': 'Description',
+            'created_at': 'Created Date',
+            'is_project': 'Project Status',
+        }
+        
+        visible_columns = request.session.get('projects_visible_columns', [
+            'title', 'company_name', 'contact_name', 'contact_email', 'created_at'
+        ])
+        
+        context = {
+            'available_columns': available_columns,
+            'visible_columns': visible_columns,
+        }
+        return render(request, 'ui/projects_column_customization.html', context)
+    
+    def post(self, request):
+        """Save column customization"""
+        selected_columns = request.POST.getlist('columns')
+        
+        # Validate selected columns
+        available_columns = {
+            'title': 'Project Title',
+            'linkedin': 'LinkedIn',
+            'company_name': 'Company',
+            'contact_name': 'Contact Name',
+            'contact_email': 'Contact Email',
+            'contact_phone': 'Contact Phone',
+            'source': 'Source',
+            'description': 'Description',
+            'created_at': 'Created Date',
+            'is_project': 'Project Status',
+        }
+        
+        # Filter to only include valid columns
+        valid_columns = [col for col in selected_columns if col in available_columns]
+        
+        # Save to session
+        request.session['projects_visible_columns'] = valid_columns
+        
+        messages.success(request, 'Project columns updated successfully!')
+        return redirect('ui-projects')
 
 

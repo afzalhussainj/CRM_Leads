@@ -1,0 +1,29 @@
+{% if column_key == 'title' %}
+  {{ project.title|default:"—" }}
+{% elif column_key == 'linkedin' %}
+  {% if project.contact_linkedin_url %}<a class="btn ghost" href="{{ project.contact_linkedin_url }}" target="_blank">Open</a>{% else %}<span class="muted">—</span>{% endif %}
+{% elif column_key == 'company_name' %}
+  {{ project.company_name|default:"—" }}
+{% elif column_key == 'contact_name' %}
+  {% if project.contact_first_name or project.contact_last_name %}
+    {{ project.contact_first_name }} {{ project.contact_last_name }}
+  {% else %}
+    <span class="muted">—</span>
+  {% endif %}
+{% elif column_key == 'contact_email' %}
+  {% if project.contact_email %}<a href="mailto:{{ project.contact_email }}">{{ project.contact_email }}</a>{% else %}<span class="muted">—</span>{% endif %}
+{% elif column_key == 'contact_phone' %}
+  {% if project.contact_phone %}{{ project.contact_phone }}{% else %}<span class="muted">—</span>{% endif %}
+{% elif column_key == 'source' %}
+  {{ project.source|default:"—" }}
+{% elif column_key == 'description' %}
+  {% if project.description %}{{ project.description|truncatechars:50 }}{% else %}<span class="muted">—</span>{% endif %}
+{% elif column_key == 'created_at' %}
+  {{ project.created_at|date:"M d, Y" }}
+{% elif column_key == 'is_project' %}
+  {% if project.is_project %}
+    <span class="chip" style="background-color: #10b981; color: white;">Project</span>
+  {% else %}
+    <span class="muted">—</span>
+  {% endif %}
+{% endif %}

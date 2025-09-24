@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import TemplateView
 from .views import SiteAdminView
-from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadToggleProjectView, ProjectsListView
+from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
 from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
 from common.views import LoginUIView, logout_ui_view, AddEmployeeView, TestEmailView
@@ -33,6 +33,7 @@ urlpatterns = [
     path("ui/leads/<uuid:pk>/toggle-always-active/", LeadToggleAlwaysActiveView.as_view(), name="ui-leads-toggle-always-active"),
     path("ui/leads/<uuid:pk>/toggle-project/", LeadToggleProjectView.as_view(), name="ui-leads-toggle-project"),
     path("ui/projects/", ProjectsListView.as_view(), name="ui-projects"),
+    path("ui/projects/customize-columns/", ProjectsColumnCustomizationView.as_view(), name="ui-projects-customize-columns"),
     # Combined Options Management URLs
     path("ui/options/", CombinedManagementView.as_view(), name="ui-options"),
     path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),

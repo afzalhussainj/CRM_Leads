@@ -18,12 +18,37 @@
       </svg>
       <input type="text" placeholder="Search projects..." id="searchInput" value="{{ request.GET.q|default:'' }}">
     </div>
-    <a class="btn primary" href="/ui/leads/">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Add Project from Leads
-    </a>
+    <div class="quick-actions">
+      <a class="btn primary" href="/ui/leads/">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Add Project from Leads
+      </a>
+      <button class="btn" onclick="toggleColumnCustomization()" id="customize-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Customize Columns
+      </button>
+      <div class="column-dropdown" id="column-dropdown" style="display: none;">
+        <div class="column-dropdown-content">
+          <h4>Select Columns to Display</h4>
+          {% for column_key, column_name in available_columns.items %}
+          <label class="column-option">
+            <input type="checkbox" name="columns" value="{{ column_key }}" 
+                   {% if column_key in visible_columns %}checked{% endif %}>
+            {{ column_name }}
+          </label>
+          {% endfor %}
+          <div class="column-actions">
+            <button class="btn primary" onclick="applyColumnChanges()">Apply</button>
+            <button class="btn ghost" onclick="resetColumns()">Reset</button>
+            <button class="btn ghost" onclick="toggleColumnCustomization()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -33,29 +58,38 @@
   </div>
   <div class="card-body">
     {% if projects %}
-      <div class="list">
-        {% for project in projects %}
-        <div class="list-item">
-          <div class="title">{{ project.title }}</div>
-          <div class="meta">
-            <span class="chip" style="background-color: #10b981; color: white; margin-right: 8px;">Project</span>
-            {% if project.assigned_to %}
-              <span style="margin-right: 8px;">Assigned to: {{ project.assigned_to.user.first_name|default:project.assigned_to.user.email }}</span>
-            {% endif %}
-            <span style="color: var(--muted);">{{ project.created_at|date:"M d, Y" }}</span>
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn ghost small" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              Convert to Lead
-            </button>
-            <a class="btn small" href="/ui/leads/{{ project.pk }}/">View Details</a>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
+      <table>
+        <thead>
+          <tr>
+            {% for column_key in visible_columns %}
+              <th class="column-{{ column_key }}">
+                {{ available_columns|lookup:column_key }}
+              </th>
+            {% endfor %}
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for project in projects %}
+          <tr>
+            {% for column_key in visible_columns %}
+              <td class="column-{{ column_key }}">
+                {% include "ui/projects/column_cell.html" with column_key=column_key project=project %}
+              </td>
+            {% endfor %}
+            <td style="text-align:right; white-space:nowrap;">
+              <button class="btn ghost small" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Convert to Lead
+              </button>
+              <a class="btn small" href="/ui/leads/{{ project.pk }}/">View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       
       {% if is_paginated %}
       <div class="pagination">
@@ -86,7 +120,162 @@
   </div>
 </div>
 
+<style>
+.column-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 250px;
+}
+
+.column-dropdown-content {
+  padding: 16px;
+}
+
+.column-dropdown h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.column-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.column-option input[type="checkbox"] {
+  margin: 0;
+}
+
+.column-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.quick-actions {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: var(--text);
+}
+
+.empty-state p {
+  margin: 0 0 16px 0;
+}
+</style>
+
 <script>
+function toggleColumnCustomization() {
+  const dropdown = document.getElementById('column-dropdown');
+  const customizeBtn = document.getElementById('customize-btn');
+  
+  if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+    dropdown.style.display = 'block';
+    customizeBtn.classList.add('active');
+  } else {
+    dropdown.style.display = 'none';
+    customizeBtn.classList.remove('active');
+  }
+}
+
+function applyColumnChanges() {
+  const checkboxes = document.querySelectorAll('input[name="columns"]:checked');
+  const selectedColumns = Array.from(checkboxes).map(cb => cb.value);
+  
+  // Create form data
+  const formData = new FormData();
+  selectedColumns.forEach(column => {
+    formData.append('columns', column);
+  });
+  
+  // Submit form
+  fetch('{% url "ui-projects-customize-columns" %}', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+    }
+  })
+  .then(response => {
+    if (response.ok) {
+      window.location.reload();
+    } else {
+      alert('Error updating columns');
+    }
+  });
+}
+
+function resetColumns() {
+  // Reset to default columns
+  const defaultColumns = ['title', 'company_name', 'contact_name', 'contact_email', 'created_at'];
+  
+  // Uncheck all
+  document.querySelectorAll('input[name="columns"]').forEach(cb => {
+    cb.checked = false;
+  });
+  
+  // Check default columns
+  defaultColumns.forEach(column => {
+    const checkbox = document.querySelector(`input[name="columns"][value="${column}"]`);
+    if (checkbox) {
+      checkbox.checked = true;
+    }
+  });
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const dropdown = document.getElementById('column-dropdown');
+  const customizeBtn = document.getElementById('customize-btn');
+  
+  if (!dropdown.contains(event.target) && !customizeBtn.contains(event.target)) {
+    dropdown.style.display = 'none';
+    customizeBtn.classList.remove('active');
+  }
+});
+
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  const query = e.target.value;
+  const url = new URL(window.location);
+  if (query) {
+    url.searchParams.set('q', query);
+  } else {
+    url.searchParams.delete('q');
+  }
+  window.location.href = url.toString();
+});
+
+// Project functionality
 function toggleProject(projectId) {
   if (confirm('Are you sure you want to convert this project back to a lead?')) {
     fetch(`/ui/leads/${projectId}/toggle-project/`, {
@@ -110,17 +299,5 @@ function toggleProject(projectId) {
     });
   }
 }
-
-// Search functionality
-document.getElementById('searchInput').addEventListener('input', function(e) {
-  const query = e.target.value;
-  const url = new URL(window.location);
-  if (query) {
-    url.searchParams.set('q', query);
-  } else {
-    url.searchParams.delete('q');
-  }
-  window.location.href = url.toString();
-});
 </script>
 {% endblock %}

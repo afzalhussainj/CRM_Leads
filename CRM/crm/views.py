@@ -37,14 +37,14 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         
         # Role-based data filtering
         if user_role == UserRole.MANAGER.value:
-            # Manager sees all data
-            base_leads_queryset = Lead.objects.all()
-            my_leads_queryset = Lead.objects.filter(assigned_to=user_profile)
-            team_leads_queryset = Lead.objects.filter(assigned_to__isnull=False)
-            unassigned_leads_queryset = Lead.objects.filter(assigned_to__isnull=True)
+            # Manager sees all data (excluding projects)
+            base_leads_queryset = Lead.objects.filter(is_project=False)
+            my_leads_queryset = Lead.objects.filter(assigned_to=user_profile, is_project=False)
+            team_leads_queryset = Lead.objects.filter(assigned_to__isnull=False, is_project=False)
+            unassigned_leads_queryset = Lead.objects.filter(assigned_to__isnull=True, is_project=False)
             
-            # Always active leads for managers
-            always_active_leads = Lead.objects.filter(always_active=True).order_by('-created_at')
+            # Always active leads for managers (excluding projects)
+            always_active_leads = Lead.objects.filter(always_active=True, is_project=False).order_by('-created_at')
             context["always_active_leads"] = always_active_leads
             
             # Projects for managers
@@ -62,8 +62,8 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
             
         elif user_role == 'EMPLOYEE':
-            # Employee sees only their assigned leads
-            base_leads_queryset = Lead.objects.filter(assigned_to=user_profile)
+            # Employee sees only their assigned leads (excluding projects)
+            base_leads_queryset = Lead.objects.filter(assigned_to=user_profile, is_project=False)
             my_leads_queryset = base_leads_queryset
             
             # Only show employee's data
@@ -76,8 +76,8 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
             
         elif user_role == 'DEVELOPMENT_LEAD':
-            # Development lead sees leads in development phase
-            base_leads_queryset = Lead.objects.filter(status='development')
+            # Development lead sees leads in development phase (excluding projects)
+            base_leads_queryset = Lead.objects.filter(status='development', is_project=False)
             my_leads_queryset = base_leads_queryset
             
             # Only show development leads
