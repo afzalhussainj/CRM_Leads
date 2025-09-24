@@ -624,12 +624,14 @@ class LeadToggleProjectView(LoginRequiredMixin, View):
         """Toggle is_project status of a lead"""
         try:
             lead = get_object_or_404(Lead, pk=pk)
+            old_status = lead.is_project
             lead.is_project = not lead.is_project
             lead.save(update_fields=['is_project'])
             
             return JsonResponse({
                 'success': True,
                 'is_project': lead.is_project,
+                'old_status': old_status,
                 'message': f'Lead {"converted to" if lead.is_project else "converted back from"} project'
             })
         except Exception as e:

@@ -23,20 +23,29 @@
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
       .layout { display: flex; min-height: 100vh; }
-      .sidebar { width: 260px; background: var(--bg-soft); color:#fff; padding:16px; border-right:1px solid var(--border); position: sticky; top: 0; align-self: flex-start; height: 100vh; display: flex; flex-direction: column; }
-      .sidebar h2 { font-size:24px; margin:18px 0 8px; color:#93c5fd; letter-spacing: .04em; text-transform: uppercase; display:flex; align-items:center; gap:8px; }
-      .sidebar h2 svg { width:26px; height:26px; stroke:#93c5fd; }
-      .sidebar a { color:#e5e7eb; text-decoration:none; display:block; padding:8px 10px; border-radius:8px; font-size:18px; }
-      .sidebar a:hover { background:#1f2937; }
-      .submenu { margin-left:8px; margin-bottom:12px; }
-      .separator { height:1px; background-image: repeating-linear-gradient(to right, var(--dash) 0 8px, transparent 8px 22px); background-color: transparent; border:0; opacity:.95; margin:12px 0 18px; }
-      .brand { display:flex; align-items:center; justify-content: center; gap: 16px;}
-      .sidebar a.brand { display:flex; align-items:center; justify-content:center; gap:16px; padding: 0; }
-      .brand img.logo { height:54px; width:auto; display:block; background: transparent; box-shadow: none; border-radius: 0; }
-      .brand h1 { margin:0; font-size:38px; }
+      .sidebar { width: 280px; background: #1e293b; color:#fff; padding:24px; border-right:1px solid #334155; position: sticky; top: 0; align-self: flex-start; height: 100vh; display: flex; flex-direction: column; }
+      .sidebar h2 { font-size:14px; margin:24px 0 12px; color:#60a5fa; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; display:flex; align-items:center; gap:12px; }
+      .sidebar h2 svg { width:20px; height:20px; stroke:#60a5fa; }
+      .sidebar a { color:#e2e8f0; text-decoration:none; display:block; padding:8px 0; font-size:16px; transition: color 0.2s ease; }
+      .sidebar a:hover { color:#ffffff; }
+      .submenu { margin-left:20px; margin-bottom:16px; }
+      .separator { height:1px; background: #334155; border:0; margin:20px 0; }
+      .brand { display:flex; align-items:center; gap: 12px; margin: 32px;}
+      .sidebar a.brand { display:flex; align-items:center; gap:12px; padding: 0; }
+      .brand img.logo { height:40px; width:auto; display:block; background: transparent; box-shadow: none; border-radius: 0; }
+      .brand h1 { margin:0; font-size:32px; font-weight: 700; color: #ffffff; }
       /* Dotted guideline for nested tabs */
-      .submenu { padding-left:12px; margin-left:12px; background-image: repeating-linear-gradient(to bottom, var(--dash) 0 8px, transparent 8px 22px); background-repeat:no-repeat; background-size:1px 100%; background-position:0 0; }
-      .submenu a { position:relative; padding-left:8px; }
+      .submenu { padding-left:20px; margin-left:20px; background-image: repeating-linear-gradient(to bottom, #475569 0 4px, transparent 4px 16px); background-repeat:no-repeat; background-size:1px 100%; background-position:0 0; }
+      .submenu a { position:relative; padding-left:12px; color: #ffffff; font-size: 16px; }
+      .submenu a:hover { color: #ffffff; }
+      
+      /* Active state for current page */
+      .sidebar h2 a.active { color: #60a5fa; }
+      .submenu a.active { color: #60a5fa; font-weight: 600; }
+      
+      /* Improved hover effects */
+      .sidebar h2:hover { color: #ffffff; }
+      .sidebar h2 a:hover { color: #ffffff; }
       .muted { color: var(--muted); font-size:13px; }
       .content { flex:1; padding:24px; }
       .messages { margin-bottom:12px; }
@@ -226,10 +235,9 @@
           <img class="logo" src="{% static 'assets/img/logo.png' %}" alt="CRM logo" />
           <h1>CRM</h1>
         </a>
-        <div class="separator"></div>
 
         <h2>
-          <a href="/" style="display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none;">
+          <a href="/" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 13h8L3 21V13zM3 3h8L3 11V3zM13 3h8L13 11V3zM13 13h8L13 21V13z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Dashboard
           </a>
@@ -246,7 +254,7 @@
 
         {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE or request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
         <h2>
-          <a href="/reminders/" style="display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none;">
+          <a href="/reminders/" style="display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none;">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Reminders
           </a>
@@ -268,13 +276,9 @@
 
         <div style="margin-top: auto; padding-top: 20px;">
           <div class="separator"></div>
-          <div style="padding: 8px 10px; color: var(--muted); font-size: 14px;">
+          <div style="padding: 8px 0; color: #94a3b8; font-size: 14px;">
             Logged in as: {% if request.user.profile %}{{ request.user.profile.user.first_name|default:request.user.profile.user.email }}{% else %}{{ request.user.email }}{% endif %}
           </div>
-          <a href="/logout/" style="color: #f87171; font-size: 14px;">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px; display: inline-block; margin-right: 8px; vertical-align: middle;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Logout
-          </a>
         </div>
       </aside>
       <main class="content">
