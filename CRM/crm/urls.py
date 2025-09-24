@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import TemplateView
 from .views import SiteAdminView
-from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView
+from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
 from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
 from common.views import LoginUIView, logout_ui_view, AddEmployeeView, TestEmailView
@@ -29,6 +29,7 @@ urlpatterns = [
     path("ui/leads/<uuid:pk>/", LeadDetailUI.as_view(), name="ui-leads-detail"),
     path("ui/leads/<uuid:pk>/notes/", LeadNotesView.as_view(), name="ui-leads-notes"),
     path("ui/leads/customize-columns/", LeadColumnCustomizationView.as_view(), name="ui-leads-customize-columns"),
+    path("ui/leads/export/", LeadCSVExportView.as_view(), name="ui-leads-export"),
     # Combined Options Management URLs
     path("ui/options/", CombinedManagementView.as_view(), name="ui-options"),
     path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),

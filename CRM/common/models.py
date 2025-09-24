@@ -37,7 +37,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ordering = ("-is_active",)
 
     def __str__(self):
-        return self.email
+        return f"{self.first_name} {self.last_name}"
 
 
 def generate_unique_key():
@@ -61,7 +61,7 @@ class Profile(BaseModel):
         ordering = ("-created_at",)
 
     def __str__(self):
-        return f"{self.user.email}"
+        return f"{self.user.first_name} {self.user.last_name}"
 
 
     @property

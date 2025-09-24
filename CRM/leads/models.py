@@ -46,14 +46,6 @@ class Lead(BaseModel):
         related_name="assigned_leads",
         help_text="Employee assigned to work on this lead"
     )
-    assigned_developer = models.CharField(
-        max_length=255, 
-        blank=True, 
-        default="",
-        help_text="Developer name (not a system user) assigned for development"
-    )
-    # No external relations; contacts embedded on the lead
-
     class Meta:
         verbose_name = "Lead"
         verbose_name_plural = "Leads"
@@ -134,7 +126,7 @@ class LeadNote(BaseModel):
         ordering = ("created_at",)  # Show oldest first (bottom) to newest last (top)
     
     def __str__(self):
-        return f"Note by {self.author.user.email} on {self.lead.title}"
+        return self.message
     
     @property
     def created_on_arrow(self):

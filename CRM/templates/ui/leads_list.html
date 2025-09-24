@@ -98,13 +98,21 @@
     {% endif %}
   </div>
   <div class="quick-actions">
-    <div class="column-customization">
-      <button class="btn" onclick="toggleColumnCustomization()" id="customize-btn">
+  <div class="column-customization">
+    {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+      <a class="btn ghost" href="{% url 'ui-leads-export' %}{% if request.GET.q %}?q={{ request.GET.q }}{% endif %}" title="Export to CSV">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 6h18M7 12h10M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Customize Columns
-      </button>
+        Export CSV
+      </a>
+    {% endif %}
+    <button class="btn" onclick="toggleColumnCustomization()" id="customize-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6h18M7 12h10M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Customize Columns
+    </button>
       <div class="column-dropdown" id="column-dropdown" style="display: none;">
         <div class="column-dropdown-content">
           <h4>Select Columns to Display</h4>

@@ -4,12 +4,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import render
+import csv
 
 from .models import Lead
 from leads.utils.forms import LeadCreateForm, LeadNoteForm
@@ -502,6 +503,72 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
             "assigned_to": assigned_to_id,
             "assigned_to_name": lead.assigned_to.user.first_name if lead.assigned_to else "Unassigned"
         })
+
+
+class LeadCSVExportView(LoginRequiredMixin, View):
+    """View for exporting leads to CSV - managers only"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            raise PermissionDenied("Only managers can export leads")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get(self, request):
+        """Export leads to CSV"""
+        
+        # Get all leads (managers can see all)
+        leads = Lead.objects.all().order_by('-created_at')
+        
+        # Apply search filter if provided
+        search_query = request.GET.get('q', '').strip()
+        if search_query:
+            leads = leads.filter(
+                Q(title__icontains=search_query)
+                | Q(company_name__icontains=search_query)
+                | Q(contact_first_name__icontains=search_query)
+                | Q(contact_last_name__icontains=search_query)
+                | Q(contact_email__icontains=search_query)
+            )
+        
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="leads_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        writer = csv.writer(response)
+        
+        # Write headers based on all available columns
+        headers = [field.name for field in Lead._meta.get_fields() if not field.auto_created]
+        writer.writerow(headers)
+        headers = [field for field in Lead._meta.get_fields() if not field.auto_created]
+        
+
+        for lead in leads:
+            row = []
+            for field in headers:                 
+                value = getattr(lead, field.name) or None
+                if value is None:
+                    value = "NULL" 
+                row.append(value)
+
+                # if field.concrete:
+                #     row.append(getattr(lead, field.name) or '')
+                #     print('concrete')
+                # elif field.is_relation and not field.many_to_many:
+                #     related_obj = getattr(lead, field.name, None)
+                #     if related_obj:
+                #         if hasattr(related_obj, "first_name"):
+                #             value = related_obj.name
+                #         elif hasattr(related_obj, "email"):
+                #             value = related_obj.email
+                #         else:
+                #             value = str(related_obj)
+                #     print('not concrete')
+                #     row.append(value)
+            
+            writer.writerow(row)
+
+        return response
 
 
 
