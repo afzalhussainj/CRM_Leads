@@ -47,6 +47,10 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             always_active_leads = Lead.objects.filter(always_active=True).order_by('-created_at')
             context["always_active_leads"] = always_active_leads
             
+            # Projects for managers
+            projects = Lead.objects.filter(is_project=True).order_by('-created_at')
+            context["projects"] = projects
+            
             # Total leads for manager
             context["total_leads"] = base_leads_queryset.count()
             context["my_leads_count"] = my_leads_queryset.count()

@@ -600,6 +600,74 @@ class LeadToggleAlwaysActiveView(LoginRequiredMixin, View):
             }, status=400)
 
 
+class LeadToggleProjectView(LoginRequiredMixin, View):
+    """Toggle project status for a lead"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "unauthorized"}, status=401)
+        
+        # Check if user has a profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return JsonResponse({"error": "profile_not_found"}, status=403)
+        
+        # Only managers can toggle project status
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
+            return JsonResponse({"error": "permission_denied"}, status=403)
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def post(self, request, pk):
+        """Toggle is_project status of a lead"""
+        try:
+            lead = get_object_or_404(Lead, pk=pk)
+            lead.is_project = not lead.is_project
+            lead.save(update_fields=['is_project'])
+            
+            return JsonResponse({
+                'success': True,
+                'is_project': lead.is_project,
+                'message': f'Lead {"converted to" if lead.is_project else "converted back from"} project'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+
+class ProjectsListView(LoginRequiredMixin, ListView):
+    """View for listing all projects"""
+    model = Lead
+    template_name = "ui/projects_list.html"
+    context_object_name = "projects"
+    paginate_by = 20
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return redirect('/login/')
+        
+        # Check if user has a profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            messages.error(request, "User profile not found. Please contact administrator.")
+            return redirect('/login/')
+        
+        # Only managers can view projects
+        if int(request.user.profile.role) != UserRole.MANAGER.value:
+            raise PermissionDenied("Only managers can view projects")
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_queryset(self):
+        """Get all projects (leads with is_project=True)"""
+        return Lead.objects.filter(is_project=True).order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["total_projects"] = Lead.objects.filter(is_project=True).count()
+        return context
 
 
 

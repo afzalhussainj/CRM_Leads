@@ -194,6 +194,18 @@
                   </svg>
                   {% if lead.always_active %}Remove{% else %}Add{% endif %}
                 </button>
+                <button class="btn {% if lead.is_project %}ghost{% else %}primary{% endif %} small" 
+                        onclick="toggleProject('{{ lead.pk }}')" 
+                        title="{% if lead.is_project %}Convert back to Lead{% else %}Convert to Project{% endif %}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {% if lead.is_project %}
+                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    {% else %}
+                      <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    {% endif %}
+                  </svg>
+                  {% if lead.is_project %}Convert to Lead{% else %}Convert to Project{% endif %}
+                </button>
                 <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
                 <a class="btn" href="/ui/leads/{{ lead.pk }}/delete/">Delete</a>
               {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
@@ -675,6 +687,29 @@
           .catch(error => {
             console.error('Error:', error);
             alert('Error updating always active status');
+          });
+        }
+        
+        // Project functionality
+        function toggleProject(leadId) {
+          fetch(`/ui/leads/${leadId}/toggle-project/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+              'Content-Type': 'application/json',
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              window.location.reload();
+            } else {
+              alert('Error: ' + (data.error || 'Unknown error'));
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating project status');
           });
         }
       </script>

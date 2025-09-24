@@ -169,6 +169,52 @@
     </div>
   </div>
 </section>
+
+<section class="row" style="margin-bottom:14px;">
+  <div class="span-12 card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="margin: 0;">Ongoing Projects</h3>
+      <a class="btn primary" href="/ui/projects/">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        View All Projects
+      </a>
+    </div>
+    <div class="list">
+      {% for project in projects %}
+      <div class="list-item">
+        <div>
+          <div class="title">{{ project.title }}</div>
+          <div class="meta">
+            {% if project.assigned_to %}
+              Assigned to: {{ project.assigned_to.user.first_name|default:project.assigned_to.user.email }}
+            {% else %}
+              Unassigned
+            {% endif %}
+            • {{ project.status.name|default:"No Status" }}
+            {% if project.follow_up_at %}
+              • Follow-up: {{ project.follow_up_at|date:"M d, Y" }}
+            {% endif %}
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn ghost" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Convert to Lead
+          </button>
+          <a class="btn" href="/ui/leads/{{ project.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="muted">No ongoing projects</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
 {% endif %}
 
 <section class="row" style="margin-bottom:14px;">
@@ -334,6 +380,30 @@
     .catch(error => {
       console.error('Error:', error);
       alert('Error updating always active status');
+    });
+  }
+  
+  // Project functionality
+  function toggleProject(projectId) {
+    fetch(`/ui/leads/${projectId}/toggle-project/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload the page to update the projects list
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error updating project status');
     });
   }
   

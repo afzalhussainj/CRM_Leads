@@ -1,0 +1,126 @@
+{% extends "base_admin.html" %}
+{% load lead_filters %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Projects
+  </div>
+  <div class="toolbar">
+    <div class="input">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+        <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <input type="text" placeholder="Search projects..." id="searchInput" value="{{ request.GET.q|default:'' }}">
+    </div>
+    <a class="btn primary" href="/ui/leads/">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Add Project from Leads
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>All Projects ({{ total_projects }})</h3>
+  </div>
+  <div class="card-body">
+    {% if projects %}
+      <div class="list">
+        {% for project in projects %}
+        <div class="list-item">
+          <div class="title">{{ project.title }}</div>
+          <div class="meta">
+            <span class="chip" style="background-color: #10b981; color: white; margin-right: 8px;">Project</span>
+            {% if project.assigned_to %}
+              <span style="margin-right: 8px;">Assigned to: {{ project.assigned_to.user.first_name|default:project.assigned_to.user.email }}</span>
+            {% endif %}
+            <span style="color: var(--muted);">{{ project.created_at|date:"M d, Y" }}</span>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn ghost small" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Convert to Lead
+            </button>
+            <a class="btn small" href="/ui/leads/{{ project.pk }}/">View Details</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      
+      {% if is_paginated %}
+      <div class="pagination">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="btn ghost">Previous</a>
+        {% endif %}
+        
+        <span class="pagination-info">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" class="btn ghost">Next</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    {% else %}
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <h3>No Projects Yet</h3>
+        <p>Convert leads to projects to see them here.</p>
+        <a class="btn primary" href="/ui/leads/">Go to Leads</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleProject(projectId) {
+  if (confirm('Are you sure you want to convert this project back to a lead?')) {
+    fetch(`/ui/leads/${projectId}/toggle-project/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error converting project');
+    });
+  }
+}
+
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  const query = e.target.value;
+  const url = new URL(window.location);
+  if (query) {
+    url.searchParams.set('q', query);
+  } else {
+    url.searchParams.delete('q');
+  }
+  window.location.href = url.toString();
+});
+</script>
+{% endblock %}
