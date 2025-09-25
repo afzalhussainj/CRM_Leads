@@ -16,7 +16,13 @@
   <div class="reminder-column">
     <div class="column-header past">
       <div class="header-content">
-        <div class="header-icon">⏰</div>
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
         <h3>Past</h3>
       </div>
       <span class="count">{{ past_reminders.count }}</span>
@@ -48,9 +54,15 @@
       </div>
       {% empty %}
       <div class="empty-column">
-        <div class="empty-icon">🎉</div>
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
         <p>All caught up!</p>
-        <span>No past reminders</span>
+        <span>No past reminders.</span>
       </div>
       {% endfor %}
     </div>
@@ -60,7 +72,12 @@
   <div class="reminder-column">
     <div class="column-header done">
       <div class="header-content">
-        <div class="header-icon">✅</div>
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.3 0 2.52.28 3.61.78" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <h3>Done</h3>
       </div>
       <span class="count">{{ done_reminders.count }}</span>
@@ -86,9 +103,14 @@
       </div>
       {% empty %}
       <div class="empty-column">
-        <div class="empty-icon">📋</div>
-        <p>No completed tasks</p>
-        <span>Start marking reminders as done</span>
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.3 0 2.52.28 3.61.78" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p>No completed tasks.</p>
+        <span>Start marking reminders as done.</span>
       </div>
       {% endfor %}
     </div>
@@ -98,7 +120,13 @@
   <div class="reminder-column">
     <div class="column-header upcoming">
       <div class="header-content">
-        <div class="header-icon">🚀</div>
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 15l-3-3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
         <h3>Upcoming</h3>
       </div>
       <span class="count">{{ upcoming_reminders.count }}</span>
@@ -130,8 +158,14 @@
       </div>
       {% empty %}
       <div class="empty-column">
-        <div class="empty-icon">📅</div>
-        <p>No upcoming tasks</p>
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12 15l-3-3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p>No upcoming tasks.</p>
         <span>You're all set!</span>
       </div>
       {% endfor %}
@@ -199,17 +233,17 @@
   }
   
   .reminder-column {
-    background: linear-gradient(135deg, var(--card-soft) 0%, #f8fafc 100%);
-    border-radius: 16px;
+    background: var(--card);
+    border-radius: 12px;
     border: 1px solid var(--border);
-    min-height: 600px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    min-height: 500px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
   }
   
   .reminder-column:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
   
   .column-header {
@@ -218,8 +252,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 16px 16px 0 0;
+    background: var(--card-soft);
+    border-radius: 12px 12px 0 0;
   }
   
   .header-content {
@@ -229,43 +263,41 @@
   }
   
   .header-icon {
-    font-size: 20px;
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 8px;
+    background: var(--card-soft);
+    color: var(--muted);
   }
   
   .column-header.past .header-icon {
-    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-    color: #dc2626;
+    color: #ef4444;
   }
   
   .column-header.done .header-icon {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    color: #16a34a;
+    color: #8b5cf6;
   }
   
   .column-header.upcoming .header-icon {
-    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-    color: #d97706;
+    color: #3b82f6;
   }
   
   .column-header h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text);
   }
   
   .count {
-    background: var(--border);
-    color: var(--muted);
+    background: var(--primary);
+    color: white;
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     min-width: 32px;
     text-align: center;
@@ -273,41 +305,17 @@
   
   .column-content {
     padding: 20px;
-    max-height: 480px;
+    max-height: 400px;
     overflow-y: auto;
   }
   
   .reminder-card {
-    background: white;
-    border-radius: 12px;
+    background: var(--card-soft);
+    border-radius: 8px;
     padding: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     border: 1px solid var(--border);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .reminder-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-  }
-  
-  .reminder-card.past::before {
-    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-  }
-  
-  .reminder-card.upcoming::before {
-    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-  }
-  
-  .reminder-card.done::before {
-    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
   }
   
   .reminder-card:hover {
@@ -316,17 +324,16 @@
   }
   
   .reminder-card.done {
-    opacity: 0.8;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    opacity: 0.7;
   }
   
   .card-header {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
   }
   
   .card-header h4 {
     margin: 0 0 8px 0;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
     line-height: 1.4;
@@ -343,15 +350,13 @@
   }
   
   .date.overdue {
-    color: #dc2626;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
   }
   
   .date.completed {
-    color: #059669;
-    background: #f0fdf4;
-    border: 1px solid #bbf7d0;
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
   }
   
   .card-actions {
@@ -360,7 +365,7 @@
   }
   
   .btn.primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background: var(--primary);
     color: white;
     border: none;
     display: flex;
@@ -370,20 +375,22 @@
   }
   
   .btn.primary:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    background: #3b82f6;
     transform: translateY(-1px);
   }
   
   .empty-column {
     text-align: center;
     color: var(--muted);
-    padding: 60px 20px;
+    padding: 40px 20px;
   }
   
   .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 16px;
     opacity: 0.6;
+    color: var(--muted);
   }
   
   .empty-column p {
@@ -410,6 +417,3 @@
   }
 </style>
 {% endblock %}
-
-
-
