@@ -1,13 +1,273 @@
 {% extends "base_admin.html" %}
 {% load lead_filters %}
 {% block content %}
+{% csrf_token %}
+
 <style>
-  /* Column Customization Styles */
-  .column-customization {
-    position: relative;
-    display: inline-block;
+  /* Dark theme for leads list */
+  :root {
+    --bg: #000000;
+    --card: #1a1a1a;
+    --card-soft: #2a2a2a;
+    --border: #333333;
+    --text: #ffffff;
+    --muted: #e0e0e0;
+    --primary: #3b82f6;
+    --success: #10b981;
+    --warning: #fbc02d;
+    --danger: #ef4444;
   }
-  
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding: 0 8px;
+  }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .quick-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn.primary {
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn.primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  .btn.ghost {
+    background: var(--card-soft);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn.ghost:hover {
+    background: var(--border);
+    transform: translateY(-1px);
+  }
+
+  .main-card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .search-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-input {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-input input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+  }
+
+  .search-input input::placeholder {
+    color: var(--muted);
+  }
+
+  .search-input svg {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+  }
+
+  .filter-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  .leads-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+  }
+
+  .leads-table th {
+    background: var(--card-soft);
+    color: var(--text);
+    font-weight: 600;
+    padding: 16px 20px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+
+  .leads-table th:last-child {
+    text-align: right;
+  }
+
+  .leads-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .leads-table tr:hover {
+    background: var(--card-soft);
+  }
+
+  .leads-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .status-dropdown {
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .status-chip {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-chip.pending {
+    background: var(--warning);
+    color: #000;
+  }
+
+  .status-chip.overdue {
+    background: var(--danger);
+    color: white;
+  }
+
+  .status-chip.completed {
+    background: var(--success);
+    color: white;
+  }
+
+  .status-chip.always-active {
+    background: var(--success);
+    color: white;
+  }
+
+  .status-chip.inactive {
+    background: #6b7280;
+    color: white;
+  }
+
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--card-soft);
+    color: var(--text);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .action-btn:hover {
+    background: var(--border);
+    transform: translateY(-1px);
+  }
+
+  .action-btn.primary {
+    background: var(--primary);
+    color: white;
+    padding: 8px 16px;
+    width: auto;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .action-btn.primary:hover {
+    background: #2563eb;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-state h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    color: var(--text);
+  }
+
+  .empty-state p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  /* Column customization dropdown */
   .column-dropdown {
     position: absolute;
     top: 100%;
@@ -18,13 +278,77 @@
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0,0,0,.3);
     min-width: 280px;
+    max-width: 320px;
+    max-height: 400px;
     margin-top: 8px;
+    overflow: hidden;
   }
-  
+
   .column-dropdown-content {
-    padding: 16px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
   }
-  
+
+  .column-dropdown-header {
+    padding: 16px 16px 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .column-options-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px;
+    max-height: 250px;
+  }
+
+  .column-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Custom scrollbar styling */
+  .column-options-container::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .column-options-container::-webkit-scrollbar-track {
+    background: var(--card-soft);
+    border-radius: 3px;
+  }
+
+  .column-options-container::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .column-options-container::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+
+  .table-container::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .table-container::-webkit-scrollbar-track {
+    background: var(--card-soft);
+    border-radius: 4px;
+  }
+
+  .table-container::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+
   .column-dropdown h4 {
     margin: 0 0 12px 0;
     font-size: 14px;
@@ -32,7 +356,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  
+
   .column-option {
     display: flex;
     align-items: center;
@@ -41,21 +365,16 @@
     cursor: pointer;
     transition: color 0.2s ease;
   }
-  
+
   .column-option:hover {
     color: var(--primary);
   }
-  
+
   .column-option input[type="checkbox"] {
     margin: 0;
     accent-color: var(--primary);
   }
-  
-  .column-option span {
-    font-size: 14px;
-    color: var(--text);
-  }
-  
+
   .column-actions {
     display: flex;
     gap: 8px;
@@ -63,67 +382,47 @@
     padding-top: 16px;
     border-top: 1px solid var(--border);
   }
-  
-  .column-actions .btn {
-    flex: 1;
-    justify-content: center;
+
+  .column-customization {
+    position: relative;
+    display: inline-block;
   }
-  
-  /* Hide columns dynamically */
-  .column-title { display: table-cell; }
-  .column-linkedin { display: table-cell; }
-  .column-status { display: table-cell; }
-  .column-assigned_to { display: table-cell; }
-  .column-follow_up_at { display: table-cell; }
-  .column-follow_up_status { display: table-cell; }
-  .column-company_name { display: table-cell; }
-  .column-contact_name { display: table-cell; }
-  .column-contact_email { display: table-cell; }
-  .column-contact_phone { display: table-cell; }
-  .column-source { display: table-cell; }
-  .column-description { display: table-cell; }
-  .column-created_at { display: table-cell; }
-  
-  /* Hidden state */
-  .column-hidden { display: none !important; }
 </style>
+
 <div class="page-header">
-  <div class="page-title">
-    {% if request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-      My Assigned Leads
-    {% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}
-      All Leads
-    {% else %}
-      Open Leads
-    {% endif %}
-  </div>
+  <h1 class="page-title">Open Leads</h1>
   <div class="quick-actions">
-  <div class="column-customization">
-    {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-      <a class="btn ghost" href="{% url 'ui-leads-export' %}{% if request.GET.q %}?q={{ request.GET.q }}{% endif %}" title="Export to CSV">
+    <div class="column-customization">
+      {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+        <a class="btn ghost" href="{% url 'ui-leads-export' %}{% if request.GET.q %}?q={{ request.GET.q }}{% endif %}" title="Export to CSV">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Export CSV
+        </a>
+      {% endif %}
+      <button class="btn ghost" onclick="toggleColumnCustomization()" id="customize-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 6h18M7 12h10M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Export CSV
-      </a>
-    {% endif %}
-    <button class="btn" onclick="toggleColumnCustomization()" id="customize-btn">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 6h18M7 12h10M9 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      Customize Columns
-    </button>
+        Customize Columns
+      </button>
       <div class="column-dropdown" id="column-dropdown" style="display: none;">
         <div class="column-dropdown-content">
-          <h4>Select Columns to Display</h4>
+          <div class="column-dropdown-header">
+            <h4>Select Columns to Display</h4>
+          </div>
           <form id="column-form">
-            {% for column_key, column_label in available_columns.items %}
-              <label class="column-option">
-                <input type="checkbox" name="columns" value="{{ column_key }}" 
-                       {% if column_key in visible_columns %}checked{% endif %}>
-                <span>{{ column_label }}</span>
-              </label>
-            {% endfor %}
+            {% csrf_token %}
+            <div class="column-options-container">
+              {% for column_key, column_label in available_columns.items %}
+                <label class="column-option">
+                  <input type="checkbox" name="columns" value="{{ column_key }}" 
+                         {% if column_key in visible_columns %}checked{% endif %}>
+                  <span>{{ column_label }}</span>
+                </label>
+              {% endfor %}
+            </div>
             <div class="column-actions">
               <button type="button" class="btn primary" onclick="applyColumnChanges()">Apply</button>
               <button type="button" class="btn ghost" onclick="resetColumns()">Reset to Default</button>
@@ -137,581 +436,185 @@
     {% endif %}
   </div>
 </div>
-<div class="card">
-  <div class="toolbar">
-    <form method="get" class="input" style="flex:1;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21L15.8 15.8M18 10.5C18 14.09 15.09 17 11.5 17C7.91 17 5 14.09 5 10.5C5 6.91 7.91 4 11.5 4C15.09 4 18 6.91 18 10.5Z" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <input name="q" placeholder="Search by name, company, or email..." value="{{ request.GET.q }}"/>
-    </form>
-    <button class="btn">Filters</button>
-    <a class="btn" href="?">Reset</a>
-  </div>
-{% if leads %}
-  <table>
-    <thead>
-      <tr>
-        {% for column_key in visible_columns %}
-          <th class="column-{{ column_key }}">
-            {{ available_columns|lookup:column_key }}
-          </th>
-        {% endfor %}
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for lead in leads %}
-        <tr>
-          {% for column_key in visible_columns %}
-            <td class="column-{{ column_key }}">
-              {% include "ui/leads/column_cell.html" with column_key=column_key lead=lead %}
-            </td>
-          {% endfor %}
-          
-            <td style="text-align:right; white-space:nowrap;">
-              <button class="btn small notes-btn" onclick="openNotesModal('{{ lead.pk }}', '{{ lead.title }}')" title="Notes" data-lead="{{ lead.pk }}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <polyline points="10,9 9,9 8,9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                {% if lead.has_unread_notes %}
-                  <span class="notification-dot"></span>
-                {% endif %}
-              </button>
-              <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
-              {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-                <button class="btn {% if lead.always_active %}ghost{% else %}primary{% endif %} small" 
-                        onclick="toggleAlwaysActive('{{ lead.pk }}')" 
-                        title="{% if lead.always_active %}Remove from Always Active{% else %}Add to Always Active{% endif %}">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {% if lead.always_active %}
-                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    {% else %}
-                      <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    {% endif %}
-                  </svg>
-                  {% if lead.always_active %}Remove{% else %}Add{% endif %}
-                </button>
-                <button class="btn {% if lead.is_project %}ghost{% else %}primary{% endif %} small" 
-                        onclick="toggleProject('{{ lead.pk }}')" 
-                        title="{% if lead.is_project %}Convert back to Lead{% else %}Convert to Project{% endif %}">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {% if lead.is_project %}
-                      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    {% else %}
-                      <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    {% endif %}
-                  </svg>
-                  {% if lead.is_project %}Convert to Lead{% else %}Convert to Project{% endif %}
-                </button>
-                <a class="btn ghost" href="/ui/leads/{{ lead.pk }}/edit/">Edit</a>
-                <a class="btn" href="/ui/leads/{{ lead.pk }}/delete/">Delete</a>
-              {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-                <!-- Employee can only update status and assignment through dropdowns, no edit button -->
-              {% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}
-                <!-- Development Lead can only view, no edit/delete -->
-              {% endif %}
-            </td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <script>
-    (function(){
-      function post(url, data){
-        return fetch(url, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams(data)}).then(r=>r.json());
-      }
-      document.querySelectorAll('.inline-status-form').forEach(function(form){
-        form.addEventListener('change', function(e){
-          if(e.target.name !== 'status') return;
-          var leadId = form.getAttribute('data-lead');
-          var status = e.target.value;
-          var csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
-          post('/ui/leads/' + leadId + '/status/', {status: status, csrfmiddlewaretoken: csrf}).then(function(json){
-            if(json && json.ok){
-              var select = document.getElementById('status-select-' + leadId);
-              if(select){
-                select.classList.remove('pending','done');
-                select.classList.add(json.status);
-              }
-            }
-          }).catch(function(){ /* ignore */ });
-        });
-      });
-      document.querySelectorAll('.inline-lead-status-form').forEach(function(form){
-        form.addEventListener('change', function(e){
-          if(e.target.name !== 'status') return;
-          var leadId = form.getAttribute('data-lead');
-          var status = e.target.value;
-          
-          
-          var csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
-          post('/ui/leads/' + leadId + '/lead-status/', {status: status, csrfmiddlewaretoken: csrf}).then(function(json){
-            // No color mapping for general lead status; styled as chip-like select
-          }).catch(function(){ /* ignore */ });
-        });
-      });
-      
-      // Handle assigned_to dropdown changes
-      document.querySelectorAll('.inline-assigned-form').forEach(function(form){
-        form.addEventListener('change', function(e){
-          if(e.target.name !== 'assigned_to') return;
-          var leadId = form.getAttribute('data-lead');
-          var assignedTo = e.target.value;
-          var csrf = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
-          post('/ui/leads/' + leadId + '/assign/', {assigned_to: assignedTo, csrfmiddlewaretoken: csrf}).then(function(json){
-            if(json && json.success){
-              // Update the display if needed
-              console.log('Lead assigned successfully');
-            }
-          }).catch(function(error){ 
-            console.error('Error assigning lead:', error);
-          });
-        });
-      });
-    })();
-  </script>
-{% else %}
-  <div class="empty-state">
-    <div>No leads found</div>
-    {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-      <a class="btn primary" href="/ui/leads/new/">+ Create New Lead</a>
-    {% endif %}
-  </div>
-{% endif %}
-</div>
 
-<!-- Notes Modal -->
-<div id="notesModal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="notesModalTitle">Notes</h3>
-      <button class="close-btn" onclick="closeNotesModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div id="notesList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
-        <!-- Notes will be loaded here -->
-      </div>
-      <form id="noteForm" style="display: none;">
-        <textarea id="noteMessage" placeholder="Add your note or message here..." rows="4" style="width: 100%; margin-bottom: 10px;"></textarea>
-        <div style="text-align: right;">
-          <button type="button" class="btn ghost" onclick="closeNotesModal()">Cancel</button>
-          <button type="submit" class="btn primary">Send</button>
-        </div>
+<div class="main-card">
+  <div class="search-toolbar">
+    <div class="search-input">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 21L15.8 15.8M18 10.5C18 14.09 15.09 17 11.5 17C7.91 17 5 14.09 5 10.5C5 6.91 7.91 4 11.5 4C15.09 4 18 6.91 18 10.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <form method="get">
+        <input name="q" placeholder="Search by name, company, or email..." value="{{ request.GET.q }}"/>
       </form>
     </div>
+    <div class="filter-buttons">
+      <button class="btn ghost">Filters</button>
+      <a class="btn ghost" href="?">Reset</a>
+    </div>
   </div>
+
+  {% if leads %}
+    <div class="table-container">
+      <table class="leads-table">
+        <thead>
+          <tr>
+            {% for column_key in visible_columns %}
+              <th class="column-{{ column_key }}">
+                {{ available_columns|lookup:column_key }}
+              </th>
+            {% endfor %}
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lead in leads %}
+            <tr>
+              {% for column_key in visible_columns %}
+                <td class="column-{{ column_key }}">
+                  {% include "ui/leads/column_cell.html" with column_key=column_key lead=lead %}
+                </td>
+              {% endfor %}
+              <td>
+                <div class="action-buttons">
+                  <a href="/ui/leads/{{ lead.pk }}/" class="action-btn" title="View">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </a>
+                  <a href="/ui/leads/{{ lead.pk }}/delete/" class="action-btn" title="Delete">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </a>
+                  {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+                    <button class="action-btn primary" onclick="toggleProject('{{ lead.pk }}')" title="{% if lead.is_project %}Convert to Lead{% else %}Convert to Project{% endif %}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        {% if lead.is_project %}
+                          <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        {% else %}
+                          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        {% endif %}
+                      </svg>
+                      {% if lead.is_project %}Convert to Lead{% else %}Convert to Project{% endif %}
+                    </button>
+                  {% endif %}
+                  <a href="/ui/leads/{{ lead.pk }}/edit/" class="action-btn" title="Edit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>No leads found</h3>
+      <p>Try adjusting your search criteria or create a new lead.</p>
+    </div>
+  {% endif %}
 </div>
 
-
 <script>
-  let currentLeadId = null;
-  
-  function openNotesModal(leadId, leadTitle) {
-    currentLeadId = leadId;
-    document.getElementById('notesModalTitle').textContent = `Notes - ${leadTitle}`;
-    document.getElementById('notesModal').style.display = 'block';
-    document.getElementById('noteForm').style.display = 'block';
-    loadNotes(leadId);
-    
-    // Remove notification dot when notes are opened
-    const notesBtn = document.querySelector(`[data-lead="${leadId}"].notes-btn`);
-    if (notesBtn) {
-      const dot = notesBtn.querySelector('.notification-dot');
-      if (dot) {
-        dot.style.display = 'none';
-      }
-    }
-  }
-  
-  function closeNotesModal() {
-    document.getElementById('notesModal').style.display = 'none';
-    currentLeadId = null;
-  }
-  
-  function loadNotes(leadId) {
-    fetch(`/ui/leads/${leadId}/notes/`)
-      .then(response => response.json())
-      .then(data => {
-        const notesList = document.getElementById('notesList');
-        if (data.notes && data.notes.length > 0) {
-          notesList.innerHTML = data.notes.map(note => `
-            <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
-              <div style="font-weight: 500; color: #374151; margin-bottom: 5px;">
-                ${note.author_name} - ${note.created_on_arrow}
-              </div>
-              <div style="color: #6b7280; line-height: 1.5;">
-                ${note.message}
-              </div>
-            </div>
-          `).join('');
-        } else {
-          notesList.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No notes yet</div>';
-        }
-        
-        // Remove notification dot since notes have been read
-        const notesBtn = document.querySelector(`[data-lead="${leadId}"].notes-btn`);
-        if (notesBtn) {
-          const dot = notesBtn.querySelector('.notification-dot');
-          if (dot) {
-            dot.remove();
-          }
-        }
-      })
-      .catch(error => {
-        console.error('Error loading notes:', error);
-        document.getElementById('notesList').innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Error loading notes</div>';
-      });
-  }
-  
-  document.getElementById('noteForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const message = document.getElementById('noteMessage').value.trim();
-    if (!message) return;
-    
-    const formData = new FormData();
-    formData.append('message', message);
-    formData.append('csrfmiddlewaretoken', document.querySelector('input[name="csrfmiddlewaretoken"]').value);
-    
-    fetch(`/ui/leads/${currentLeadId}/notes/`, {
-      method: 'POST',
-      body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById('noteMessage').value = '';
-        loadNotes(currentLeadId);
-        
-        // Add notification dot to other users' notes buttons
-        const notesBtn = document.querySelector(`[data-lead="${currentLeadId}"].notes-btn`);
-        if (notesBtn && !notesBtn.querySelector('.notification-dot')) {
-          const dot = document.createElement('span');
-          dot.className = 'notification-dot';
-          notesBtn.appendChild(dot);
-        }
-      } else {
-        alert('Error adding note: ' + (data.error || 'Unknown error'));
-      }
-    })
-    .catch(error => {
-      console.error('Error adding note:', error);
-      alert('Error adding note');
-    });
-  });
-  
-  // Close modal when clicking outside
-  window.onclick = function(event) {
-    const modal = document.getElementById('notesModal');
-    if (event.target === modal) {
-      closeNotesModal();
-    }
-  }
-  
-</script>
-
-<style>
-  .modal {
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-  }
-  
-  .modal-content {
-    background-color: white;
-    margin: 5% auto;
-    padding: 0;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 600px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  }
-  
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  
-  .modal-header h3 {
-    margin: 0;
-    color: #374151;
-  }
-  
-  .close-btn {
-    background: none;
-    border: none;
-    font-size: 24px;
-    cursor: pointer;
-    color: #9ca3af;
-  }
-  
-  .close-btn:hover {
-    color: #374151;
-  }
-  
-  .modal-body {
-    padding: 20px;
-  }
-  
-  .btn.small {
-    padding: 4px 8px;
-    font-size: 12px;
-    min-width: auto;
-  }
-  
-  .notes-btn {
-    position: relative;
-  }
-  
-  .notification-dot {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 8px;
-    height: 8px;
-    background-color: #ef4444;
-    border-radius: 50%;
-    border: 2px solid white;
-  }
-  
-  .assigned-select {
-    padding: 4px 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 12px;
-    background: white;
-    cursor: pointer;
-    min-width: 120px;
-  }
-  
-  .assigned-select:hover {
-    border-color: #9ca3af;
-  }
-  
-  .assigned-select:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-  
-  /* Fix status dropdown container issues - use more specific selectors */
-  /* .inline-status-form .status-select {
-    padding: 4px 8px !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 4px !important;
-    font-size: 12px !important;
-    background: white !important;
-    cursor: pointer !important;
-    min-width: 100px !important;
-    position: relative !important;
-    z-index: 200 !important;
-    /* Override base template styles */
-    /* appearance: auto !important;
-    -webkit-appearance: auto !important;
-    -moz-appearance: auto !important;
-    background-image: none !important;
-    background-position: unset !important;
-    background-size: unset !important;
-    background-repeat: unset !important; */
-    /* Force dropdown to be visible */
-    /* overflow: visible !important; */
-  /* } */
-  
-  .inline-status-form .status-select.pending {
-    background-color: #fef3c7 !important;
-    border-color: #f59e0b !important;
-    color: #92400e !important;
-  }
-  
-  .inline-status-form .status-select.done {
-    background-color: #d1fae5 !important;
-    border-color: #10b981 !important;
-    color: #065f46 !important;
-  }
-  
-  /* Ensure dropdowns are not cut off */
-  .form-grid td {
-    overflow: visible !important;
-    position: relative;
-  }
-  
-  /* Force table to allow overflow */
-  .form-grid {
-    overflow: visible !important;
-  }
-  
-  /* Ensure the entire table container allows overflow */
-  .card {
-    overflow: visible !important;
-  }
-  
-  /* Fix any parent containers that might be cutting off dropdowns */
-  .page-content {
-    overflow: visible !important;
-  }
-  
-  /* Ensure table cells allow dropdown overflow */
-  table td {
-    overflow: visible !important;
-    position: relative;
-  }
-  
-  /* Ensure table allows dropdown overflow */
-  table {
-    overflow: visible !important;
-  }
-  
-  /* Override base template status-select styles completely */
-  .inline-status-form .status-select {
-    border-radius: 4px !important;
-    background: white !important;
-    color: #374151 !important;
-  }
-  
-  /* Fix lead status dropdown z-index and styling */
-  .inline-lead-status-form .status-select {
-    padding: 4px 8px !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 4px !important;
-    font-size: 12px !important;
-    cursor: pointer !important;
-    min-width: 120px !important;
-    position: relative !important;
-    z-index: 1000 !important;
-    /* Override base template styles */
-    appearance: auto !important;
-    -webkit-appearance: auto !important;
-    -moz-appearance: auto !important;
-    background-image: none !important;
-    background-position: unset !important;
-    background-size: unset !important;
-    background-repeat: unset !important;
-    /* Force dropdown to be visible */
-    overflow: visible !important;
-  }
-</style>
-
-<script>
-  // Column Customization JavaScript
   function toggleColumnCustomization() {
     const dropdown = document.getElementById('column-dropdown');
-    const isVisible = dropdown.style.display !== 'none';
-    
-    if (isVisible) {
-      dropdown.style.display = 'none';
-    } else {
-      dropdown.style.display = 'block';
-    }
+    const customizeBtn = document.getElementById('customize-btn');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    customizeBtn.classList.toggle('active');
   }
-  
+
   function applyColumnChanges() {
     const form = document.getElementById('column-form');
     const formData = new FormData(form);
+    const selectedColumns = Array.from(formData.getAll('columns'));
     
-    // Add CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    formData.append('csrfmiddlewaretoken', csrfToken);
+    console.log('Selected columns:', selectedColumns);
     
-    fetch('/ui/leads/customize-columns/', {
+    // Get CSRF token from the form
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) {
+      alert('CSRF token not found. Please refresh the page and try again.');
+      return;
+    }
+    
+    // Store in session
+    fetch('{% url "ui-leads-customize-columns" %}', {
       method: 'POST',
       body: formData,
       headers: {
-        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken.value,
       }
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        // Reload the page to show updated columns
+    .then(response => {
+      console.log('Response status:', response.status);
+      if (response.ok) {
         window.location.reload();
       } else {
-        alert('Error updating column preferences: ' + (data.message || 'Unknown error'));
+        alert('Error updating columns. Please try again.');
       }
     })
     .catch(error => {
       console.error('Error:', error);
-      alert('Error updating column preferences');
+      alert('Error updating columns: ' + error.message);
     });
   }
-  
+
   function resetColumns() {
     // Reset to default columns
-    const checkboxes = document.querySelectorAll('#column-form input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-      checkbox.checked = ['title', 'linkedin', 'status', 'assigned_to', 'follow_up_at', 'follow_up_status'].includes(checkbox.value);
+    const defaultColumns = ['title', 'status', 'follow_up_at', 'follow_up_status', 'always_active'];
+    
+    // Uncheck all
+    document.querySelectorAll('input[name="columns"]').forEach(cb => {
+      cb.checked = false;
+    });
+    
+    // Check default columns
+    defaultColumns.forEach(column => {
+      const checkbox = document.querySelector(`input[name="columns"][value="${column}"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+      }
     });
   }
-  
+
+  function toggleProject(leadId) {
+    fetch(`/ui/leads/${leadId}/toggle-project/`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error updating project status');
+    });
+  }
+
   // Close dropdown when clicking outside
   document.addEventListener('click', function(event) {
     const dropdown = document.getElementById('column-dropdown');
     const customizeBtn = document.getElementById('customize-btn');
     
-    if (dropdown && !dropdown.contains(event.target) && !customizeBtn.contains(event.target)) {
+    if (!dropdown.contains(event.target) && !customizeBtn.contains(event.target)) {
       dropdown.style.display = 'none';
+      customizeBtn.classList.remove('active');
     }
   });
-  
-        // Prevent dropdown from closing when clicking inside it
-        document.getElementById('column-dropdown').addEventListener('click', function(event) {
-          event.stopPropagation();
-        });
-        
-        // Always Active Leads functionality
-        function toggleAlwaysActive(leadId) {
-          fetch(`/ui/leads/${leadId}/toggle-always-active/`, {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-              'Content-Type': 'application/json',
-            }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              // Reload the page to update the button states and always active status
-              window.location.reload();
-            } else {
-              alert('Error: ' + (data.error || 'Unknown error'));
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating always active status');
-          });
-        }
-        
-        // Project functionality
-        function toggleProject(leadId) {
-          fetch(`/ui/leads/${leadId}/toggle-project/`, {
-            method: 'POST',
-            headers: {
-              'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-              'Content-Type': 'application/json',
-            }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              window.location.reload();
-            } else {
-              alert('Error: ' + (data.error || 'Unknown error'));
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating project status');
-          });
-        }
-      </script>
-{% endblock %}
+</script>
 
+{% endblock %}

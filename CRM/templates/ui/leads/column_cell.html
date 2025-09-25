@@ -3,47 +3,43 @@
 {% elif column_key == 'linkedin' %}
   {% if lead.contact_linkedin_url %}<a class="btn ghost" href="{{ lead.contact_linkedin_url }}" target="_blank">Open</a>{% else %}<span class="muted">—</span>{% endif %}
 {% elif column_key == 'status' %}
-  <form method="post" class="inline-lead-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-    {% csrf_token %}
-    <select name="status" id="lead-status-select-{{ lead.pk }}" class="status-select">
-      {% for value, label in lead_status_choices %}
-        {% if request.user.profile.role|add:"0" == UserRole.DEV_LEAD and value != 'closed' %}
-          <!-- Development leads can only set status to 'closed' -->
-        {% else %}
-          <option value="{{ value }}" {% if lead.status.name == value %}selected{% endif %}>{{ label }}</option>
-        {% endif %}
-      {% endfor %}
-    </select>
-  </form>
+  <select class="status-dropdown" onchange="updateLeadStatus('{{ lead.pk }}', this.value)">
+    {% for value, label in lead_status_choices %}
+      {% if request.user.profile.role|add:"0" == UserRole.DEV_LEAD and value != 'closed' %}
+        <!-- Development leads can only set status to 'closed' -->
+      {% else %}
+        <option value="{{ value }}" {% if lead.status.name == value %}selected{% endif %}>{{ label }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
 {% elif column_key == 'assigned_to' %}
   {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE or request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-    <form method="post" class="inline-assigned-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-      {% csrf_token %}
-      <select name="assigned_to" id="assigned-select-{{ lead.pk }}" class="assigned-select">
-        <option value="">Unassigned</option>
-        <option value="{{ user_profile.id }}" {% if lead.assigned_to == user_profile %}selected{% endif %}>{{ user_profile.user.first_name|default:user_profile.user.email }} (Me)</option>
-        {% for profile in available_profiles %}
-          <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
-        {% endfor %}
-      </select>
-    </form>
+    <select class="status-dropdown" onchange="updateAssignedTo('{{ lead.pk }}', this.value)">
+      <option value="">Unassigned</option>
+      <option value="{{ user_profile.id }}" {% if lead.assigned_to == user_profile %}selected{% endif %}>{{ user_profile.user.first_name|default:user_profile.user.email }} (Me)</option>
+      {% for profile in available_profiles %}
+        <option value="{{ profile.id }}" {% if lead.assigned_to == profile %}selected{% endif %}>{{ profile.user.first_name|default:profile.user.email }}</option>
+      {% endfor %}
+    </select>
   {% else %}
     {% if lead.assigned_to %}{{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}{% else %}<span class="muted">—</span>{% endif %}
   {% endif %}
 {% elif column_key == 'follow_up_at' %}
   {% if lead.follow_up_at %}
-    <span class="chip">{{ lead.follow_up_at }}</span>
+    {{ lead.follow_up_at|date:"M d, Y, g:i A" }}
   {% else %}
     <span class="muted">—</span>
   {% endif %}
 {% elif column_key == 'follow_up_status' %}
-  <form method="post" class="inline-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
-    {% csrf_token %}
-    <select name="status" id="status-select-{{ lead.pk }}" class="status-select {% if lead.follow_up_status %}{{ lead.follow_up_status }}{% endif %}">
-      <option value="pending" {% if lead.follow_up_status == 'pending' %}selected{% endif %}>Pending</option>
-      <option value="done" {% if lead.follow_up_status == 'done' %}selected{% endif %}>Done</option>
-    </select>
-  </form>
+  {% if lead.follow_up_status == 'pending' %}
+    <span class="status-chip pending">Pending</span>
+  {% elif lead.follow_up_status == 'done' %}
+    <span class="status-chip completed">Completed</span>
+  {% elif lead.follow_up_status == 'overdue' %}
+    <span class="status-chip overdue">Overdue</span>
+  {% else %}
+    <span class="muted">—</span>
+  {% endif %}
 {% elif column_key == 'company_name' %}
   {{ lead.company_name|default:"—" }}
 {% elif column_key == 'contact_name' %}
@@ -64,8 +60,8 @@
   {{ lead.created_at|date:"M d, Y" }}
 {% elif column_key == 'always_active' %}
   {% if lead.always_active %}
-    <span class="chip" style="background-color: #10b981; color: white;">Always Active</span>
+    <span class="status-chip always-active">Always Active</span>
   {% else %}
-    <span class="muted">—</span>
+    <span class="status-chip inactive">Inactive</span>
   {% endif %}
 {% endif %}
