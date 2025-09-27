@@ -43,6 +43,10 @@ class EmployeeManagementView(LoginRequiredMixin, ListView):
             is_active=False
         ).exclude(user=self.request.user).count()
         
+        context['total_employees'] = Profile.objects.filter(
+            user__is_deleted=False
+        ).exclude(user=self.request.user).count()
+        
         return context
 
 

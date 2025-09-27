@@ -31,15 +31,13 @@
     <span class="muted">—</span>
   {% endif %}
 {% elif column_key == 'follow_up_status' %}
-  {% if lead.follow_up_status == 'pending' %}
-    <span class="status-chip pending">Pending</span>
-  {% elif lead.follow_up_status == 'done' %}
-    <span class="status-chip completed">Completed</span>
-  {% elif lead.follow_up_status == 'overdue' %}
-    <span class="status-chip overdue">Overdue</span>
-  {% else %}
-    <span class="muted">—</span>
-  {% endif %}
+  <form method="post" class="inline-status-form" data-lead="{{ lead.pk }}" style="display:inline-block;">
+    {% csrf_token %}
+    <select name="status" id="status-select-{{ lead.pk }}" class="status-dropdown" onchange="updateFollowUpStatus('{{ lead.pk }}', this.value)">
+      <option value="pending" {% if lead.follow_up_status == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="done" {% if lead.follow_up_status == 'done' %}selected{% endif %}>Done</option>
+    </select>
+  </form>
 {% elif column_key == 'company_name' %}
   {{ lead.company_name|default:"—" }}
 {% elif column_key == 'contact_name' %}

@@ -407,5 +407,143 @@
       min-height: auto;
     }
   }
+
+  @media (max-width: 768px) {
+    .page-header {
+      padding: 0 4px;
+      margin-bottom: 16px;
+    }
+    
+    .page-title {
+      font-size: 24px;
+    }
+    
+    .reminders-board {
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .reminder-column {
+      border-radius: 8px;
+    }
+    
+    .column-header {
+      padding: 16px;
+    }
+    
+    .column-content {
+      padding: 16px;
+      max-height: 300px;
+    }
+    
+    .reminder-card {
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    
+    .card-actions {
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .btn {
+      justify-content: center;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page-title {
+      font-size: 20px;
+    }
+    
+    .reminders-board {
+      gap: 12px;
+      margin-top: 12px;
+    }
+    
+    .column-header {
+      padding: 12px;
+    }
+    
+    .column-header h3 {
+      font-size: 14px;
+    }
+    
+    .count {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    
+    .column-content {
+      padding: 12px;
+      max-height: 250px;
+    }
+    
+    .reminder-card {
+      padding: 10px;
+      margin-bottom: 6px;
+    }
+    
+    .card-header h4 {
+      font-size: 13px;
+    }
+    
+    .date {
+      font-size: 11px;
+      padding: 3px 6px;
+    }
+    
+    .btn {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    
+    .empty-icon {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 12px;
+    }
+    
+    .empty-column p {
+      font-size: 14px;
+    }
+    
+    .empty-column span {
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 360px) {
+    .page-title {
+      font-size: 18px;
+    }
+    
+    .column-header {
+      padding: 10px;
+    }
+    
+    .column-header h3 {
+      font-size: 13px;
+    }
+    
+    .column-content {
+      padding: 10px;
+    }
+    
+    .reminder-card {
+      padding: 8px;
+    }
+    
+    .card-header h4 {
+      font-size: 12px;
+    }
+    
+    .btn {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+  }
 </style>
 {% endblock %}

@@ -3,6 +3,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CRM</title>
     <style>
       :root {
@@ -46,8 +47,43 @@
       /* Improved hover effects */
       .sidebar h2:hover { color: #ffffff; }
       .sidebar h2 a:hover { color: #ffffff; }
-      .muted { color: var(--muted); font-size:13px; }
-      .content { flex:1; padding:24px; }
+              .muted { color: var(--muted); font-size:13px; }
+              .content { flex:1; padding:24px; }
+              
+              /* Responsive Design */
+              @media (max-width: 1024px) {
+                .sidebar { width: 240px; padding: 20px; }
+                .brand h1 { font-size: 28px; }
+                .sidebar h2 { font-size: 13px; }
+                .sidebar a { font-size: 15px; }
+              }
+              
+              @media (max-width: 768px) {
+                .layout { flex-direction: column; }
+                .sidebar { 
+                  width: 100%; 
+                  height: auto; 
+                  position: static; 
+                  padding: 16px; 
+                  border-right: none; 
+                  border-bottom: 1px solid #334155;
+                }
+                .brand { margin-bottom: 20px; }
+                .brand h1 { font-size: 24px; }
+                .sidebar h2 { margin: 16px 0 8px; }
+                .submenu { margin-left: 16px; }
+                .content { padding: 16px; }
+              }
+              
+              @media (max-width: 480px) {
+                .sidebar { padding: 12px; }
+                .brand { margin-bottom: 16px; }
+                .brand h1 { font-size: 20px; }
+                .brand img.logo { height: 32px; }
+                .sidebar h2 { font-size: 12px; margin: 12px 0 6px; }
+                .sidebar a { font-size: 14px; }
+                .content { padding: 12px; }
+              }
       .messages { margin-bottom:12px; }
       .messages .msg { padding:10px 12px; border-radius:10px; margin-bottom:8px; border:1px solid var(--border); }
       .messages .msg.error { background: rgba(248,113,113,.12); color:#fecaca; border-color: rgba(248,113,113,.35); }
