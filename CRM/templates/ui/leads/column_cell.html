@@ -57,9 +57,21 @@
 {% elif column_key == 'created_at' %}
   {{ lead.created_at|date:"M d, Y" }}
 {% elif column_key == 'always_active' %}
-  {% if lead.always_active %}
-    <span class="status-chip always-active">Always Active</span>
+  {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+    <button class="btn small {% if lead.always_active %}primary{% else %}ghost{% endif %}" 
+            onclick="toggleAlwaysActive('{{ lead.pk }}')" 
+            title="{% if lead.always_active %}Remove from Always Active{% else %}Add to Always Active{% endif %}">
+      {% if lead.always_active %}
+        On
+      {% else %}
+        Off
+      {% endif %}
+    </button>
   {% else %}
-    <span class="status-chip inactive">Inactive</span>
+    {% if lead.always_active %}
+      <span class="status-chip always-active">Always Active</span>
+    {% else %}
+      <span class="muted">—</span>
+    {% endif %}
   {% endif %}
 {% endif %}

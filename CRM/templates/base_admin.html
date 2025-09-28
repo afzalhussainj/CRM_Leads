@@ -25,12 +25,12 @@
       body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; }
       .layout { display: flex; min-height: 100vh; }
       .sidebar { width: 280px; background: #1e293b; color:#fff; padding:24px; border-right:1px solid #334155; position: sticky; top: 0; align-self: flex-start; height: 100vh; display: flex; flex-direction: column; }
-      .sidebar h2 { font-size:14px; margin:24px 0 12px; color:#60a5fa; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; display:flex; align-items:center; gap:12px; }
+      .sidebar h2 { font-size:14px; color:#60a5fa; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; display:flex; align-items:center; gap:12px; }
       .sidebar h2 svg { width:20px; height:20px; stroke:#60a5fa; }
       .sidebar a { color:#e2e8f0; text-decoration:none; display:block; padding:8px 0; font-size:16px; transition: color 0.2s ease; }
       .sidebar a:hover { color:#ffffff; }
       .submenu { margin-left:20px; margin-bottom:16px; }
-      .separator { height:1px; background: #334155; border:0; margin:20px 0; }
+      .separator { height:1px; background: #334155; border:0;}
       .brand { display:flex; align-items:center; gap: 12px}
       .sidebar a.brand { display:flex; align-items:center; gap:12px; padding: 0; }
       .brand img.logo { height:66px; width:auto; display:block; background: transparent; box-shadow: none; border-radius: 0; }
@@ -310,7 +310,7 @@
         </div>
         {% endif %}
 
-        <div style="margin-top: auto; padding-top: 20px;">
+        <div style="margin-top: auto;">
           <div class="separator"></div>
           <div style="padding: 8px 0; color: #94a3b8; font-size: 14px;">
             Logged in as: {% if request.user.profile %}{{ request.user.profile.user.first_name|default:request.user.profile.user.email }}{% else %}{{ request.user.email }}{% endif %}

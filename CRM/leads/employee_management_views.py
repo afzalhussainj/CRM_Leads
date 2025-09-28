@@ -82,7 +82,7 @@ class EmployeeToggleActiveView(LoginRequiredMixin, View):
 
 
 class EmployeeSoftDeleteView(LoginRequiredMixin, View):
-    """Soft delete employee"""
+    """Soft delete employee with password confirmation"""
     
     def dispatch(self, request, *args, **kwargs):
         # Check if user is a manager
@@ -94,12 +94,29 @@ class EmployeeSoftDeleteView(LoginRequiredMixin, View):
         try:
             profile = get_object_or_404(Profile, pk=pk)
             
+            # Get password from request
+            password = request.POST.get('password')
+            if not password:
+                return JsonResponse({
+                    "success": False, 
+                    "error": "Password confirmation is required to delete employee"
+                }, status=400)
+            
+            # Verify manager's password
+            from django.contrib.auth import authenticate
+            user = authenticate(request, email=request.user.email, password=password)
+            if not user:
+                return JsonResponse({
+                    "success": False, 
+                    "error": "Invalid password. Please try again."
+                }, status=400)
+            
             # Don't allow managers to delete themselves
             if profile.user == request.user:
                 return JsonResponse({"success": False, "error": "cannot_delete_self"}, status=400)
             
             # Check if employee has any leads assigned
-            assigned_leads = Lead.objects.filter(lead_assigned_to=profile).count()
+            assigned_leads = Lead.objects.filter(assigned_to=profile).count()
             if assigned_leads > 0:
                 return JsonResponse({
                     "success": False, 
@@ -107,10 +124,10 @@ class EmployeeSoftDeleteView(LoginRequiredMixin, View):
                 }, status=400)
             
             # Soft delete the user
-            user = profile.user
-            user.is_deleted = True
-            user.is_active = False
-            user.save(update_fields=['is_deleted', 'is_active'])
+            user_to_delete = profile.user
+            user_to_delete.is_deleted = True
+            user_to_delete.is_active = False
+            user_to_delete.save(update_fields=['is_deleted', 'is_active'])
             
             # Also deactivate the profile
             profile.is_active = False

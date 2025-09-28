@@ -767,6 +767,56 @@
     });
   }
 
+  function updateLeadStatus(leadId, status) {
+    const formData = new FormData();
+    formData.append('status', status);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(`/ui/leads/${leadId}/lead-status/`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.ok) {
+        // Update the select element to show the new status
+        const selectElement = document.querySelector(`select[onchange*="${leadId}"]`);
+        if (selectElement) {
+          selectElement.value = status;
+        }
+      } else {
+        alert('Error updating lead status: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating lead status:', error);
+      alert('Error updating lead status');
+    });
+  }
+
+  function toggleAlwaysActive(leadId) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(`/ui/leads/${leadId}/toggle-always-active/`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload the page to update the UI
+        location.reload();
+      } else {
+        alert('Error updating always active status: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating always active status:', error);
+      alert('Error updating always active status');
+    });
+  }
+
   function updateFollowUpStatus(leadId, status) {
     const formData = new FormData();
     formData.append('status', status);
