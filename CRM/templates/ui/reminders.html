@@ -12,9 +12,9 @@
 </div>
 
 <div class="reminders-board">
-  <!-- Past Reminders -->
+  <!-- Pending Reminders -->
   <div class="reminder-column">
-    <div class="column-header past">
+    <div class="column-header pending">
       <div class="header-content">
         <div class="header-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,13 +23,13 @@
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </div>
-        <h3>Past</h3>
+        <h3>Pending</h3>
       </div>
-      <span class="count">{{ past_reminders.count }}</span>
+      <span class="count">{{ pending_reminders.count }}</span>
     </div>
     <div class="column-content">
-      {% for lead in past_reminders %}
-      <div class="reminder-card past">
+      {% for lead in pending_reminders %}
+      <div class="reminder-card pending">
         <div class="card-header">
           <h4>{{ lead.title }}</h4>
           <span class="date overdue">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
@@ -62,7 +62,63 @@
           </svg>
         </div>
         <p>All caught up!</p>
-        <span>No past reminders.</span>
+        <span>No pending reminders.</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Due Today Reminders -->
+  <div class="reminder-column">
+    <div class="column-header due-today">
+      <div class="header-content">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Due Today</h3>
+      </div>
+      <span class="count">{{ due_today_reminders.count }}</span>
+    </div>
+    <div class="column-content">
+      {% for lead in due_today_reminders %}
+      <div class="reminder-card due-today">
+        <div class="card-header">
+          <h4>{{ lead.title }}</h4>
+          <span class="date today">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Done
+          </button>
+          <button class="btn small ghost" onclick="revertToPending('{{ lead.pk }}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Revert
+          </button>
+          <a class="btn small ghost" href="/ui/leads/{{ lead.pk }}/">View</a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-column">
+        <div class="empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p>No tasks due today!</p>
+        <span>You're all set for today.</span>
       </div>
       {% endfor %}
     </div>
@@ -218,8 +274,8 @@
 <style>
   .reminders-board {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
     margin-top: 24px;
     padding: 0 8px;
   }
@@ -265,8 +321,12 @@
     color: var(--muted);
   }
   
-  .column-header.past .header-icon {
+  .column-header.pending .header-icon {
     color: #ef4444;
+  }
+  
+  .column-header.due-today .header-icon {
+    color: #f59e0b;
   }
   
   .column-header.done .header-icon {
@@ -346,6 +406,11 @@
     background: rgba(239, 68, 68, 0.1);
   }
   
+  .date.today {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+  }
+  
   .date.completed {
     color: #8b5cf6;
     background: rgba(139, 92, 246, 0.1);
@@ -397,7 +462,14 @@
     opacity: 0.7;
   }
   
-  @media (max-width: 1200px) {
+  @media (max-width: 1400px) {
+    .reminders-board {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+  }
+  
+  @media (max-width: 1000px) {
     .reminders-board {
       grid-template-columns: 1fr;
       gap: 20px;

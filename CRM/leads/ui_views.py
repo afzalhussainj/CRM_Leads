@@ -415,7 +415,11 @@ class RemindersView(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
     
     def get(self, request):
+        from datetime import datetime, timedelta
         now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        tomorrow_start = today_start + timedelta(days=1)
         
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Get leads assigned to this employee
@@ -424,33 +428,35 @@ class RemindersView(LoginRequiredMixin, View):
             # Get leads assigned to the manager
             assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
         
-        # Past reminders: passed date, still pending
-        past_reminders = assigned_leads.filter(
-            follow_up_at__lt=now,
+        # Pending reminders: yesterday and before, still pending
+        pending_reminders = assigned_leads.filter(
+            follow_up_at__lt=today_start,
             follow_up_status='pending'
         ).order_by('follow_up_at')
         
-        # Done reminders: status is done (only show if manager updated them)
-        if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
-            done_reminders = assigned_leads.filter(
-                follow_up_status='done'
-            ).order_by('-follow_up_at')
-        else:  # MANAGER
-            # For managers, show done reminders that they marked as done
-            done_reminders = assigned_leads.filter(
-                follow_up_status='done'
-            ).order_by('-follow_up_at')
+        # Due today reminders: today's date, still pending
+        due_today_reminders = assigned_leads.filter(
+            follow_up_at__gte=today_start,
+            follow_up_at__lte=today_end,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
         
-        # Upcoming reminders: future date, still pending
+        # Upcoming reminders: tomorrow and after, still pending
         upcoming_reminders = assigned_leads.filter(
-            follow_up_at__gt=now,
+            follow_up_at__gte=tomorrow_start,
             follow_up_status='pending'
         ).order_by('follow_up_at')
+        
+        # Done reminders: status is done
+        done_reminders = assigned_leads.filter(
+            follow_up_status='done'
+        ).order_by('-follow_up_at')
         
         context = {
-            'past_reminders': past_reminders,
-            'done_reminders': done_reminders,
+            'pending_reminders': pending_reminders,
+            'due_today_reminders': due_today_reminders,
             'upcoming_reminders': upcoming_reminders,
+            'done_reminders': done_reminders,
             'user_role': request.user.profile,
             'UserRole': UserRole,
         }
