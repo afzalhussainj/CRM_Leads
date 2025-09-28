@@ -18,11 +18,8 @@
       <!-- Lead status -->
       {% elif field.name == 'status' %}
       <p>
+        <label for="id_{{ field.name }}">{{ field.label }}</label>
         {{ field }}
-        
-        
-        <!-- Add New Status -->
-
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
       {% for error in field.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>{% endfor %}
