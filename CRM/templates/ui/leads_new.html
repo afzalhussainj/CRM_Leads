@@ -22,12 +22,6 @@
         
         
         <!-- Add New Status -->
-        {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-        <div id="new_status_input" style="display: none; margin-top: 10px;">
-          <input type="text" name="new_status_name" placeholder="Enter new status name" class="form-input" style="margin-bottom: 5px;">
-          
-        </div>
-        {% endif %}
 
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
@@ -39,12 +33,6 @@
       <p>
         <label for="id_{{ field.name }}">{{ field.label }}</label>
         {{ field }}
-        {% if request.user.profile and request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-        <div id="new_source_input" style="display: none; margin-top: 10px;">
-          <input type="text" name="new_source_name" placeholder="Enter new source name" class="form-input" style="margin-bottom: 5px;">
-          <div class="muted" style="font-size: 12px;">Enter the name for the new source</div>
-        </div>
-        {% endif %}
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
       {% for error in field.errors %}<div class="muted" style="color:var(--danger);">{{ error }}</div>{% endfor %}

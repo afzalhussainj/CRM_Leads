@@ -696,7 +696,6 @@
     const formData = new FormData(form);
     const selectedColumns = Array.from(formData.getAll('columns'));
     
-    console.log('Selected columns:', selectedColumns);
     
     // Get CSRF token from the form
     const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]');
@@ -714,7 +713,6 @@
       }
     })
     .then(response => {
-      console.log('Response status:', response.status);
       if (response.ok) {
         window.location.reload();
       } else {
