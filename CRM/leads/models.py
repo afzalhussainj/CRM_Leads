@@ -30,6 +30,7 @@ class Lead(BaseModel):
     follow_up_status = models.CharField(max_length=16, choices=FOLLOW_UP_STATUS_CHOICES, default="pending")
     is_active = models.BooleanField(default=False)
     always_active = models.BooleanField(default=False)
+    priority = models.BooleanField(default=False)
     is_project = models.BooleanField(default=False)
     company_name = models.CharField(max_length=255, blank=True, default="")
     contact_first_name = models.CharField(max_length=255, blank=True, default="")

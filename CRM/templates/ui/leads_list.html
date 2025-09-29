@@ -205,6 +205,11 @@
     color: white;
   }
 
+  .status-chip.priority {
+    background: #f59e0b;
+    color: white;
+  }
+
   .status-chip.inactive {
     background: #6b7280;
     color: white;
@@ -812,6 +817,29 @@
     .catch(error => {
       console.error('Error updating always active status:', error);
       alert('Error updating always active status');
+    });
+  }
+
+  function togglePriority(leadId) {
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(`/ui/leads/${leadId}/toggle-priority/`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Reload the page to update the UI
+        location.reload();
+      } else {
+        alert('Error updating priority status: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating priority status:', error);
+      alert('Error updating priority status');
     });
   }
 

@@ -112,6 +112,7 @@ class LeadListUI(LoginRequiredMixin, ListView):
             'description': 'Description',
             'created_at': 'Created Date',
             'always_active': 'Always Active',
+            'priority': 'Priority',
         }
     
     def get_visible_columns(self):
@@ -608,6 +609,34 @@ class LeadToggleAlwaysActiveView(LoginRequiredMixin, View):
             }, status=400)
 
 
+class LeadTogglePriorityView(LoginRequiredMixin, View):
+    """View for toggling priority status of a lead - managers only"""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            raise PermissionDenied("Only managers can toggle priority status")
+        return super().dispatch(request, *args, **kwargs)
+    
+    def post(self, request, pk):
+        """Toggle priority status of a lead"""
+        try:
+            lead = get_object_or_404(Lead, pk=pk)
+            lead.priority = not lead.priority
+            lead.save(update_fields=['priority'])
+            
+            return JsonResponse({
+                'success': True,
+                'priority': lead.priority,
+                'message': f'Lead {"marked as" if lead.priority else "removed from"} priority'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=400)
+
+
 class LeadToggleProjectView(LoginRequiredMixin, View):
     """Toggle project status for a lead"""
     
@@ -708,6 +737,7 @@ class ProjectsListView(LoginRequiredMixin, ListView):
             'description': 'Description',
             'created_at': 'Created Date',
             'is_project': 'Project Status',
+            'priority': 'Priority',
         }
     
     def get_visible_columns(self):

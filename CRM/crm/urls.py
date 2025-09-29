@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 from django.urls import path
 from django.views.generic import TemplateView
 from .views import SiteAdminView
-from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
+from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadTogglePriorityView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
 from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
 from common.views import LoginUIView, logout_ui_view, AddEmployeeView, TestEmailView
@@ -27,6 +27,7 @@ urlpatterns = [
     path("ui/leads/<uuid:pk>/lead-status/", LeadStatusUpdateUI.as_view(), name="ui-leads-lead-status"),
     path("ui/leads/<uuid:pk>/assign/", LeadAssignmentUpdateUI.as_view(), name="ui-leads-assign"),
     path("ui/leads/<uuid:pk>/toggle-always-active/", LeadToggleAlwaysActiveView.as_view(), name="ui-leads-toggle-always-active"),
+    path("ui/leads/<uuid:pk>/toggle-priority/", LeadTogglePriorityView.as_view(), name="ui-leads-toggle-priority"),
     path("ui/leads/<uuid:pk>/toggle-project/", LeadToggleProjectView.as_view(), name="ui-leads-toggle-project"),
     path("ui/leads/<uuid:pk>/notes/", LeadNotesView.as_view(), name="ui-leads-notes"),
     path("ui/leads/<uuid:pk>/", LeadDetailUI.as_view(), name="ui-leads-detail"),

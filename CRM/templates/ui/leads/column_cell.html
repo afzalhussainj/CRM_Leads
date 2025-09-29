@@ -74,4 +74,22 @@
       <span class="muted">—</span>
     {% endif %}
   {% endif %}
+{% elif column_key == 'priority' %}
+  {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
+    <button class="btn small {% if lead.priority %}primary{% else %}ghost{% endif %}" 
+            onclick="togglePriority('{{ lead.pk }}')" 
+            title="{% if lead.priority %}Remove from Priority{% else %}Add to Priority{% endif %}">
+      {% if lead.priority %}
+        On
+      {% else %}
+        Off
+      {% endif %}
+    </button>
+  {% else %}
+    {% if lead.priority %}
+      <span class="status-chip priority">High Priority</span>
+    {% else %}
+      <span class="muted">Normal</span>
+    {% endif %}
+  {% endif %}
 {% endif %}
