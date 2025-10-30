@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: crm-django
+    env: docker
+    plan: free
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "0"
+      - key: ALLOWED_HOSTS
+        value: ""  # Render will inject its hostname automatically; you can add comma-separated hosts if needed
+      - key: DATABASE_URL
+        sync: false
+      - key: ENV_TYPE
+        value: prod
+    healthCheckPath: /healthz/
+    buildCommand: |
+      python manage.py collectstatic --noinput
+    startCommand: |
+      python manage.py migrate --noinput && \
+      gunicorn crm.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120
+
+

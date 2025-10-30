@@ -15,10 +15,12 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "1").lower() in ("1", "true", "yes")
 
 
-ALLOWED_HOSTS = ["*"]
+# Comma-separated list from env, fallback to Render/localhost defaults
+_allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()] or ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -72,9 +74,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "crm.wsgi.application"
 
-# Database
-# Default to SQLite for local development. If Postgres env vars are set, use Postgres.
-if os.getenv("DBNAME") or os.getenv("DB_ENGINE", "").lower().startswith("postgres"):
+# Database: Prefer DATABASE_URL (Supabase/Render). Fallback to existing env-based config, else SQLite
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    try:
+        import dj_database_url  # type: ignore
+        DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
+    except Exception:
+        # Minimal manual parse fallback if dj-database-url isn't available
+        # Expect format: postgres://USER:PASS@HOST:PORT/NAME
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.getenv("DBNAME", "postgres"),
+                "USER": os.getenv("DBUSER", "postgres"),
+                "PASSWORD": os.getenv("DBPASSWORD", ""),
+                "HOST": os.getenv("DBHOST", "127.0.0.1"),
+                "PORT": os.getenv("DBPORT", "5432"),
+            }
+        }
+elif os.getenv("DBNAME") or os.getenv("DB_ENGINE", "").lower().startswith("postgres"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -236,7 +255,11 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_HEADERS = default_headers
 CORS_ORIGIN_ALLOW_ALL = True
-CSRF_TRUSTED_ORIGINS = ["https://*.runcode.io", "http://*"]
+# Allow Render default domains and optional ENV-provided CSRF origins
+_csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.onrender.com",
+] + [o.strip() for o in _csrf_env.split(",") if o.strip()]
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
