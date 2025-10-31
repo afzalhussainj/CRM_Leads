@@ -18,9 +18,22 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 DEBUG = os.getenv("DEBUG", "1").lower() in ("1", "true", "yes")
 
 
-# Comma-separated list from env, fallback to Render/localhost defaults
+# ALLOWED_HOSTS: Support Render and custom hosts via env, with smart defaults
 _allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
-ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()] or ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
+
+# Automatically allow Render.com hostname
+# Render automatically sets RENDER_EXTERNAL_HOSTNAME env var (e.g., "crm-leads-cwml.onrender.com")
+render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
+if render_host:
+    # Remove port if present
+    render_host_clean = render_host.split(":")[0]
+    if render_host_clean not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(render_host_clean)
+
+# Fallback to localhost for local development
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "django.contrib.auth",

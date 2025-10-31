@@ -11,7 +11,7 @@ services:
       - key: DEBUG
         value: "0"
       - key: ALLOWED_HOSTS
-        value: ""  # Render will inject its hostname automatically; you can add comma-separated hosts if needed
+        value: ""  # Set this in Render Dashboard to your service URL (e.g., crm-leads-cwml.onrender.com)
       - key: DATABASE_URL
         sync: false
       - key: ENV_TYPE
