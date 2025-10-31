@@ -90,12 +90,29 @@ WSGI_APPLICATION = "crm.wsgi.application"
 # Database: Prefer DATABASE_URL (Supabase/Render). Fallback to existing env-based config, else SQLite
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
+    # Fix for Supabase: Use connection pooler (port 6543) if it's a Supabase URL
+    # Also handle IPv6 issues by forcing IPv4 or using pooler
+    if "supabase.co" in DATABASE_URL and ":5432" in DATABASE_URL:
+        # Replace direct connection (5432) with connection pooler (6543)
+        DATABASE_URL = DATABASE_URL.replace(":5432", ":6543")
+        # Ensure sslmode=require is present
+        if "sslmode" not in DATABASE_URL:
+            separator = "&" if "?" in DATABASE_URL else "?"
+            DATABASE_URL = f"{DATABASE_URL}{separator}sslmode=require"
+    
     try:
         import dj_database_url  # type: ignore
-        DATABASES = {"default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)}
-    except Exception:
+        db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        # Additional Supabase connection settings
+        if "supabase.co" in DATABASE_URL:
+            db_config["OPTIONS"] = {
+                "connect_timeout": 10,
+                "sslmode": "require",
+            }
+        DATABASES = {"default": db_config}
+    except Exception as e:
+        print(f"Error parsing DATABASE_URL: {e}")
         # Minimal manual parse fallback if dj-database-url isn't available
-        # Expect format: postgres://USER:PASS@HOST:PORT/NAME
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
