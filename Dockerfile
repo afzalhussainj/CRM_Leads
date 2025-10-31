@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_DEFAULT_TIMEOUT=100
+    PIP_DEFAULT_TIMEOUT=100 \
+    PYTHONPATH=/app
 
 WORKDIR /app
 
@@ -22,8 +23,8 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Copy project
-COPY . .
+# Copy the CRM directory contents to /app (so crm/ module is directly accessible)
+COPY CRM/ ./
 
 # Create non-root user
 RUN useradd -m appuser \
@@ -33,6 +34,7 @@ USER appuser
 EXPOSE 8000
 
 # Default command (Render startCommand can override)
+# Run from /app where crm/ is a direct subdirectory
 CMD ["gunicorn", "crm.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
 
 
