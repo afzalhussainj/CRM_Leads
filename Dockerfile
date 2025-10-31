@@ -27,14 +27,18 @@ RUN pip install --upgrade pip \
 COPY CRM/ ./
 
 # Create non-root user
-RUN useradd -m appuser \
-    && chown -R appuser:appuser /app
+RUN useradd -m appuser
+
+# Create staticfiles directory and make startup script executable
+RUN mkdir -p /app/staticfiles && \
+    chmod +x /app/start.sh && \
+    chown -R appuser:appuser /app
+
 USER appuser
 
 EXPOSE 8000
 
-# Default command (Render startCommand can override)
-# Run from /app where crm/ is a direct subdirectory
-CMD ["gunicorn", "crm.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+# Use startup script that runs migrations before starting server
+CMD ["/app/start.sh"]
 
 
