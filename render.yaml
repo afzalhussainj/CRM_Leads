@@ -18,8 +18,9 @@ services:
         value: prod
     healthCheckPath: /healthz/
     startCommand: |
+      mkdir -p /app/staticfiles && \
       python manage.py collectstatic --noinput && \
-      python manage.py migrate --noinput && \
+      python manage.py migrate --verbosity 2 && \
       gunicorn crm.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120
 
 
