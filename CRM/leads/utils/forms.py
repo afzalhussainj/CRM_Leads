@@ -29,14 +29,20 @@ class LeadCreateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         # Set dynamic choices for status and source
-        from leads.utils.choices import get_lead_status_choices, get_lead_source_choices
+        from common.models import LeadStatus, LeadSource
         
-        # Set choices and widget type for status and source fields
-        status_choices = [('', '---------')] + get_lead_status_choices()
-        self.fields['status'].choices = status_choices
-        self.fields['status'].widget = forms.Select(choices=status_choices, attrs={"class": "form-input"})
+        # For status (ForeignKey), use queryset with proper ID-based choices
+        status_queryset = LeadStatus.objects.all().order_by('sort_order', 'name')
+        self.fields['status'].queryset = status_queryset
+        self.fields['status'].empty_label = "---------"
+        # Update widget attrs without recreating the widget (to preserve Django's choice generation)
+        self.fields['status'].widget.attrs.update({"class": "form-input"})
         
-        source_choices = [('', '---------')] + get_lead_source_choices()
+        # For source (CharField), use string-based choices
+        source_choices = [('', '---------')] + [
+            (source.source, source.source) 
+            for source in LeadSource.objects.all().order_by('source')
+        ]
         self.fields['source'].choices = source_choices
         self.fields['source'].widget = forms.Select(choices=source_choices, attrs={"class": "form-input"})
         
