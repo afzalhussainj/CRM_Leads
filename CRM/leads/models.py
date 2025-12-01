@@ -53,6 +53,14 @@ class Lead(BaseModel):
         verbose_name_plural = "Leads"
         db_table = "lead"
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=['is_project', 'is_active']),
+            models.Index(fields=['follow_up_status', 'follow_up_at']),
+            models.Index(fields=['assigned_to', 'is_active']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
+            models.Index(fields=['is_project', 'created_at']),
+        ]
 
     def __str__(self):
         return f"{self.title}"
@@ -85,26 +93,51 @@ class Lead(BaseModel):
         from django.contrib.auth import get_user_model
         User = get_user_model()
         if not hasattr(self, '_current_user'):
+            # If no user context, just check if notes exist
             return self.notes.exists()
         
-        # Get the current user's profile
+        # Get the current user's profile - optimize with select_related if not prefetched
         try:
-            current_profile = Profile.objects.get(user=self._current_user)
+            # Check if profile was prefetched
+            if hasattr(self._current_user, 'profile'):
+                current_profile = self._current_user.profile
+            else:
+                current_profile = Profile.objects.select_related('user').get(user=self._current_user)
         except Profile.DoesNotExist:
             return False
         
-        # Get notes sent TO the current user (not BY the current user)
-        notes_sent_to_user = self.notes.exclude(author=current_profile)
-        
-        # Check if user has read all notes sent to them
-        read_notes = LeadNoteRead.objects.filter(
-            note__lead=self,
-            note__in=notes_sent_to_user,
-            user=self._current_user
-        ).values_list('note_id', flat=True)
-        
-        total_notes_sent_to_user = notes_sent_to_user.values_list('id', flat=True)
-        return len(total_notes_sent_to_user) > len(read_notes)
+        # Use prefetched notes if available to avoid additional queries
+        if hasattr(self, '_prefetched_notes'):
+            # Filter notes sent to user (not by user)
+            notes_sent_to_user = [n for n in self._prefetched_notes if n.author != current_profile]
+            
+            # Check if any note hasn't been read by current user
+            # read_by is prefetched, so we can check it efficiently
+            for note in notes_sent_to_user:
+                # Check if note has read_by prefetched
+                if hasattr(note, 'read_by'):
+                    # Check if current user is in the read_by list
+                    user_has_read = any(
+                        read.user_id == self._current_user.id 
+                        for read in note.read_by.all()
+                    )
+                    if not user_has_read:
+                        return True
+                else:
+                    # Note exists but no read records, so it's unread
+                    return True
+            return False
+        else:
+            # Fallback: use database query (less efficient but works)
+            notes_sent_to_user = self.notes.exclude(author=current_profile)
+            read_notes = LeadNoteRead.objects.filter(
+                note__lead=self,
+                note__in=notes_sent_to_user,
+                user=self._current_user
+            ).values_list('note_id', flat=True)
+            
+            total_notes_sent_to_user = notes_sent_to_user.values_list('id', flat=True)
+            return len(total_notes_sent_to_user) > len(read_notes)
 
 
 class LeadNote(BaseModel):

@@ -29,11 +29,13 @@ class CreateUserSerializer(serializers.ModelSerializer):
     def validate_email(self, email):
         if self.instance:
             if self.instance.email != email:
-                if not Profile.objects.filter(user__email=email).exists():
+                # Optimize: Use exists() with select_related is not needed for exists()
+                if not Profile.objects.filter(user__email=email, user__is_deleted=False).exists():
                     return email
                 raise serializers.ValidationError("Email already exists")
             return email
-        if not Profile.objects.filter(user__email=email.lower()).exists():
+        # Optimize: Use exists() with filter
+        if not Profile.objects.filter(user__email=email.lower(), user__is_deleted=False).exists():
             return email
         raise serializers.ValidationError("Given Email id already exists")
 

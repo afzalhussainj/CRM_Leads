@@ -62,6 +62,8 @@ class StatusCreateView(LoginRequiredMixin, View):
             sort_order=sort_order
         )
         
+        # Cache is automatically invalidated by the model's save() method
+        
         return JsonResponse({
             "success": True,
             "status": {
@@ -119,6 +121,8 @@ class SourceCreateView(LoginRequiredMixin, View):
         
         source = LeadSource.objects.create(source=source_name)
         
+        # Cache is automatically invalidated by the model's save() method
+        
         return JsonResponse({
             "success": True,
             "source": {
@@ -139,6 +143,7 @@ class SourceDeleteView(LoginRequiredMixin, View):
     
     def post(self, request, pk):
         try:
+            # No need for select_related on LeadSource (no foreign keys)
             source = LeadSource.objects.get(pk=pk)
         except LeadSource.DoesNotExist:
             return JsonResponse({"success": False, "error": "source_not_found"}, status=404)

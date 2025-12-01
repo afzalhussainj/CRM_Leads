@@ -27,7 +27,11 @@ class LeadListView(APIView, LimitOffsetPagination):
     def get_context_data(self, **kwargs):
         params = self.request.query_params
         queryset = (
-            self.model.objects.all()
+            self.model.objects.select_related(
+                'status',
+                'assigned_to',
+                'assigned_to__user'
+            )
             .exclude(status="development phase")
             .order_by("-created_at")
         )
@@ -85,11 +89,14 @@ class LeadListView(APIView, LimitOffsetPagination):
         context["limit"] = page_size
         context["search"] = search
 
-        # Get close leads
-        close_leads = self.model.objects.filter(
+        # Get close leads - optimize with select_related
+        close_leads = self.model.objects.select_related(
+            'status',
+            'assigned_to',
+            'assigned_to__user'
+        ).filter(
             status="closed"
-        ).order_by("-created_at")
-        close_leads = close_leads[:5]
+        ).order_by("-created_at")[:5]
         context["close_leads"] = {
             "leads_count": self.count,
             "close_leads": close_leads,
@@ -98,7 +105,11 @@ class LeadListView(APIView, LimitOffsetPagination):
         
         # Contacts and companies are now embedded in leads
         # Tags functionality removed as part of simplification
-        users = Profile.objects.filter(is_active=True).values(
+        # Optimize with select_related
+        users = Profile.objects.select_related('user').filter(
+            is_active=True,
+            user__is_deleted=False
+        ).values(
             "id", "user__email"
         )
         context["users"] = users
@@ -123,9 +134,9 @@ class LeadListView(APIView, LimitOffsetPagination):
                 created_by=request.user.profile.user,
             )
 
-            # Handle assignment
+            # Handle assignment - optimize with select_related
             if data.get("assigned_to"):
-                assigned_to = Profile.objects.get(id=data.get("assigned_to"))
+                assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
                 lead_obj.assigned_to = assigned_to
                 lead_obj.save()
 
@@ -144,7 +155,11 @@ class LeadDetailView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get_object(self, pk):
-        return get_object_or_404(Lead, pk=pk)
+        # Optimize: Use select_related
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
 
     def get(self, request, pk, **kwargs):
         lead_obj = self.get_object(pk)
@@ -165,9 +180,9 @@ class LeadDetailView(APIView):
         if serializer.is_valid():
             lead_obj = serializer.save()
 
-            # Handle assignment
+            # Handle assignment - optimize with select_related
             if data.get("assigned_to"):
-                assigned_to = Profile.objects.get(id=data.get("assigned_to"))
+                assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
                 lead_obj.assigned_to = assigned_to
                 lead_obj.save()
 
@@ -194,7 +209,10 @@ class CreateLeadFromSite(APIView):
 
     def post(self, request, *args, **kwargs):
         params = request.data
-        api_setting = Leads.objects.filter(website=request.META.get("HTTP_REFERER")).first()
+        # Optimize with select_related
+        api_setting = Leads.objects.select_related('created_by', 'created_by__user').filter(
+            website=request.META.get("HTTP_REFERER")
+        ).first()
         if not api_setting:
             return Response(
                 {"error": True, "message": "Invalid request"},

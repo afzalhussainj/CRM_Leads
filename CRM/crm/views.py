@@ -38,55 +38,84 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         # Role-based data filtering
         if user_role == UserRole.MANAGER.value:
             # Manager sees all data (excluding projects)
-            base_leads_queryset = Lead.objects.filter(is_project=False)
-            my_leads_queryset = Lead.objects.filter(assigned_to=user_profile, is_project=False)
-            team_leads_queryset = Lead.objects.filter(assigned_to__isnull=False, is_project=False)
-            unassigned_leads_queryset = Lead.objects.filter(assigned_to__isnull=True, is_project=False)
+            # Optimize: Use select_related and single aggregation query
+            base_leads_queryset = Lead.objects.select_related(
+                'status', 'assigned_to', 'assigned_to__user'
+            ).filter(is_project=False)
+            
+            # Optimize: Use single aggregation query instead of multiple count queries
+            from django.db.models import Count, Q
+            counts = base_leads_queryset.aggregate(
+                total=Count('id'),
+                my_leads=Count('id', filter=Q(assigned_to=user_profile)),
+                assigned=Count('id', filter=Q(assigned_to__isnull=False)),
+                unassigned=Count('id', filter=Q(assigned_to__isnull=True))
+            )
+            
+            context["total_leads"] = counts['total'] or 0
+            context["my_leads_count"] = counts['my_leads'] or 0
+            context["assigned_leads_count"] = counts['assigned'] or 0
+            context["unassigned_leads_count"] = counts['unassigned'] or 0
             
             # Always active leads for managers (excluding projects)
-            always_active_leads = Lead.objects.filter(always_active=True, is_project=False).order_by('-created_at')
+            always_active_leads = base_leads_queryset.filter(always_active=True).order_by('-created_at')[:10]
             context["always_active_leads"] = always_active_leads
             
             # Projects for managers
-            projects = Lead.objects.filter(is_project=True).order_by('-created_at')
+            projects = Lead.objects.select_related(
+                'status', 'assigned_to', 'assigned_to__user'
+            ).filter(is_project=True).order_by('-created_at')[:10]
             context["projects"] = projects
             
-            # Total leads for manager
-            context["total_leads"] = base_leads_queryset.count()
-            context["my_leads_count"] = my_leads_queryset.count()
-            context["assigned_leads_count"] = team_leads_queryset.count()
-            context["unassigned_leads_count"] = unassigned_leads_queryset.count()
-            
-            # Companies and contacts (all)
-            context["companies_count"] = base_leads_queryset.exclude(company_name="").values("company_name").distinct().count()
-            context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
+            # Companies and contacts (all) - optimize with single query
+            company_contact_counts = base_leads_queryset.aggregate(
+                companies=Count('company_name', filter=~Q(company_name=""), distinct=True),
+                contacts=Count('contact_email', filter=~Q(contact_email=""), distinct=True)
+            )
+            context["companies_count"] = company_contact_counts['companies'] or 0
+            context["contacts_count"] = company_contact_counts['contacts'] or 0
             
         elif user_role == 'EMPLOYEE':
             # Employee sees only their assigned leads (excluding projects)
-            base_leads_queryset = Lead.objects.filter(assigned_to=user_profile, is_project=False)
+            base_leads_queryset = Lead.objects.select_related(
+                'status', 'assigned_to', 'assigned_to__user'
+            ).filter(assigned_to=user_profile, is_project=False)
             my_leads_queryset = base_leads_queryset
             
-            # Only show employee's data
-            context["total_leads"] = base_leads_queryset.count()
-            context["my_leads_count"] = base_leads_queryset.count()
-            context["my_pending_leads"] = base_leads_queryset.filter(follow_up_status='pending').count()
+            # Optimize: Use single aggregation query
+            from django.db.models import Count, Q
+            counts = base_leads_queryset.aggregate(
+                total=Count('id'),
+                pending=Count('id', filter=Q(follow_up_status='pending')),
+                companies=Count('company_name', filter=~Q(company_name=""), distinct=True),
+                contacts=Count('contact_email', filter=~Q(contact_email=""), distinct=True)
+            )
             
-            # Companies and contacts (only from employee's leads)
-            context["companies_count"] = base_leads_queryset.exclude(company_name="").values("company_name").distinct().count()
-            context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
+            context["total_leads"] = counts['total'] or 0
+            context["my_leads_count"] = counts['total'] or 0
+            context["my_pending_leads"] = counts['pending'] or 0
+            context["companies_count"] = counts['companies'] or 0
+            context["contacts_count"] = counts['contacts'] or 0
             
         elif user_role == 'DEVELOPMENT_LEAD':
             # Development lead sees leads in development phase (excluding projects)
-            base_leads_queryset = Lead.objects.filter(status='development', is_project=False)
+            base_leads_queryset = Lead.objects.select_related(
+                'status', 'assigned_to', 'assigned_to__user'
+            ).filter(status='development', is_project=False)
             my_leads_queryset = base_leads_queryset
             
-            # Only show development leads
-            context["total_leads"] = base_leads_queryset.count()
-            context["my_leads_count"] = base_leads_queryset.count()
+            # Optimize: Use single aggregation query
+            from django.db.models import Count, Q
+            counts = base_leads_queryset.aggregate(
+                total=Count('id'),
+                companies=Count('company_name', filter=~Q(company_name=""), distinct=True),
+                contacts=Count('contact_email', filter=~Q(contact_email=""), distinct=True)
+            )
             
-            # Companies and contacts (only from development leads)
-            context["companies_count"] = base_leads_queryset.exclude(company_name="").values("company_name").distinct().count()
-            context["contacts_count"] = base_leads_queryset.exclude(contact_email="").values("contact_email").distinct().count()
+            context["total_leads"] = counts['total'] or 0
+            context["my_leads_count"] = counts['total'] or 0
+            context["companies_count"] = counts['companies'] or 0
+            context["contacts_count"] = counts['contacts'] or 0
         
         else:
             # Default case for any other roles - no leads
@@ -95,15 +124,20 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
             context["companies_count"] = 0
             context["contacts_count"] = 0
         
-        # Follow-up status breakdown (role-based)
+        # Follow-up status breakdown (role-based) - optimize with aggregation
+        from django.db.models import Count, Q
+        follow_up_counts_agg = base_leads_queryset.aggregate(
+            pending=Count('id', filter=Q(follow_up_status='pending')),
+            done=Count('id', filter=Q(follow_up_status='done'))
+        )
         follow_up_counts = {
-            'pending': base_leads_queryset.filter(follow_up_status='pending').count(),
-            'done': base_leads_queryset.filter(follow_up_status='done').count(),
+            'pending': follow_up_counts_agg['pending'] or 0,
+            'done': follow_up_counts_agg['done'] or 0,
         }
         context["follow_up_counts"] = follow_up_counts
         
-        # Open leads count (role-based)
-        context["open_leads_count"] = base_leads_queryset.filter(follow_up_status="pending").count()
+        # Open leads count (role-based) - reuse from aggregation
+        context["open_leads_count"] = follow_up_counts['pending']
 
         # Upcoming reminders (role-based)
         context["upcoming_reminders"] = (
@@ -126,28 +160,40 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         context["recent_activity"] = activity[:5]
 
         # Unread notes - only show notes sent TO the current user (not BY the current user)
+        # Optimize: Use prefetch_related and better query
         from leads.models import LeadNoteRead
-        read_note_ids = LeadNoteRead.objects.filter(
-            user=self.request.user
-        ).values_list('note_id', flat=True)
+        from django.db.models import Prefetch
         
-        # Get notes that are NOT sent by the current user (i.e., sent TO the current user)
-        # and that the current user hasn't read yet
-        unread_notes = LeadNote.objects.select_related('lead', 'author__user').exclude(
+        # Prefetch read status to avoid N+1 queries
+        read_notes_prefetch = Prefetch(
+            'read_by',
+            queryset=LeadNoteRead.objects.filter(user=self.request.user),
+            to_attr='user_reads'
+        )
+        
+        unread_notes = LeadNote.objects.select_related(
+            'lead', 'author', 'author__user'
+        ).prefetch_related(read_notes_prefetch).exclude(
             author=self.request.user.profile  # Exclude notes sent BY the current user
-        ).exclude(
-            id__in=read_note_ids  # Exclude notes already read by the current user
         ).order_by('-created_at')[:10]
-        context["recent_notes"] = unread_notes
+        
+        # Filter out read notes in Python (more efficient than subquery for small sets)
+        unread_notes_list = [
+            note for note in unread_notes 
+            if not hasattr(note, 'user_reads') or not note.user_reads
+        ]
+        context["recent_notes"] = unread_notes_list[:10]
 
-        # Search results (role-based)
+        # Search results (role-based) - optimize with select_related
         q = self.request.GET.get("q", "").strip()
         context["q"] = q
         context["search_companies"] = []
         context["search_contacts"] = []
         context["search_leads"] = []
         if q:
-            context["search_leads"] = base_leads_queryset.filter(
+            context["search_leads"] = base_leads_queryset.select_related(
+                'status', 'assigned_to', 'assigned_to__user'
+            ).filter(
                 Q(title__icontains=q)
                 | Q(company_name__icontains=q)
                 | Q(contact_first_name__icontains=q)

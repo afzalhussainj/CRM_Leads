@@ -20,7 +20,8 @@ app = Celery("redis://")
 def send_email_to_new_user(user_id):
 
     """Send Mail To Users When their account is created"""
-    user_obj = User.objects.filter(id=user_id).first()
+    # No need for select_related (User has no foreign keys in this context)
+    user_obj = User.objects.filter(id=user_id, is_deleted=False).first()
 
     if user_obj:
         context = {}
@@ -132,7 +133,8 @@ def resend_activation_link_to_user(
 ):
     """Send Mail To Users When requested for resend activation link"""
 
-    user_obj = User.objects.filter(email=user_email).first()
+    # No need for select_related (User has no foreign keys in this context)
+    user_obj = User.objects.filter(email=user_email, is_deleted=False).first()
     user_obj.is_active = False
     user_obj.save()
     if user_obj:

@@ -18,7 +18,7 @@
       <!-- Lead status -->
       {% elif field.name == 'status' %}
       <p>
-        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        <label for="id_{{ field.name }}">{{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
         {{ field }}
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
@@ -28,7 +28,7 @@
       <!-- Sources options -->
       {% elif field.name == 'source' %}
       <p>
-        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        <label for="id_{{ field.name }}">{{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
         {{ field }}
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
@@ -38,7 +38,7 @@
       <!-- Follow-up status -->
       {% elif field.name != 'follow_up_at' %}
       <p>
-        <label for="id_{{ field.name }}">{{ field.label }}</label>
+        <label for="id_{{ field.name }}">{{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
         {{ field }}
         {% if field.help_text %}
       <div class="muted">{{ field.help_text }}</div>{% endif %}
@@ -49,7 +49,7 @@
       {% else %}
       <div class="inline-2">
         <div>
-          <label for="id_{{ field.name }}">{{ field.label }}</label>
+          <label for="id_{{ field.name }}">{{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
         <div class="input datetime">
           {{ field }}
           <button type="button" class="icon-btn" id="followup_picker_btn" aria-label="Open date & time picker">
@@ -61,7 +61,7 @@
         </div>
       </div>
         <div>
-          <label for="id_follow_up_status">{{ form.follow_up_status.label }}</label>
+          <label for="id_follow_up_status">{{ form.follow_up_status.label }}{% if form.follow_up_status.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
           {{ form.follow_up_status }}
           {% if form.follow_up_status.help_text %}
         <div class="muted">{{ form.follow_up_status.help_text }}</div>{% endif %}

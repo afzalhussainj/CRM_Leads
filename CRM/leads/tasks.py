@@ -47,13 +47,20 @@ def send_email(
 
 @app.task
 def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
-    lead_instance = Lead.objects.filter(
+    # Optimize: Use select_related
+    lead_instance = Lead.objects.select_related(
+        'status', 'assigned_to', 'assigned_to__user'
+    ).filter(
         ~Q(status="development phase"), pk=lead_id, is_active=True
     ).first()
     if not (lead_instance and new_assigned_to_list):
         return False
 
-    users = Profile.objects.filter(id__in=new_assigned_to_list).distinct()
+    # Optimize: Use select_related
+    users = Profile.objects.select_related('user').filter(
+        id__in=new_assigned_to_list,
+        user__is_deleted=False
+    ).distinct()
     subject = "Lead '%s' has been assigned to you" % lead_instance
     from_email = settings.DEFAULT_FROM_EMAIL
     template_name = "lead_assigned.html"
@@ -79,11 +86,19 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
 @app.task
 def send_email_to_assigned_user(recipients, lead_id, source=""):
     """Send Mail To Users When they are assigned to a lead"""
-    lead = Lead.objects.get(id=lead_id)
+    # Optimize: Use select_related
+    lead = Lead.objects.select_related(
+        'status', 'assigned_to', 'assigned_to__user'
+    ).get(id=lead_id)
     created_by = lead.created_by
     for user in recipients:
         recipients_list = []
-        profile = Profile.objects.filter(id=user, is_active=True).first()
+        # Optimize: Use select_related
+        profile = Profile.objects.select_related('user').filter(
+            id=user, 
+            is_active=True,
+            user__is_deleted=False
+        ).first()
         if profile:
             recipients_list.append(profile.user.email)
             context = {}

@@ -12,7 +12,7 @@ from django.db.models import Q
 from django.shortcuts import render
 import csv
 
-from .models import Lead
+from .models import Lead, LeadNote
 from leads.utils.forms import LeadCreateForm, LeadNoteForm
 from utils.roles_enum import UserRole
 
@@ -54,6 +54,20 @@ class LeadListUI(LoginRequiredMixin, ListView):
                 | Q(contact_phone__icontains=q)
             ).distinct()
         
+        # Optimize queries: prefetch related objects to avoid N+1 queries
+        from django.db.models import Prefetch
+        queryset = queryset.select_related(
+            'status',
+            'assigned_to',
+            'assigned_to__user'
+        ).prefetch_related(
+            Prefetch(
+                'notes',
+                queryset=LeadNote.objects.select_related('author', 'author__user').prefetch_related('read_by'),
+                to_attr='_prefetched_notes'
+            )
+        )
+        
         # Add current user to each lead for unread notes check
         for lead in queryset:
             lead._current_user = self.request.user
@@ -74,15 +88,17 @@ class LeadListUI(LoginRequiredMixin, ListView):
             user_role_value = int(context["user_profile"].role)
             
             if user_role_value == UserRole.MANAGER.value:
-                available_profiles = Profile.objects.filter(
+                available_profiles = Profile.objects.select_related('user').filter(
                     role=UserRole.EMPLOYEE.value,
-                    is_active=True
+                    is_active=True,
+                    user__is_deleted=False
                 ).order_by('user__first_name', 'user__email')
                 context["available_profiles"] = available_profiles
             elif user_role_value == UserRole.EMPLOYEE.value:
-                available_profiles = Profile.objects.filter(
+                available_profiles = Profile.objects.select_related('user').filter(
                     role=UserRole.MANAGER.value,
-                    is_active=True
+                    is_active=True,
+                    user__is_deleted=False
                 ).order_by('user__first_name', 'user__email')
                 context["available_profiles"] = available_profiles
             else:
@@ -253,7 +269,11 @@ class LeadFollowUpStatusUpdateUI(LoginRequiredMixin, View):
         if not hasattr(request.user, 'profile'):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
-        lead = get_object_or_404(Lead, pk=pk)
+        # Optimize: Use select_related
+        lead = get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
         
         status_value = request.POST.get("status")
         valid_statuses = dict(Lead.FOLLOW_UP_STATUS_CHOICES)
@@ -271,7 +291,11 @@ class LeadStatusUpdateUI(LoginRequiredMixin, View):
         if not hasattr(request.user, 'profile'):
             return JsonResponse({"ok": False, "error": "unauthorized"}, status=403)
         
-        lead = get_object_or_404(Lead, pk=pk)
+        # Optimize: Use select_related
+        lead = get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
         
         # Check if user can update this lead
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
@@ -316,9 +340,22 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
             raise PermissionDenied("You can only view leads assigned to you.")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_queryset(self):
+        # Optimize queryset with select_related and prefetch_related
+        return super().get_queryset().select_related(
+            'status',
+            'assigned_to',
+            'assigned_to__user'
+        ).prefetch_related(
+            'notes__author',
+            'notes__author__user',
+            'notes__read_by'
+        )
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["notes"] = self.object.notes.all()
+        # Use prefetched notes to avoid additional queries
+        context["notes"] = self.object.notes.select_related('author', 'author__user').all()
         context["note_form"] = LeadNoteForm()
         context["user_role"] = getattr(self.request, 'profile', None)
         return context
@@ -339,23 +376,38 @@ class LeadNotesView(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
     
     def get(self, request, pk):
-        lead = get_object_or_404(Lead, pk=pk)
+        # Optimize queryset with select_related
+        lead = get_object_or_404(
+            Lead.objects.select_related('assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
         
         # Check permissions - allow all roles to view notes, but employees can only see notes for their assigned leads
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
             return JsonResponse({"error": "unauthorized"}, status=403)
         
-        notes = lead.notes.all()
+        # Use prefetch_related to avoid N+1 queries
+        notes = lead.notes.select_related('author', 'author__user').prefetch_related('read_by').all()
         
         # Mark notes as read for this user (only if they weren't the author)
         from leads.models import LeadNoteRead
-        for note in notes:
-            # Only mark as read if the current user is not the author
-            if note.author != request.user.profile:
-                LeadNoteRead.objects.get_or_create(
-                    note=note,
+        from django.db.models import Q
+        # Bulk create read records for unread notes
+        unread_notes = [note for note in notes if note.author != request.user.profile]
+        if unread_notes:
+            existing_reads = set(
+                LeadNoteRead.objects.filter(
+                    note__in=unread_notes,
                     user=request.user
-                )
+                ).values_list('note_id', flat=True)
+            )
+            new_reads = [
+                LeadNoteRead(note=note, user=request.user)
+                for note in unread_notes
+                if note.id not in existing_reads
+            ]
+            if new_reads:
+                LeadNoteRead.objects.bulk_create(new_reads, ignore_conflicts=True)
         
         return JsonResponse({
             "notes": [
@@ -371,7 +423,11 @@ class LeadNotesView(LoginRequiredMixin, View):
         })
     
     def post(self, request, pk):
-        lead = get_object_or_404(Lead, pk=pk)
+        # Optimize: Use select_related
+        lead = get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
         
         # Check permissions - allow all roles to add notes, but employees can only add notes to their assigned leads
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
@@ -422,12 +478,15 @@ class RemindersView(LoginRequiredMixin, View):
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         tomorrow_start = today_start + timedelta(days=1)
         
+        # Optimize queryset with select_related
+        base_queryset = Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user')
+        
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Get leads assigned to this employee
-            assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
+            assigned_leads = base_queryset.filter(assigned_to=request.user.profile)
         else:  # MANAGER
             # Get leads assigned to the manager
-            assigned_leads = Lead.objects.filter(assigned_to=request.user.profile)
+            assigned_leads = base_queryset.filter(assigned_to=request.user.profile)
         
         # Pending reminders: yesterday and before, still pending
         pending_reminders = assigned_leads.filter(
@@ -473,7 +532,11 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
         if not hasattr(request.user, 'profile'):
             return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
         
-        lead = get_object_or_404(Lead, pk=pk)
+        # Optimize: Use select_related
+        lead = get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
         
         # Check if user has permission to reassign
         user_role = int(request.user.profile.role)
@@ -484,11 +547,12 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
         
         if assigned_to_id:
             try:
-                # Get the profile to assign to
+                # Get the profile to assign to - optimize with select_related
                 from common.models import Profile
-                assigned_profile = Profile.objects.get(
+                assigned_profile = Profile.objects.select_related('user').get(
                     id=assigned_to_id,
-                    is_active=True
+                    is_active=True,
+                    user__is_deleted=False
                 )
                 
                 # Additional validation, managers can assign to anyone while employees can only reassign to managers
@@ -527,8 +591,12 @@ class LeadCSVExportView(LoginRequiredMixin, View):
     def get(self, request):
         """Export leads to CSV"""
         
-        # Get all leads (managers can see all, excluding projects)
-        leads = Lead.objects.filter(is_project=False).order_by('-created_at')
+        # Get all leads (managers can see all, excluding projects) - optimize with select_related
+        leads = Lead.objects.select_related(
+            'status',
+            'assigned_to',
+            'assigned_to__user'
+        ).filter(is_project=False).order_by('-created_at')
         
         # Apply search filter if provided
         search_query = request.GET.get('q', '').strip()
@@ -593,7 +661,11 @@ class LeadToggleAlwaysActiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         """Toggle always_active status of a lead"""
         try:
-            lead = get_object_or_404(Lead, pk=pk)
+            # Optimize: Use select_related
+            lead = get_object_or_404(
+                Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+                pk=pk
+            )
             lead.always_active = not lead.always_active
             lead.save(update_fields=['always_active'])
             
@@ -621,7 +693,11 @@ class LeadTogglePriorityView(LoginRequiredMixin, View):
     def post(self, request, pk):
         """Toggle priority status of a lead"""
         try:
-            lead = get_object_or_404(Lead, pk=pk)
+            # Optimize: Use select_related
+            lead = get_object_or_404(
+                Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+                pk=pk
+            )
             lead.priority = not lead.priority
             lead.save(update_fields=['priority'])
             
@@ -658,7 +734,11 @@ class LeadToggleProjectView(LoginRequiredMixin, View):
     def post(self, request, pk):
         """Toggle is_project status of a lead"""
         try:
-            lead = get_object_or_404(Lead, pk=pk)
+            # Optimize: Use select_related
+            lead = get_object_or_404(
+                Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+                pk=pk
+            )
             old_status = lead.is_project
             lead.is_project = not lead.is_project
             lead.save(update_fields=['is_project'])

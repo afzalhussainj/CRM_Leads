@@ -20,20 +20,25 @@ class GetProfile(object):
 
     def process_request(self, request):
         try:
-            
+            # Skip middleware for static/media files to avoid unnecessary queries
+            if request.path.startswith(('/static/', '/media/', '/favicon.ico')):
+                return None
             
             # Handle session authentication (for UI requests)
-            if request.user.is_authenticated and not request.user.profile:
+            if request.user.is_authenticated and not hasattr(request.user, 'profile'):
                 try:
-                    # Get the first active profile for the user
-                    profile = Profile.objects.filter(user=request.user, is_active=True).first()
-                    if profile:
-                        request.user.profile = profile
-                        print(f"Profile set for user {request.user.email}: {profile.role}")
+                    # Optimize: Use select_related and cache the profile
+                    # Check if profile was already loaded by Django's authentication
+                    if hasattr(request.user, '_profile_cache'):
+                        request.user.profile = request.user._profile_cache
                     else:
-                        print(f"No active profile found for user {request.user.email}")
-                        # For UI requests, if no profile is found, we'll let the view handle it
-                        # The view should redirect to login
+                        profile = Profile.objects.select_related('user').filter(
+                            user=request.user, 
+                            is_active=True
+                        ).first()
+                        if profile:
+                            request.user.profile = profile
+                            request.user._profile_cache = profile  # Cache for this request
                 except Exception as e:
                     print(f"Session authentication failed: {e}")
                     

@@ -202,6 +202,36 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 
+# Caching Configuration
+# Try to use Redis cache if available, otherwise fallback to local memory
+cache_backend = os.getenv("CACHE_BACKEND", "locmem")
+if cache_backend == "redis" and CELERY_BROKER_URL and "redis" in CELERY_BROKER_URL.lower():
+    try:
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+                'LOCATION': os.getenv("CACHE_URL", "redis://localhost:6379/2"),
+                'KEY_PREFIX': 'crm_leads',
+                'TIMEOUT': 3600,  # Default cache timeout: 1 hour
+            }
+        }
+    except Exception:
+        # Fallback to local memory if Redis cache fails
+        CACHES = {
+            'default': {
+                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+                'LOCATION': 'unique-snowflake',
+            }
+        }
+else:
+    # Use local memory cache (works without Redis)
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+
 
 LOGGING = {
     "version": 1,

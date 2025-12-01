@@ -35,6 +35,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = "Users"
         db_table = "users"
         ordering = ("-is_active",)
+        indexes = [
+            models.Index(fields=['is_deleted']),
+            models.Index(fields=['is_active', 'is_deleted']),
+            models.Index(fields=['email']),  # Email should already be unique, but ensure index exists
+        ]
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -59,6 +64,11 @@ class Profile(BaseModel):
         verbose_name_plural = "Profiles"
         db_table = "profile"
         ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['role', 'is_active']),
+            models.Index(fields=['user', 'is_active']),
+        ]
 
     def __str__(self):
         return f"{self.user.first_name} {self.user.last_name}"
@@ -90,6 +100,18 @@ class LeadStatus(models.Model):
     def __str__(self):
         return self.name
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Invalidate cache when status is saved
+        from django.core.cache import cache
+        cache.delete('lead_status_choices')
+    
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        # Invalidate cache when status is deleted
+        from django.core.cache import cache
+        cache.delete('lead_status_choices')
+    
 
 class LeadSource(models.Model):
     """Model to store lead source options that can be managed through admin"""
@@ -103,6 +125,18 @@ class LeadSource(models.Model):
     
     def __str__(self):
         return self.source
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Invalidate cache when source is saved
+        from django.core.cache import cache
+        cache.delete('lead_source_choices')
+    
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        # Invalidate cache when source is deleted
+        from django.core.cache import cache
+        cache.delete('lead_source_choices')
 
 
 

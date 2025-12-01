@@ -28,6 +28,9 @@ class LeadCreateForm(forms.ModelForm):
         request = kwargs.pop('request', None)
         super().__init__(*args, **kwargs)
         
+        # Ensure title is required (it's the only required field)
+        self.fields['title'].required = True
+        
         # Set dynamic choices for status and source
         from common.models import LeadStatus, LeadSource
         
@@ -55,9 +58,11 @@ class LeadCreateForm(forms.ModelForm):
             
             if int(request.user.profile.role) == UserRole.MANAGER.value:
                 # Manager can assign to any employee OR to themselves during creation and editing
-                employee_choices = Profile.objects.filter(
+                # Optimize: Use select_related to avoid N+1 queries
+                employee_choices = Profile.objects.select_related('user').filter(
                     role=UserRole.EMPLOYEE.value,
-                    is_active=True
+                    is_active=True,
+                    user__is_deleted=False
                 ).values_list('id', 'user__first_name', 'user__email')
                 
                 # Create choices with name (or email if no name)
@@ -86,9 +91,11 @@ class LeadCreateForm(forms.ModelForm):
             elif int(request.user.profile.role) == UserRole.EMPLOYEE.value:
                 if is_edit:
                     # Employee can only reassign to manager during editing
-                    manager_choices = Profile.objects.filter(
+                    # Optimize: Use select_related to avoid N+1 queries
+                    manager_choices = Profile.objects.select_related('user').filter(
                         role=UserRole.MANAGER.value,
-                        is_active=True
+                        is_active=True,
+                        user__is_deleted=False
                     ).values_list('id', 'user__first_name', 'user__email')
                     # Create choices with name (or email if no name)
                     choices = [('', '---------')]

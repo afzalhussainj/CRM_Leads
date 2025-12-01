@@ -92,7 +92,10 @@ def send_bulk_follow_up_reminders():
         reminder_start = now + timedelta(hours=1.5)  # 1.5 hours from now
         reminder_end = now + timedelta(hours=2.5)    # 2.5 hours from now
         
-        leads_to_remind = Lead.objects.filter(
+        # Optimize: Use select_related
+        leads_to_remind = Lead.objects.select_related(
+            'status', 'assigned_to', 'assigned_to__user'
+        ).filter(
             follow_up_at__gte=reminder_start,
             follow_up_at__lte=reminder_end,
             follow_up_status='pending',

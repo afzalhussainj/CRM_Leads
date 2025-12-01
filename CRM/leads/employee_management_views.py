@@ -25,6 +25,7 @@ class EmployeeManagementView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         # Get all profiles except the current user (only non-deleted)
+        # Already has select_related('user') which is good
         return Profile.objects.filter(
             ~Q(user=self.request.user),
             user__is_deleted=False
@@ -33,19 +34,19 @@ class EmployeeManagementView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Add counts for different employee statuses
-        context['active_employees'] = Profile.objects.filter(
-            is_active=True,
-            user__is_deleted=False
-        ).exclude(user=self.request.user).count()
+        # Optimize: Use single aggregation query instead of multiple count queries
+        from django.db.models import Count, Q
+        base_queryset = Profile.objects.exclude(user=self.request.user)
         
-        context['inactive_employees'] = Profile.objects.filter(
-            is_active=False
-        ).exclude(user=self.request.user).count()
+        counts = base_queryset.aggregate(
+            active=Count('id', filter=Q(is_active=True, user__is_deleted=False)),
+            inactive=Count('id', filter=Q(is_active=False)),
+            total=Count('id', filter=Q(user__is_deleted=False))
+        )
         
-        context['total_employees'] = Profile.objects.filter(
-            user__is_deleted=False
-        ).exclude(user=self.request.user).count()
+        context['active_employees'] = counts['active'] or 0
+        context['inactive_employees'] = counts['inactive'] or 0
+        context['total_employees'] = counts['total'] or 0
         
         return context
 
@@ -115,12 +116,14 @@ class EmployeeSoftDeleteView(LoginRequiredMixin, View):
             if profile.user == request.user:
                 return JsonResponse({"success": False, "error": "cannot_delete_self"}, status=400)
             
-            # Check if employee has any leads assigned
-            assigned_leads = Lead.objects.filter(assigned_to=profile).count()
-            if assigned_leads > 0:
+            # Check if employee has any leads assigned - use exists() for better performance
+            assigned_leads = Lead.objects.filter(assigned_to=profile).exists()
+            if assigned_leads:
+                # Get count only if needed for error message
+                lead_count = Lead.objects.filter(assigned_to=profile).count()
                 return JsonResponse({
                     "success": False, 
-                    "error": f"Employee has {assigned_leads} leads assigned. Please reassign leads before deleting."
+                    "error": f"Employee has {lead_count} leads assigned. Please reassign leads before deleting."
                 }, status=400)
             
             # Soft delete the user

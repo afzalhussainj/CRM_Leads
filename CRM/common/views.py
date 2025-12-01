@@ -66,7 +66,8 @@ def login_view(request):
     
     if user is not None:
         try:
-            profile = Profile.objects.get(user=user, is_active=True)
+            # Optimize: Use select_related
+            profile = Profile.objects.select_related('user').get(user=user, is_active=True)
             login(request, user)
             
             # Generate JWT tokens
@@ -116,7 +117,8 @@ class LoginUIView(View):
         
         if user is not None:
             try:
-                profile = Profile.objects.get(user=user, is_active=True)
+                # Optimize: Use select_related
+                profile = Profile.objects.select_related('user').get(user=user, is_active=True)
                 login(request, user)
                 request.user.profile = profile  # Set profile for middleware compatibility
                 messages.success(request, f'Welcome back, {user.first_name or user.email}!')
@@ -203,9 +205,11 @@ class AddEmployeeView(View):
 class GetTeamsAndUsersView(APIView):
     permission_classes = (IsAuthenticated,)
     def get(self, request, *args, **kwargs):
-        profiles = Profile.objects.filter(is_active=True).order_by(
-            "user__email"
-        )
+        # Optimize: Use select_related
+        profiles = Profile.objects.select_related('user').filter(
+            is_active=True,
+            user__is_deleted=False
+        ).order_by("user__email")
         profiles_data = ProfileSerializer(profiles, many=True).data
         return Response({"profiles": profiles_data})
 
@@ -268,7 +272,10 @@ class UsersListView(APIView, LimitOffsetPagination):
             )
 
         context = {}
-        queryset = Profile.objects.filter().order_by("user__email")
+        # Optimize: Use select_related
+        queryset = Profile.objects.select_related('user').filter(
+            user__is_deleted=False
+        ).order_by("user__email")
         queryset_active_users = queryset.filter(is_active=True)
         results_active_users = self.paginate_queryset(
             queryset_active_users.distinct(), self.request, view=self
@@ -450,7 +457,10 @@ class UserStatusView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         params = request.data
-        profiles = Profile.objects.filter()
+        # Optimize: Use select_related
+        profiles = Profile.objects.select_related('user').filter(
+            user__is_deleted=False
+        )
         profile = profiles.get(id=pk)
 
         if params.get("status"):
@@ -483,10 +493,13 @@ class DomainList(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        api_settings = Leads.objects.filter()
-        users = Profile.objects.filter(is_active=Trueg).order_by(
-            "user__email"
-        )
+        # Optimize: Use select_related
+        api_settings = Leads.objects.select_related('created_by', 'created_by__user').filter()
+        # Optimize: Use select_related and fix typo
+        users = Profile.objects.select_related('user').filter(
+            is_active=True,
+            user__is_deleted=False
+        ).order_by("user__email")
         return Response(
             {
                 "error": False,
