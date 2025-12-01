@@ -409,16 +409,19 @@ class LeadNotesView(LoginRequiredMixin, View):
             if new_reads:
                 LeadNoteRead.objects.bulk_create(new_reads, ignore_conflicts=True)
         
+        # Order notes by created_at (oldest first, so newest appear at bottom)
+        notes_list = list(notes.order_by('created_at'))
+        
         return JsonResponse({
             "notes": [
                 {
                     "id": note.id,
                     "message": note.message,
-                    "author_name": note.author.user.first_name or note.author.user.email,
+                    "author_name": (note.author.user.first_name + ' ' + note.author.user.last_name).strip() or note.author.user.email,
                     "created_at": note.created_at.isoformat(),
                     "created_on_arrow": note.created_on_arrow
                 }
-                for note in notes
+                for note in notes_list
             ]
         })
     

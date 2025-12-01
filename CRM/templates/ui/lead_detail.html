@@ -35,75 +35,382 @@
 </div>
 
 <!-- Notes Modal -->
-<div id="notesModal" class="modal" style="display: none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3 id="notesModalTitle">Notes - {{ lead.title }}</h3>
-      <button class="close-btn" onclick="closeNotesModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div id="notesList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
-        <!-- Notes will be loaded here -->
+<div id="notesModal" class="notes-modal" style="display: none;">
+  <div class="notes-modal-overlay" onclick="closeNotesModal()"></div>
+  <div class="notes-modal-content">
+    <div class="notes-modal-header">
+      <div class="notes-modal-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <h3 id="notesModalTitle">Notes - {{ lead.title }}</h3>
       </div>
-      <form id="noteForm">
+      <button class="notes-close-btn" onclick="closeNotesModal()" aria-label="Close">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="notes-modal-body">
+      <div id="notesList" class="notes-list">
+        <div class="notes-loading">Loading notes...</div>
+      </div>
+      <form id="noteForm" class="notes-form">
         {% csrf_token %}
-        <div style="margin-bottom: 10px;">
-          <textarea name="message" placeholder="Add your note..." style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+        <div class="notes-input-wrapper">
+          <textarea 
+            id="noteMessage" 
+            name="message" 
+            placeholder="Type your note here..." 
+            rows="3"
+            required></textarea>
         </div>
-        <div style="margin-bottom: 10px;">
-          <label>
-            <input type="checkbox" name="is_internal" value="true">
-            Internal note (not visible to clients)
-          </label>
+        <div class="notes-form-actions">
+          <button type="submit" class="notes-submit-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+            Send Note
+          </button>
         </div>
-        <button type="submit" class="btn primary">Add Note</button>
       </form>
     </div>
   </div>
 </div>
 
 <style>
-.modal {
+/* Modern Notes Modal Styles */
+.notes-modal {
   position: fixed;
   z-index: 1000;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
 }
 
-.modal-content {
-  background-color: #fefefe;
-  margin: 5% auto;
-  padding: 0;
-  border: 1px solid #888;
-  width: 80%;
-  max-width: 600px;
-  border-radius: 8px;
+.notes-modal-overlay {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
 }
 
-.modal-header {
-  padding: 15px 20px;
-  border-bottom: 1px solid #ddd;
+.notes-modal-content {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90%;
+  max-width: 700px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+.notes-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
 }
 
-.modal-body {
-  padding: 20px;
+.notes-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
+.notes-modal-title svg {
+  flex-shrink: 0;
+}
+
+.notes-modal-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+}
+
+.notes-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+  padding: 0;
+}
+
+.notes-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.notes-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.notes-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding-right: 8px;
+  min-height: 200px;
+  max-height: 400px;
+}
+
+.notes-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notes-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.notes-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.notes-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.notes-loading {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+.note-item {
+  background: #f8fafc;
+  border-left: 3px solid #667eea;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  animation: slideIn 0.3s ease-out;
+}
+
+.note-item:hover {
+  background: #f1f5f9;
+  transform: translateX(4px);
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.note-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.note-author-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.note-time {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.note-message {
+  color: #475569;
+  line-height: 1.6;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.notes-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.notes-empty svg {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  opacity: 0.5;
+}
+
+.notes-form {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.notes-input-wrapper {
+  margin-bottom: 12px;
+}
+
+.notes-input-wrapper textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s;
+  background: #ffffff;
+  color: #1e293b;
+}
+
+.notes-input-wrapper textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.notes-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.notes-submit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notes-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.notes-submit-btn:active {
+  transform: translateY(0);
+}
+
+.notes-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.notes-error {
+  background: #fee2e2;
+  border-left-color: #ef4444;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .notes-modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .notes-modal-header {
+    padding: 16px 20px;
+  }
+  
+  .notes-modal-body {
+    padding: 20px;
+  }
+}
 </style>
 
 <script>
 let currentLeadId = '{{ lead.pk }}';
 
 function openNotesModal() {
-  document.getElementById('notesModal').style.display = 'block';
-  document.getElementById('noteForm').style.display = 'block';
+  const modal = document.getElementById('notesModal');
+  modal.style.display = 'flex';
   loadNotes();
+  // Focus on textarea after a short delay
+  setTimeout(() => {
+    const textarea = document.getElementById('noteMessage');
+    if (textarea) textarea.focus();
+  }, 300);
 }
 
 function closeNotesModal() {
@@ -112,35 +419,67 @@ function closeNotesModal() {
 }
 
 function loadNotes() {
+  const notesList = document.getElementById('notesList');
+  notesList.innerHTML = '<div class="notes-loading">Loading notes...</div>';
+  
   fetch(`/ui/leads/${currentLeadId}/notes/`)
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to load notes');
+      }
+      return response.json();
+    })
     .then(data => {
-      const notesList = document.getElementById('notesList');
       if (data.notes && data.notes.length > 0) {
-        notesList.innerHTML = data.notes.map(note => `
-          <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
-            <div style="font-weight: 500; color: #374151; margin-bottom: 5px;">
-              ${note.author_name} - ${note.created_on_arrow}
+        notesList.innerHTML = data.notes.map(note => {
+          const authorInitials = note.author_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+          const escapedMessage = note.message.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+          return `
+            <div class="note-item">
+              <div class="note-header">
+                <div class="note-author">
+                  <div class="note-author-avatar">${authorInitials}</div>
+                  <span>${note.author_name}</span>
+                </div>
+                <div class="note-time">${note.created_on_arrow}</div>
+              </div>
+              <div class="note-message">${escapedMessage}</div>
             </div>
-            <div style="color: #6b7280; line-height: 1.5;">
-              ${note.message}
-            </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
+        // Scroll to bottom
+        notesList.scrollTop = notesList.scrollHeight;
       } else {
-        notesList.innerHTML = '<div style="text-align: center; color: #9ca3af; padding: 20px;">No notes yet</div>';
+        notesList.innerHTML = `
+          <div class="notes-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <p>No notes yet. Be the first to add one!</p>
+          </div>
+        `;
       }
     })
     .catch(error => {
       console.error('Error loading notes:', error);
-      notesList.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Error loading notes</div>';
+      notesList.innerHTML = '<div class="notes-error">Error loading notes. Please try again.</div>';
     });
 }
 
 document.getElementById('noteForm').addEventListener('submit', function(e) {
   e.preventDefault();
-  const message = document.getElementById('noteMessage').value.trim();
-  if (!message) return;
+  const messageInput = document.getElementById('noteMessage');
+  const message = messageInput.value.trim();
+  const submitBtn = this.querySelector('.notes-submit-btn');
+  
+  if (!message) {
+    messageInput.focus();
+    return;
+  }
+  
+  // Disable submit button
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Sending...';
   
   const formData = new FormData();
   formData.append('message', message);
@@ -150,28 +489,58 @@ document.getElementById('noteForm').addEventListener('submit', function(e) {
     method: 'POST',
     body: formData
   })
-  .then(response => response.json())
+  .then(response => {
+    if (!response.ok) {
+      return response.json().then(data => {
+        throw new Error(data.error || data.errors || 'Failed to add note');
+      });
+    }
+    return response.json();
+  })
   .then(data => {
-    if (data.ok) {
-      this.reset();
+    if (data.success) {
+      messageInput.value = '';
       loadNotes();
+      // Show success feedback
+      submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Sent!';
+      setTimeout(() => {
+        submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send Note';
+        submitBtn.disabled = false;
+      }, 1000);
     } else {
-      alert('Error adding note: ' + (data.error || 'Unknown error'));
+      throw new Error(data.error || data.errors || 'Unknown error');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Error adding note');
+    const notesList = document.getElementById('notesList');
+    notesList.insertAdjacentHTML('afterbegin', `<div class="notes-error">Error: ${error.message}</div>`);
+    setTimeout(() => {
+      const errorDiv = notesList.querySelector('.notes-error');
+      if (errorDiv) errorDiv.remove();
+    }, 5000);
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Send Note';
   });
 });
 
-// Close modal when clicking outside
+// Close modal when clicking outside or pressing Escape
 window.onclick = function(event) {
   const modal = document.getElementById('notesModal');
-  if (event.target == modal) {
+  if (event.target.classList.contains('notes-modal-overlay')) {
     closeNotesModal();
   }
 }
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    const modal = document.getElementById('notesModal');
+    if (modal && modal.style.display !== 'none') {
+      closeNotesModal();
+    }
+  }
+});
 </script>
 
 {% endblock %}
