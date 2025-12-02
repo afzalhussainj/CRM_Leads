@@ -336,8 +336,11 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
         
         # Check permissions
         lead = self.get_object()
-        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
-            raise PermissionDenied("You can only view leads assigned to you.")
+        user_role = int(request.user.profile.role)
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only view leads assigned to them (not None, not other employees)
+            if not lead.assigned_to or lead.assigned_to != request.user.profile:
+                raise PermissionDenied("You can only view leads assigned to you.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -382,9 +385,14 @@ class LeadNotesView(LoginRequiredMixin, View):
             pk=pk
         )
         
-        # Check permissions - allow all roles to view notes, but employees can only see notes for their assigned leads
-        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
-            return JsonResponse({"error": "unauthorized"}, status=403)
+        # Check permissions - employees can only see notes for leads assigned to them
+        # Managers can see all notes
+        user_role = int(request.user.profile.role)
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only see notes for leads assigned to them (not None, not other employees)
+            if not lead.assigned_to or lead.assigned_to != request.user.profile:
+                return JsonResponse({"error": "unauthorized", "message": "You can only view notes for leads assigned to you."}, status=403)
+        # Managers and DEV_LEAD can see all notes (no restriction)
         
         # Use prefetch_related to avoid N+1 queries
         notes = lead.notes.select_related('author', 'author__user').prefetch_related('read_by').all()
@@ -432,9 +440,12 @@ class LeadNotesView(LoginRequiredMixin, View):
             pk=pk
         )
         
-        # Check permissions - allow all roles to add notes, but employees can only add notes to their assigned leads
-        if int(request.user.profile.role) == UserRole.EMPLOYEE.value and lead.assigned_to != request.user.profile:
-            return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
+        # Check permissions - employees can only add notes to leads assigned to them
+        user_role = int(request.user.profile.role)
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only add notes to leads assigned to them (not None, not other employees)
+            if not lead.assigned_to or lead.assigned_to != request.user.profile:
+                return JsonResponse({"success": False, "error": "unauthorized", "message": "You can only add notes to leads assigned to you."}, status=403)
         
         form = LeadNoteForm(request.POST)
         if form.is_valid():

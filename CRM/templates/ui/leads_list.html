@@ -1166,6 +1166,12 @@ function loadNotes() {
   
   fetch(`/ui/leads/${currentLeadId}/notes/`)
     .then(response => {
+      if (response.status === 403) {
+        // Permission denied - user doesn't have access to these notes
+        return response.json().then(data => {
+          throw new Error(data.message || 'You do not have permission to view notes for this lead.');
+        });
+      }
       if (!response.ok) {
         throw new Error('Failed to load notes');
       }
@@ -1204,7 +1210,7 @@ function loadNotes() {
     })
     .catch(error => {
       console.error('Error loading notes:', error);
-      notesList.innerHTML = '<div class="notes-error">Error loading notes. Please try again.</div>';
+      notesList.innerHTML = `<div class="notes-error">${error.message || 'Error loading notes. Please try again.'}</div>`;
     });
 }
 
@@ -1234,9 +1240,15 @@ document.getElementById('noteForm').addEventListener('submit', function(e) {
     body: formData
   })
   .then(response => {
+    if (response.status === 403) {
+      // Permission denied - user doesn't have access to add notes to this lead
+      return response.json().then(data => {
+        throw new Error(data.message || data.error || 'You do not have permission to add notes to this lead.');
+      });
+    }
     if (!response.ok) {
       return response.json().then(data => {
-        throw new Error(data.error || data.errors || 'Failed to add note');
+        throw new Error(data.error || data.errors || data.message || 'Failed to add note');
       });
     }
     return response.json();
