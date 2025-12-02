@@ -99,26 +99,6 @@
   </div>
 </section>
 
-{% if recent_notes %}
-<section class="row" style="margin-bottom:14px;">
-  <div class="span-12 card">
-    <h3>Unread Notes</h3>
-    <div class="list">
-      {% for note in recent_notes %}
-      <div class="list-item">
-        <div>
-          <div class="title">{{ note.lead.title }}</div>
-          <div class="meta">{{ note.author.user.first_name|default:note.author.user.email }} • {{ note.created_at|date:"M d, g:i A" }}</div>
-          <div style="margin-top: 8px; color: #6b7280; font-size: 13px;">{{ note.message|truncatechars:100 }}</div>
-        </div>
-        <button class="btn" onclick="openNotesModal('{{ note.lead.pk }}', '{{ note.lead.title }}')">View Notes</button>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</section>
-{% endif %}
-
 {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
 <section class="row" style="margin-bottom:14px;">
   <div class="span-12 card">
