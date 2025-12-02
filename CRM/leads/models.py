@@ -92,17 +92,28 @@ class Lead(BaseModel):
         """Check if lead has unread notes for the current user (notes sent TO them, not BY them)"""
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        if not hasattr(self, '_current_user'):
+        
+        # Try to get current user from queryset or instance
+        current_user = None
+        if hasattr(self, '_current_user'):
+            current_user = self._current_user
+        elif hasattr(self, '_state') and hasattr(self._state, 'db') and hasattr(self, '_prefetched_objects_cache'):
+            # Try to get from queryset if available
+            queryset = getattr(self, '_queryset', None)
+            if queryset and hasattr(queryset, '_current_user'):
+                current_user = queryset._current_user
+        
+        if not current_user:
             # If no user context, just check if notes exist
             return self.notes.exists()
         
         # Get the current user's profile - optimize with select_related if not prefetched
         try:
             # Check if profile was prefetched
-            if hasattr(self._current_user, 'profile'):
-                current_profile = self._current_user.profile
+            if hasattr(current_user, 'profile'):
+                current_profile = current_user.profile
             else:
-                current_profile = Profile.objects.select_related('user').get(user=self._current_user)
+                current_profile = Profile.objects.select_related('user').get(user=current_user)
         except Profile.DoesNotExist:
             return False
         
@@ -118,7 +129,7 @@ class Lead(BaseModel):
                 if hasattr(note, 'read_by'):
                     # Check if current user is in the read_by list
                     user_has_read = any(
-                        read.user_id == self._current_user.id 
+                        read.user_id == current_user.id 
                         for read in note.read_by.all()
                     )
                     if not user_has_read:
@@ -133,7 +144,7 @@ class Lead(BaseModel):
             read_notes = LeadNoteRead.objects.filter(
                 note__lead=self,
                 note__in=notes_sent_to_user,
-                user=self._current_user
+                user=current_user
             ).values_list('note_id', flat=True)
             
             total_notes_sent_to_user = notes_sent_to_user.values_list('id', flat=True)
@@ -159,6 +170,10 @@ class LeadNote(BaseModel):
         verbose_name_plural = "Lead Notes"
         db_table = "lead_notes"
         ordering = ("created_at",)  # Show oldest first (bottom) to newest last (top)
+        indexes = [
+            models.Index(fields=['lead', 'created_at']),
+            models.Index(fields=['author', 'created_at']),
+        ]
     
     def __str__(self):
         return self.message
@@ -186,6 +201,10 @@ class LeadNoteRead(BaseModel):
         verbose_name_plural = "Lead Note Reads"
         db_table = "lead_note_reads"
         unique_together = ('note', 'user')
+        indexes = [
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['note', 'user']),
+        ]
     
     def __str__(self):
         return f"{self.user.email} read note {self.note.id}"

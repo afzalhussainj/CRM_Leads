@@ -116,11 +116,9 @@ class EmployeeSoftDeleteView(LoginRequiredMixin, View):
             if profile.user == request.user:
                 return JsonResponse({"success": False, "error": "cannot_delete_self"}, status=400)
             
-            # Check if employee has any leads assigned - use exists() for better performance
-            assigned_leads = Lead.objects.filter(assigned_to=profile).exists()
-            if assigned_leads:
-                # Get count only if needed for error message
-                lead_count = Lead.objects.filter(assigned_to=profile).count()
+            # Check if employee has any leads assigned - optimize to get count in single query
+            lead_count = Lead.objects.filter(assigned_to=profile).count()
+            if lead_count > 0:
                 return JsonResponse({
                     "success": False, 
                     "error": f"Employee has {lead_count} leads assigned. Please reassign leads before deleting."

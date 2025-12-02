@@ -68,9 +68,9 @@ class LeadListUI(LoginRequiredMixin, ListView):
             )
         )
         
-        # Add current user to each lead for unread notes check
-        for lead in queryset:
-            lead._current_user = self.request.user
+        # Store current user in queryset for later use (lazy evaluation)
+        # This avoids forcing queryset evaluation here
+        queryset._current_user = self.request.user
         
         return queryset
 
@@ -345,20 +345,26 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         # Optimize queryset with select_related and prefetch_related
+        from django.db.models import Prefetch
         return super().get_queryset().select_related(
             'status',
             'assigned_to',
             'assigned_to__user'
         ).prefetch_related(
-            'notes__author',
-            'notes__author__user',
-            'notes__read_by'
+            Prefetch(
+                'notes',
+                queryset=LeadNote.objects.select_related('author', 'author__user').prefetch_related('read_by'),
+                to_attr='_prefetched_notes'
+            )
         )
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Use prefetched notes to avoid additional queries
-        context["notes"] = self.object.notes.select_related('author', 'author__user').all()
+        # Use prefetched notes if available, otherwise query with select_related
+        if hasattr(self.object, '_prefetched_notes'):
+            context["notes"] = self.object._prefetched_notes
+        else:
+            context["notes"] = self.object.notes.select_related('author', 'author__user').prefetch_related('read_by').all()
         context["note_form"] = LeadNoteForm()
         context["user_role"] = getattr(self.request, 'profile', None)
         return context

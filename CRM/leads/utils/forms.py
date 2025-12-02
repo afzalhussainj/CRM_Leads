@@ -42,10 +42,9 @@ class LeadCreateForm(forms.ModelForm):
         self.fields['status'].widget.attrs.update({"class": "form-input"})
         
         # For source (CharField), use string-based choices
-        source_choices = [('', '---------')] + [
-            (source.source, source.source) 
-            for source in LeadSource.objects.all().order_by('source')
-        ]
+        # Use cached choices function to avoid repeated queries
+        from leads.utils.choices import get_lead_source_choices
+        source_choices = [('', '---------')] + get_lead_source_choices()
         self.fields['source'].choices = source_choices
         self.fields['source'].widget = forms.Select(choices=source_choices, attrs={"class": "form-input"})
         
