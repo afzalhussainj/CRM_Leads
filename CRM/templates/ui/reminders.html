@@ -25,14 +25,27 @@
         </div>
         <h3>Pending</h3>
       </div>
-      <span class="count">{{ pending_reminders.count }}</span>
+      <span class="count">{{ pending_reminders|length }}</span>
     </div>
     <div class="column-content">
       {% for lead in pending_reminders %}
       <div class="reminder-card pending">
         <div class="card-header">
           <h4>{{ lead.title }}</h4>
-          <span class="date overdue">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+          <div class="card-meta">
+            <span class="date overdue">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+            {% if lead.assigned_to %}
+              <span class="assigned-to">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                {{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}
+              </span>
+            {% else %}
+              <span class="assigned-to unassigned">Unassigned</span>
+            {% endif %}
+          </div>
         </div>
         <div class="card-actions">
           <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
@@ -81,14 +94,27 @@
         </div>
         <h3>Due Today</h3>
       </div>
-      <span class="count">{{ due_today_reminders.count }}</span>
+      <span class="count">{{ due_today_reminders|length }}</span>
     </div>
     <div class="column-content">
       {% for lead in due_today_reminders %}
       <div class="reminder-card due-today">
         <div class="card-header">
           <h4>{{ lead.title }}</h4>
-          <span class="date today">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+          <div class="card-meta">
+            <span class="date today">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+            {% if lead.assigned_to %}
+              <span class="assigned-to">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                {{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}
+              </span>
+            {% else %}
+              <span class="assigned-to unassigned">Unassigned</span>
+            {% endif %}
+          </div>
         </div>
         <div class="card-actions">
           <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
@@ -136,14 +162,27 @@
         </div>
         <h3>Done</h3>
       </div>
-      <span class="count">{{ done_reminders.count }}</span>
+      <span class="count">{{ done_reminders|length }}</span>
     </div>
     <div class="column-content">
       {% for lead in done_reminders %}
       <div class="reminder-card done">
         <div class="card-header">
           <h4>{{ lead.title }}</h4>
-          <span class="date completed">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+          <div class="card-meta">
+            <span class="date completed">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+            {% if lead.assigned_to %}
+              <span class="assigned-to">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                {{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}
+              </span>
+            {% else %}
+              <span class="assigned-to unassigned">Unassigned</span>
+            {% endif %}
+          </div>
         </div>
         <div class="card-actions">
           <button class="btn small ghost" onclick="revertToPending('{{ lead.pk }}')">
@@ -185,14 +224,27 @@
         </div>
         <h3>Upcoming</h3>
       </div>
-      <span class="count">{{ upcoming_reminders.count }}</span>
+      <span class="count">{{ upcoming_reminders|length }}</span>
     </div>
     <div class="column-content">
       {% for lead in upcoming_reminders %}
       <div class="reminder-card upcoming">
         <div class="card-header">
           <h4>{{ lead.title }}</h4>
-          <span class="date">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+          <div class="card-meta">
+            <span class="date">{{ lead.follow_up_at|date:"M d, g:i A" }}</span>
+            {% if lead.assigned_to %}
+              <span class="assigned-to">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                {{ lead.assigned_to.user.first_name|default:lead.assigned_to.user.email }}
+              </span>
+            {% else %}
+              <span class="assigned-to unassigned">Unassigned</span>
+            {% endif %}
+          </div>
         </div>
         <div class="card-actions">
           <button class="btn small primary" onclick="markAsDone('{{ lead.pk }}')">
@@ -391,6 +443,12 @@
     line-height: 1.4;
   }
   
+  .card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
   .date {
     font-size: 12px;
     color: var(--muted);
@@ -399,6 +457,7 @@
     background: var(--border);
     border-radius: 6px;
     display: inline-block;
+    width: fit-content;
   }
   
   .date.overdue {
@@ -414,6 +473,29 @@
   .date.completed {
     color: #8b5cf6;
     background: rgba(139, 92, 246, 0.1);
+  }
+
+  .assigned-to {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    width: fit-content;
+  }
+
+  .assigned-to svg {
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+
+  .assigned-to.unassigned {
+    background: rgba(107, 114, 128, 0.1);
+    color: #9ca3af;
   }
   
   .card-actions {

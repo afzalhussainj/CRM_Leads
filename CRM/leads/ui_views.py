@@ -482,14 +482,20 @@ class RemindersView(LoginRequiredMixin, View):
         tomorrow_start = today_start + timedelta(days=1)
         
         # Optimize queryset with select_related
-        base_queryset = Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user')
+        # Exclude projects and only get leads with follow_up_at set
+        base_queryset = Lead.objects.select_related(
+            'status', 'assigned_to', 'assigned_to__user'
+        ).filter(
+            is_project=False,
+            follow_up_at__isnull=False
+        )
         
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Get leads assigned to this employee
             assigned_leads = base_queryset.filter(assigned_to=request.user.profile)
         else:  # MANAGER
-            # Get leads assigned to the manager
-            assigned_leads = base_queryset.filter(assigned_to=request.user.profile)
+            # Managers see all assigned leads (not just their own)
+            assigned_leads = base_queryset.filter(assigned_to__isnull=False)
         
         # Pending reminders: yesterday and before, still pending
         pending_reminders = assigned_leads.filter(
@@ -515,11 +521,12 @@ class RemindersView(LoginRequiredMixin, View):
             follow_up_status='done'
         ).order_by('-follow_up_at')
         
+        # Convert querysets to lists to ensure they're evaluated properly
         context = {
-            'pending_reminders': pending_reminders,
-            'due_today_reminders': due_today_reminders,
-            'upcoming_reminders': upcoming_reminders,
-            'done_reminders': done_reminders,
+            'pending_reminders': list(pending_reminders),
+            'due_today_reminders': list(due_today_reminders),
+            'upcoming_reminders': list(upcoming_reminders),
+            'done_reminders': list(done_reminders),
             'user_role': request.user.profile,
             'UserRole': UserRole,
         }
