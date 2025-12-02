@@ -8,7 +8,7 @@ from django.shortcuts import redirect
 import datetime
 import json
 
-from leads.models import Lead, LeadNote
+from leads.models import Lead
 from utils.roles_enum import UserRole
 
 
@@ -159,41 +159,6 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         activity.sort(key=lambda x: x["when"], reverse=True)
         context["recent_activity"] = activity[:5]
 
-        # Unread notes - only show notes sent TO the current user (not BY the current user)
-        # Role-based filtering: employees can only see notes for leads assigned to them
-        # Optimize: Use prefetch_related and better query
-        from leads.models import LeadNoteRead
-        from django.db.models import Prefetch
-        
-        # Prefetch read status to avoid N+1 queries
-        read_notes_prefetch = Prefetch(
-            'read_by',
-            queryset=LeadNoteRead.objects.filter(user=self.request.user),
-            to_attr='user_reads'
-        )
-        
-        # Base query - exclude notes sent BY the current user
-        unread_notes = LeadNote.objects.select_related(
-            'lead', 'lead__assigned_to', 'lead__assigned_to__user', 'author', 'author__user'
-        ).prefetch_related(read_notes_prefetch).exclude(
-            author=self.request.user.profile  # Exclude notes sent BY the current user
-        )
-        
-        # Role-based filtering: employees can only see notes for leads assigned to them
-        if user_role == UserRole.EMPLOYEE.value:
-            # Employees can only see notes for leads assigned to them (not None, not other employees)
-            unread_notes = unread_notes.filter(lead__assigned_to=user_profile)
-        # Managers and DEV_LEAD can see all notes (no additional filtering)
-        
-        # Order and limit
-        unread_notes = unread_notes.order_by('-created_at')[:10]
-        
-        # Filter out read notes in Python (more efficient than subquery for small sets)
-        unread_notes_list = [
-            note for note in unread_notes 
-            if not hasattr(note, 'user_reads') or not note.user_reads
-        ]
-        context["recent_notes"] = unread_notes_list[:10]
 
         # Search results (role-based) - optimize with select_related
         q = self.request.GET.get("q", "").strip()

@@ -640,8 +640,8 @@
 
   /* Notes Modal Styles */
   .notes-modal {
-    position: fixed;
-    z-index: 2000;
+    position: fixed !important;
+    z-index: 99999 !important;
     left: 0;
     top: 0;
     width: 100%;
@@ -650,21 +650,23 @@
     align-items: center;
     justify-content: center;
     animation: fadeIn 0.2s ease-out;
+    visibility: visible;
+    opacity: 1;
   }
 
   .notes-modal-overlay {
     position: absolute;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
+    background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
   }
 
   .notes-modal-content {
     position: relative;
-    background: #1a1a1a;
+    background: #ffffff;
     border-radius: 16px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     width: 90%;
     max-width: 700px;
     max-height: 85vh;
@@ -672,12 +674,11 @@
     flex-direction: column;
     animation: slideUp 0.3s ease-out;
     overflow: hidden;
-    border: 1px solid var(--border);
   }
 
   .notes-modal-header {
     padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #e5e7eb;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1032,7 +1033,7 @@
                     </svg>
                   </button>
                   <div class="action-menu-dropdown">
-                    <button class="action-menu-item" onclick="openNotesModal({{ lead.pk }}, '{{ lead.title|escapejs }}')">
+                    <button class="action-menu-item notes-action-btn" data-lead-id="{{ lead.pk }}" data-lead-title="{{ lead.title|escapejs }}">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                       </svg>
@@ -1088,7 +1089,7 @@
 </div>
 
 <!-- Notes Modal -->
-<div id="notesModal" class="notes-modal" style="display: none;">
+<div id="notesModal" class="notes-modal" style="display: none; z-index: 99999;">
   <div class="notes-modal-overlay" onclick="closeNotesModal()"></div>
   <div class="notes-modal-content">
     <div class="notes-modal-header">
@@ -1139,9 +1140,23 @@ let currentLeadId = null;
 function openNotesModal(leadId, leadTitle) {
   currentLeadId = leadId;
   const modal = document.getElementById('notesModal');
+  if (!modal) {
+    console.error('Notes modal not found in DOM');
+    return;
+  }
   const titleElement = document.getElementById('notesModalTitle');
-  titleElement.textContent = `Notes - ${leadTitle}`;
+  if (titleElement) {
+    titleElement.textContent = `Notes - ${leadTitle}`;
+  }
+  // Prevent body scroll
+  document.body.style.overflow = 'hidden';
+  // Show modal
   modal.style.display = 'flex';
+  modal.style.visibility = 'visible';
+  modal.style.opacity = '1';
+  modal.style.zIndex = '99999';
+  modal.style.position = 'fixed';
+  modal.removeAttribute('hidden');
   loadNotes();
   // Focus on textarea after a short delay
   setTimeout(() => {
@@ -1150,8 +1165,16 @@ function openNotesModal(leadId, leadTitle) {
   }, 300);
 }
 
+// Make function globally accessible
+window.openNotesModal = openNotesModal;
+
 function closeNotesModal() {
-  document.getElementById('notesModal').style.display = 'none';
+  const modal = document.getElementById('notesModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  // Restore body scroll
+  document.body.style.overflow = '';
   currentLeadId = null;
   // Clear the form
   const form = document.getElementById('noteForm');
@@ -1405,7 +1428,6 @@ function toggleColumnCustomization() {
     }
     
     if (!selectElement) {
-      console.error('Could not find select element for lead', leadId);
       return;
     }
     
@@ -1588,13 +1610,30 @@ function toggleColumnCustomization() {
       closeNotesModal();
     }
 
-    // Close action menus when clicking outside
-    if (!event.target.closest('.action-menu-wrapper')) {
+    // Close action menus when clicking outside (but not when clicking action menu items)
+    if (!event.target.closest('.action-menu-wrapper') && !event.target.closest('.action-menu-item')) {
       document.querySelectorAll('.action-menu-dropdown').forEach(menu => {
         menu.style.display = 'none';
         menu.style.opacity = '0';
       });
     }
+  });
+
+  // Add click event listeners to notes buttons in action menu
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.notes-action-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const leadId = btn.getAttribute('data-lead-id');
+        const leadTitle = btn.getAttribute('data-lead-title');
+        if (leadId && leadTitle) {
+          openNotesModal(leadId, leadTitle);
+        } else {
+          console.error('Missing data attributes on notes button');
+        }
+      });
+    });
   });
 </script>
 
