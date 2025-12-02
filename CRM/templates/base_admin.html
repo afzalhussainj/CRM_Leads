@@ -103,6 +103,9 @@
       .btn.primary:hover { filter: brightness(1.05) saturate(1.1); box-shadow: 0 2px 12px rgba(96,165,250,.35); }
       .btn.ghost { background: transparent; border:1px dashed var(--border); }
       .btn.ghost:hover { background: rgba(42,56,77,.25); border-style: solid; border-color: #2a384d; }
+      .btn-logout { background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.3); color: #fca5a5; }
+      .btn-logout:hover { background: rgba(248, 113, 113, 0.2); border-color: rgba(248, 113, 113, 0.5); color: #f87171; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(248, 113, 113, 0.2); }
+      .btn-logout:active { transform: translateY(0); }
 
       .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:14px; }
       .kpi { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; position:relative; overflow:hidden; }
@@ -318,8 +321,21 @@
 
         <div style="margin-top: auto;">
           <div class="separator"></div>
-          <div style="padding: 8px 0; color: #94a3b8; font-size: 14px;">
-            Logged in as: {% if request.user.profile %}{{ request.user.profile.user.first_name|default:request.user.profile.user.email }}{% else %}{{ request.user.email }}{% endif %}
+          <div style="padding: 12px 0; display: flex; flex-direction: column; gap: 12px;">
+            <div style="color: #94a3b8; font-size: 14px;">
+              Logged in as: {% if request.user.profile %}{{ request.user.profile.user.first_name|default:request.user.profile.user.email }}{% else %}{{ request.user.email }}{% endif %}
+            </div>
+            <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+              {% csrf_token %}
+              <button type="submit" class="btn-logout" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; background: rgba(248, 113, 113, 0.1); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 8px; color: #fca5a5; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s ease;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Logout
+              </button>
+            </form>
           </div>
         </div>
       </aside>
