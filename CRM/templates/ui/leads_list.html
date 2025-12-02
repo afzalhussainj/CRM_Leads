@@ -1386,6 +1386,48 @@ function toggleColumnCustomization() {
     });
   }
 
+  function updateAssignedTo(leadId, assignedToId, selectElement) {
+    // If selectElement is not passed, find it
+    if (!selectElement) {
+      selectElement = document.querySelector(`select[onchange*="updateAssignedTo('${leadId}'"]`);
+    }
+    
+    if (!selectElement) {
+      console.error('Could not find select element for lead', leadId);
+      return;
+    }
+    
+    // Store the previous value before making the change
+    const previousValue = selectElement.getAttribute('data-previous-value') || '';
+    
+    const formData = new FormData();
+    formData.append('assigned_to', assignedToId);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch(`/ui/leads/${leadId}/assign/`, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Successfully updated - store current value as previous for next change
+        selectElement.setAttribute('data-previous-value', assignedToId);
+        console.log('Lead assignment updated successfully');
+      } else {
+        alert('Error updating assignment: ' + (data.error || 'Unknown error'));
+        // Revert the dropdown to the previous value on error
+        selectElement.value = previousValue;
+      }
+    })
+    .catch(error => {
+      console.error('Error updating assignment:', error);
+      alert('Error updating assignment');
+      // Revert the dropdown to the previous value on error
+      selectElement.value = previousValue;
+    });
+  }
+
   function toggleAlwaysActive(leadId) {
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);

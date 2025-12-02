@@ -573,7 +573,6 @@ class LeadAssignmentUpdateUI(LoginRequiredMixin, View):
                     pass
                 
                 lead.assigned_to = assigned_profile
-                lead.save()
             except Profile.DoesNotExist:
                 return JsonResponse({"success": False, "error": "invalid_profile"}, status=400)
         else:

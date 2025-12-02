@@ -14,7 +14,7 @@
   </select>
 {% elif column_key == 'assigned_to' %}
   {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE or request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-    <select class="status-dropdown" onchange="updateAssignedTo('{{ lead.pk }}', this.value)">
+    <select class="status-dropdown" onchange="updateAssignedTo('{{ lead.pk }}', this.value, this)" data-previous-value="{% if lead.assigned_to %}{{ lead.assigned_to.id }}{% else %}{% endif %}">
       <option value="">Unassigned</option>
       <option value="{{ user_profile.id }}" {% if lead.assigned_to == user_profile %}selected{% endif %}>{{ user_profile.user.first_name|default:user_profile.user.email }} (Me)</option>
       {% for profile in available_profiles %}
