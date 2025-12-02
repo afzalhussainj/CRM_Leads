@@ -20,7 +20,7 @@
 </form>
 
 <section class="row" style="margin-bottom:14px;">
-  <div class="span-4 card">
+  <div class="span-12 card">
     <h3>
       {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}Lead Overview{% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}My Leads{% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}Development Leads{% endif %}
     </h3>
@@ -37,42 +37,6 @@
         <h3>Completed</h3>
         <div class="value" style="color: #10b981;">{{ follow_up_counts.done }}</div>
       </div>
-    </div>
-  </div>
-  
-  <div class="span-5 card">
-    <h3>Lead Status Breakdown</h3>
-    <div class="list">
-      {% for status, count in status_counts.items %}
-        {% if count > 0 %}
-        <div class="list-item">
-          <div>
-            <div class="title">{{ status|title }}</div>
-            <div class="meta">{{ count }} leads</div>
-          </div>
-          <span class="chip">{{ count }}</span>
-        </div>
-        {% endif %}
-      {% empty %}
-        <div class="muted">No leads with status</div>
-      {% endfor %}
-    </div>
-  </div>
-  
-  <div class="span-3 card">
-    <h3>Quick Actions</h3>
-    <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
-      {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-        <a class="btn primary" href="/ui/leads/new/">+ New Lead</a>
-        <a class="btn" href="/add-employee/">+ Employee</a>
-        <a class="btn" href="/manage-lead-options/">Manage Options</a>
-        <a class="btn" href="/test-email/">Test Email</a>
-      {% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}
-        <a class="btn" href="/reminders/">My Reminders</a>
-        <a class="btn" href="/ui/leads/">My Leads</a>
-      {% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}
-        <a class="btn" href="/ui/leads/">Development Leads</a>
-      {% endif %}
     </div>
   </div>
 </section>
