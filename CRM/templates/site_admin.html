@@ -19,66 +19,99 @@
   </div>
 </form>
 
-<section class="row" style="margin-bottom:14px;">
-  <div class="span-12 card">
-    <h3>
-      {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}Lead Overview{% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}My Leads{% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}Development Leads{% endif %}
-    </h3>
-    <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap:12px;">
-      <div class="kpi">
-        <h3>Total Leads</h3>
-        <div class="value">{{ total_leads }}</div>
-      </div>
-      <div class="kpi">
-        <h3>Open Follow-ups</h3>
-        <div class="value" style="color: #f59e0b;">{{ follow_up_counts.pending }}</div>
-      </div>
-      <div class="kpi">
-        <h3>Completed</h3>
-        <div class="value" style="color: #10b981;">{{ follow_up_counts.done }}</div>
-      </div>
+<!-- KPI Cards Section -->
+<section class="row" style="margin-bottom: 24px;">
+  <div class="span-4 card modern-kpi-card">
+    <div class="kpi-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+        <circle cx="9" cy="7" r="4"></circle>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      </svg>
+    </div>
+    <div class="kpi-content">
+      <div class="kpi-label">Total Leads</div>
+      <div class="kpi-value">{{ total_leads }}</div>
+    </div>
+  </div>
+  
+  <div class="span-4 card modern-kpi-card">
+    <div class="kpi-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-content">
+      <div class="kpi-label">Open Follow-ups</div>
+      <div class="kpi-value" style="color: #f59e0b;">{{ follow_up_counts.pending }}</div>
+    </div>
+  </div>
+  
+  <div class="span-4 card modern-kpi-card">
+    <div class="kpi-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <div class="kpi-content">
+      <div class="kpi-label">Completed</div>
+      <div class="kpi-value" style="color: #10b981;">{{ follow_up_counts.done }}</div>
     </div>
   </div>
 </section>
 
-
-<section class="row" style="margin-bottom:14px;">
-  <div class="span-6 card">
-    <h3>
-      {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}Upcoming Reminders{% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}My Upcoming Reminders{% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}Development Reminders{% endif %}
-    </h3>
-    <div class="list">
+<!-- Upcoming Reminders Section -->
+<section class="row" style="margin-bottom: 24px;">
+  <div class="span-12 card modern-list-card">
+    <div class="card-header-modern">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}Upcoming Reminders{% elif request.user.profile.role|add:"0" == ROLE_EMPLOYEE_VALUE %}My Upcoming Reminders{% elif request.user.profile.role|add:"0" == UserRole.DEV_LEAD %}Development Reminders{% endif %}
+      </h3>
+    </div>
+    <div class="list modern-list">
       {% for r in upcoming_reminders %}
-      <div class="list-item">
-        <div>
+      <div class="list-item modern-list-item">
+        <div class="list-item-content">
           <div class="title">{{ r.title }}</div>
           <div class="meta">{{ r.follow_up_at|date:"M d, g:i A" }} • {{ r.follow_up_status|capfirst }}</div>
         </div>
-        <a class="btn" href="/ui/leads/{{ r.pk }}/">View</a>
+        <a class="btn btn-modern" href="/ui/leads/{{ r.pk }}/">View</a>
       </div>
       {% empty %}
-      <div class="muted">No upcoming reminders</div>
+      <div class="muted" style="padding: 24px; text-align: center;">No upcoming reminders</div>
       {% endfor %}
     </div>
   </div>
 </section>
 
 {% if request.user.profile.role|add:"0" == ROLE_MANAGER_VALUE %}
-<section class="row" style="margin-bottom:14px;">
-  <div class="span-12 card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h3 style="margin: 0;">Always Active Leads</h3>
-      <button class="btn primary" onclick="openAddAlwaysActiveModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- Always Active Leads & Projects - Side by Side -->
+<section class="row" style="margin-bottom: 24px;">
+  <div class="span-6 card modern-list-card">
+    <div class="card-header-modern">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
-        Add Always Active Lead
+        Always Active Leads
+      </h3>
+      <button class="btn btn-icon-only" onclick="openAddAlwaysActiveModal()" title="Add Always Active Lead">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
       </button>
     </div>
-    <div class="list">
+    <div class="list modern-list">
       {% for lead in always_active_leads %}
-      <div class="list-item">
-        <div>
+      <div class="list-item modern-list-item">
+        <div class="list-item-content">
           <div class="title">{{ lead.title }}</div>
           <div class="meta">
             {% if lead.assigned_to %}
@@ -98,38 +131,39 @@
           {% endif %}
         </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn ghost" onclick="toggleAlwaysActive('{{ lead.pk }}')" title="Remove from Always Active">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <button class="btn btn-ghost-modern" onclick="toggleAlwaysActive('{{ lead.pk }}')" title="Remove from Always Active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"></path>
             </svg>
-            Remove
           </button>
-          <a class="btn" href="/ui/leads/{{ lead.pk }}/">View</a>
+          <a class="btn btn-modern" href="/ui/leads/{{ lead.pk }}/">View</a>
         </div>
       </div>
       {% empty %}
-      <div class="muted">No always active leads</div>
+      <div class="muted" style="padding: 24px; text-align: center;">No always active leads</div>
       {% endfor %}
     </div>
   </div>
-</section>
 
-<section class="row" style="margin-bottom:14px;">
-  <div class="span-12 card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-      <h3 style="margin: 0;">Ongoing Projects</h3>
-      <a class="btn primary" href="/ui/projects/">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <div class="span-6 card modern-list-card">
+    <div class="card-header-modern">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 12px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+          <path d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
         </svg>
-        View All Projects
+        Ongoing Projects
+      </h3>
+      <a class="btn btn-icon-only" href="/ui/projects/" title="View All Projects">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
       </a>
     </div>
-    <div class="list">
+    <div class="list modern-list">
       {% for project in projects %}
-      <div class="list-item">
-        <div>
+      <div class="list-item modern-list-item">
+        <div class="list-item-content">
           <div class="title">{{ project.title }}</div>
           <div class="meta">
             {% if project.assigned_to %}
@@ -144,17 +178,16 @@
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn ghost" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <button class="btn btn-ghost-modern" onclick="toggleProject('{{ project.pk }}')" title="Convert back to Lead">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 6L6 18M6 6l12 12"></path>
             </svg>
-            Convert to Lead
           </button>
-          <a class="btn" href="/ui/leads/{{ project.pk }}/">View</a>
+          <a class="btn btn-modern" href="/ui/leads/{{ project.pk }}/">View</a>
         </div>
       </div>
       {% empty %}
-      <div class="muted">No ongoing projects</div>
+      <div class="muted" style="padding: 24px; text-align: center;">No ongoing projects</div>
       {% endfor %}
     </div>
   </div>
@@ -218,4 +251,185 @@
     window.location.href = '/ui/leads/';
   }
 </script>
+
+<style>
+  /* Modern Dashboard Styles */
+  .modern-kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .modern-kpi-card:nth-child(2) {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  
+  .modern-kpi-card:nth-child(3) {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  
+  .modern-kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    border-color: rgba(102, 126, 234, 0.4);
+  }
+  
+  .kpi-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  .kpi-content {
+    flex: 1;
+  }
+  
+  .kpi-label {
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+  }
+  
+  .modern-list-card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .modern-list-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+  
+  .card-header-modern {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .card-header-modern h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+  
+  .card-header-modern svg {
+    color: #60a5fa;
+  }
+  
+  .modern-list {
+    padding: 8px;
+  }
+  
+  .modern-list-item {
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+  }
+  
+  .modern-list-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(96, 165, 250, 0.3);
+    transform: translateX(4px);
+  }
+  
+  .list-item-content {
+    flex: 1;
+  }
+  
+  .btn-modern {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: #60a5fa;
+  }
+  
+  .btn-modern:hover {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: rgba(96, 165, 250, 0.5);
+    transform: translateY(-1px);
+  }
+  
+  .btn-ghost-modern {
+    padding: 8px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #9ca3af;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .btn-ghost-modern:hover {
+    background: rgba(248, 113, 113, 0.1);
+    border-color: rgba(248, 113, 113, 0.3);
+    color: #f87171;
+  }
+  
+  .btn-icon-only {
+    padding: 8px;
+    background: rgba(96, 165, 250, 0.1);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    border-radius: 6px;
+    color: #60a5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-icon-only:hover {
+    background: rgba(96, 165, 250, 0.2);
+    border-color: rgba(96, 165, 250, 0.5);
+    transform: scale(1.05);
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .modern-kpi-card {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+    }
+    
+    .kpi-value {
+      font-size: 28px;
+    }
+  }
+</style>
 {% endblock %}
