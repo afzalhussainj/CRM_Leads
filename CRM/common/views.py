@@ -6,12 +6,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib import messages
 from django.db.models import Q
-from django.shortcuts import get_object_or_404, render, redirect
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.views import View
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import LimitOffsetPagination
@@ -117,6 +114,98 @@ def password_reset_request(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_employee(request):
+    """
+    Create a new employee.
+    Only managers can create employees.
+    """
+    # Check if user is a manager
+    if not hasattr(request.user, 'profile') or request.user.profile is None:
+        return Response({
+            'error': 'User profile not found. Please contact administrator.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    user_role = int(request.user.profile.role) if request.user.profile.role is not None else None
+    
+    if user_role != UserRole.MANAGER.value:
+        return Response({
+            'error': 'Only managers can create employees.'
+        }, status=status.HTTP_403_FORBIDDEN)
+    
+    # Get request data
+    email = request.data.get('email')
+    first_name = request.data.get('first_name', '')
+    last_name = request.data.get('last_name', '')
+    password = request.data.get('password')
+    phone = request.data.get('phone')
+    alternate_phone = request.data.get('alternate_phone')
+    
+    # Validate required fields
+    if not email:
+        return Response({
+            'error': 'Email is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not password:
+        return Response({
+            'error': 'Password is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate password length
+    if len(password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if user already exists
+    if User.objects.filter(email=email, is_deleted=False).exists():
+        return Response({
+            'error': 'A user with this email already exists.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        # Create user
+        user = User.objects.create_user(
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            password=password,
+            is_active=True
+        )
+        
+        # Create profile with employee role
+        profile = Profile.objects.create(
+            user=user,
+            role=UserRole.EMPLOYEE.value,
+            is_active=True,
+            phone=phone if phone else None,
+            alternate_phone=alternate_phone if alternate_phone else None,
+        )
+        
+        # Optionally send activation email
+        send_activation_email = request.data.get('send_activation_email', False)
+        if send_activation_email:
+            try:
+                from common.tasks import send_email_to_new_user
+                send_email_to_new_user.delay(user.id)
+            except Exception as e:
+                # Don't fail the request if email fails
+                pass
+        
+        # Return created employee data
+        profile_serializer = ProfileSerializer(profile)
+        return Response({
+            'message': f'Employee {first_name or email} {last_name or ""} created successfully.',
+            'employee': profile_serializer.data
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        return Response({
+            'error': f'Error creating employee: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_confirm(request):
     """
@@ -197,68 +286,6 @@ def password_reset_confirm(request):
             'error': 'An error occurred while resetting your password. Please try again.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class AddEmployeeView(View):
-    """View for managers to add new employees"""
-    template_name = 'ui/add_employee.html'
-    
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect(settings.FRONTEND_LOGIN_URL)
-        
-        if not hasattr(request.user, 'profile') or request.user.profile is None:
-            messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect(settings.FRONTEND_LOGIN_URL)
-        
-        # Only managers can add employees
-        if int(request.user.profile.role) != int(UserRole.MANAGER.value):
-            raise PermissionError("Only managers can add employees.")
-        return super().dispatch(request, *args, **kwargs)
-    
-    def get(self, request):
-        return render(request, self.template_name)
-    
-    def post(self, request):
-        email = request.POST.get('email')
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        password = request.POST.get('password')
-        
-        if not all([email, first_name, last_name, password]):
-            messages.error(request, 'All fields are required.')
-            return render(request, self.template_name)
-        
-        try:
-            # Check if user already exists
-            if User.objects.filter(email=email).exists():
-                messages.error(request, 'A user with this email already exists.')
-                return render(request, self.template_name)
-            
-            # Create user
-            user = User.objects.create_user(
-                email=email,
-                first_name=first_name,
-                last_name=last_name
-            )
-            user.set_password(password)
-            user.save()
-            
-            # Create profile
-            Profile.objects.create(
-                user=user,
-                role=UserRole.EMPLOYEE.value,
-                is_active=True,
-            )
-            
-            messages.success(request, f'Employee {first_name if first_name else email} {last_name if last_name else ""} added successfully!')
-            return redirect('add-employee')
-
-            
-        except Exception as e:
-            messages.error(request, f'Error creating employee: {str(e)}')
-            return render(request, self.template_name)
-
-
- 
 
 
 class GetTeamsAndUsersView(APIView):
@@ -664,44 +691,3 @@ class GoogleLoginView(APIView):
         response['user_id'] = user.id
         return Response(response)
 
-class TestEmailView(LoginRequiredMixin, View):
-    """View for testing email functionality"""
-    
-    def get(self, request):
-        # Only managers can test emails
-        if int(request.user.profile.role) != UserRole.MANAGER.value:
-            messages.error(request, "Only managers can test email functionality.")
-            return redirect('site-admin')
-        
-        from django.conf import settings
-        context = {
-            'email_backend': settings.EMAIL_BACKEND,
-            'from_email': getattr(settings, 'DEFAULT_FROM_EMAIL', 'Not configured'),
-            'UserRole': UserRole
-        }
-        
-        return render(request, 'common/test_email.html', context)
-    
-    def post(self, request):
-        # Only managers can test emails
-        if int(request.user.profile.role) != UserRole.MANAGER.value:
-            messages.error(request, "Only managers can test email functionality.")
-            return redirect('site-admin')
-        
-        from .email_utils import send_test_email
-        
-        email = request.POST.get('email')
-        if not email:
-            messages.error(request, "Please provide an email address.")
-            return redirect('common:test-email')
-        
-        try:
-            success = send_test_email(email)
-            if success:
-                messages.success(request, f"Test email sent successfully to {email}")
-            else:
-                messages.error(request, f"Failed to send test email to {email}")
-        except Exception as e:
-            messages.error(request, f"Error sending test email: {str(e)}")
-        
-        return redirect('common:test-email')

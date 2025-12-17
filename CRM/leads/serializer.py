@@ -27,7 +27,6 @@ class LeadSerializer(serializers.ModelSerializer):
             "contact_position_title",
             "contact_linkedin_url",
             "assigned_to",
-            "assigned_developer",
             "follow_up_at",
             "follow_up_status",
             "created_by",
@@ -74,7 +73,6 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             "contact_position_title",
             "contact_linkedin_url",
             "assigned_to",
-            "assigned_developer",
             "follow_up_at",
             "follow_up_status",
             "created_at",
@@ -102,7 +100,6 @@ class LeadDetailEditSerializer(serializers.ModelSerializer):
             "contact_position_title",
             "contact_linkedin_url",
             "assigned_to",
-            "assigned_developer",
             "follow_up_at",
             "follow_up_status",
             "created_by",
@@ -126,8 +123,3 @@ class CreateLeadFromSiteSerializer(serializers.ModelSerializer):
             "contact_position_title",
             "contact_linkedin_url",
         )
-
-
-
-
-

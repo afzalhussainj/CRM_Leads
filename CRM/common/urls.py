@@ -30,6 +30,7 @@ urlpatterns = [
     path("auth/google/", views.GoogleLoginView.as_view()),
     path("profile/", views.ProfileView.as_view()),
     path("users/get-teams-and-users/", views.GetTeamsAndUsersView.as_view()),
+    path("users/create-employee/", views.create_employee, name="api_create_employee"),
     path("users/", views.UsersListView.as_view()),
     path("user/<str:pk>/", views.UserDetailView.as_view()),
     path("documents/", views.DocumentListView.as_view()),
