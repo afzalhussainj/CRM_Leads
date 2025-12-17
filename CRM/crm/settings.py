@@ -183,7 +183,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
 
 # Frontend URL (React app hosted on Vercel)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://slcwcrm.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://skycrm.vercel.app")
 FRONTEND_LOGIN_URL = f"{FRONTEND_URL}/login"
 
 # Django login URL - redirect to frontend
@@ -322,12 +322,21 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_HEADERS = default_headers
 CORS_ORIGIN_ALLOW_ALL = True
-# Allow Render default domains and optional ENV-provided CSRF origins
+# CSRF Trusted Origins - fully configurable via environment variables
 _csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.onrender.com",
-    "https://skycrm.vercel.app",  # Frontend URL
-] + [o.strip() for o in _csrf_env.split(",") if o.strip()]
+CSRF_TRUSTED_ORIGINS = []
+
+# Add Render wildcard if on Render (can be overridden via env)
+if render_host or os.getenv("CSRF_INCLUDE_RENDER", "1").lower() in ("1", "true", "yes"):
+    CSRF_TRUSTED_ORIGINS.append("https://*.onrender.com")
+
+# Automatically add frontend URL if set
+if FRONTEND_URL:
+    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+
+# Add any additional origins from environment variable
+if _csrf_env:
+    CSRF_TRUSTED_ORIGINS.extend([o.strip() for o in _csrf_env.split(",") if o.strip()])
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
