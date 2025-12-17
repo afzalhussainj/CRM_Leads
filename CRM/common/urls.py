@@ -34,7 +34,7 @@ urlpatterns = [
     path("users/", views.UsersListView.as_view()),
     path("user/<str:pk>/", views.UserDetailView.as_view()),
     # path("documents/", views.DocumentListView.as_view()),
-    path("documents/<str:pk>/", views.DocumentDetailView.as_view()),
+    # path("documents/<str:pk>/", views.DocumentDetailView.as_view()),
     path("api-settings/", views.DomainList.as_view()),
     path("api-settings/<str:pk>/", views.DomainDetailView.as_view()),
     path("user/<str:pk>/status/", views.UserStatusView.as_view()),
