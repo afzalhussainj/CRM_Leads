@@ -1,0 +1,36 @@
+{% extends 'root_email_template_new.html' %}
+
+{% block heading %}
+Lead Assigned to You
+{% endblock heading %}
+
+{% block content_body %}
+Hello {{ user.first_name|default:user.email }},
+
+A new lead has been assigned to you:
+
+<strong>Lead Title:</strong> {{ lead_instance.title }}<br>
+{% if lead_instance.company_name %}<strong>Company:</strong> {{ lead_instance.company_name }}<br>{% endif %}
+{% if lead_instance.contact_first_name or lead_instance.contact_last_name %}
+<strong>Contact:</strong> {{ lead_instance.contact_first_name }} {{ lead_instance.contact_last_name }}<br>
+{% endif %}
+{% if lead_instance.contact_email %}<strong>Email:</strong> {{ lead_instance.contact_email }}<br>{% endif %}
+{% if lead_instance.contact_phone %}<strong>Phone:</strong> {{ lead_instance.contact_phone }}<br>{% endif %}
+{% if lead_instance.description %}<strong>Description:</strong> {{ lead_instance.description }}<br>{% endif %}
+{% endblock content_body %}
+
+{% block button_link %}
+{% if lead_detail_url %}
+<div style="margin-bottom:20px">
+    <a href="{{ lead_detail_url }}"
+        style="display:inline-block;width:170px;background:#38abdd;padding:10px;text-align:center;color:#fff;font-size:1rem;font-weight:600;margin:0px auto;margin-bottom:20px;border-radius:5px;text-decoration:none;display:block">View Lead</a>
+</div>
+{% endif %}
+{% endblock button_link %}
+
+{% block extra_content %}
+<p style="font-size: 1.5em;">
+    Please review this lead and take appropriate action.
+</p>
+{% endblock extra_content %}
+

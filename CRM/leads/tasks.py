@@ -63,7 +63,7 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
     ).distinct()
     subject = "Lead '%s' has been assigned to you" % lead_instance
     from_email = settings.DEFAULT_FROM_EMAIL
-    template_name = "lead_assigned.html"
+    template_name = "leads/lead_assigned.html"
 
     url = site_address
     url += "/leads/" + str(lead_instance.id) + "/view/"

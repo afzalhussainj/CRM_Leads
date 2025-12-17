@@ -13,10 +13,6 @@ from leads.serializer import (
     LeadCreateSerializer,
     LeadSerializer,
 )
-from leads.tasks import (
-    send_email_to_assigned_user,
-    send_lead_assigned_emails,
-)
 from utils.roles_enum import UserRole
 
 
@@ -26,6 +22,9 @@ class LeadListView(APIView, LimitOffsetPagination):
 
     def get_context_data(self, **kwargs):
         params = self.request.query_params
+        request = self.request
+        
+        # Base queryset with optimizations
         queryset = (
             self.model.objects.select_related(
                 'status',
@@ -33,8 +32,22 @@ class LeadListView(APIView, LimitOffsetPagination):
                 'assigned_to__user'
             )
             .exclude(status="development phase")
+            .filter(is_active=True, is_project=False)  # Only active leads, exclude projects
             .order_by("-created_at")
         )
+        
+        # Role-based filtering
+        if request.user.is_authenticated and hasattr(request.user, 'profile'):
+            user_profile = request.user.profile
+            user_role = int(user_profile.role) if user_profile.role is not None else None
+            
+            # Employees can only see leads assigned to them
+            if user_role == UserRole.EMPLOYEE.value:
+                queryset = queryset.filter(assigned_to=user_profile)
+            # Managers can see all leads (no additional filter needed)
+            # DEV_LEAD can also see all leads
+        
+        # Apply search filters
         request_post = params
         if request_post:
             if request_post.get("name"):
@@ -70,8 +83,6 @@ class LeadListView(APIView, LimitOffsetPagination):
             or params.get("assigned_to")
         ):
             search = True
-
-        queryset = queryset.filter(is_active=True)
         count = queryset.count()
 
         if params.get("limit") and params.get("offset"):
@@ -98,7 +109,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             status="closed"
         ).order_by("-created_at")[:5]
         context["close_leads"] = {
-            "leads_count": self.count,
+            "leads_count": len(close_leads),
             "close_leads": close_leads,
             "offset": offset,
         }

@@ -1,52 +1,30 @@
 import json
-from multiprocessing import context
-import secrets
 
 import requests
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.utils import json
-from django.conf import settings
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.hashers import make_password
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
-from django.utils.translation import gettext as _
-from django.views import View
+from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
-
-#from common.external_auth import CustomDualAuthentication
+from django.contrib import messages
+from django.db.models import Q
+from django.shortcuts import get_object_or_404, render, redirect
+from django.utils import timezone
+from django.views import View
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-"""API views retained only for users/documents/settings; accounts/contacts removed."""
-
-##from common.custom_auth import JSONWebTokenAuthentication
-from common.models import Leads, Profile, User
-from utils.roles_enum import UserRole
-from common.serializer import *
-from common.tasks import (
-    send_email_user_delete,
-)
-
-from leads.models import Lead
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.views import View
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import get_user_model
-from .models import Profile
+
+from common.models import Leads, Profile, User
+from common.serializer import *
+from common.tasks import send_email_user_delete
+from leads.models import Lead
+from utils.roles_enum import UserRole
 
 User = get_user_model()
 
@@ -492,7 +470,6 @@ class UserDetailView(APIView):
         return Response({"status": "success"}, status=status.HTTP_200_OK)
 
 
-# check_header not working
 class ApiHomeView(APIView):
 
     permission_classes = (IsAuthenticated,)

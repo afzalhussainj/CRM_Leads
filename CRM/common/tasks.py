@@ -49,7 +49,7 @@ def send_email_to_new_user(user_id):
             user_email,
         ]
         subject = "Welcome to SLCW CRM"
-        html_content = render_to_string("user_status_in.html", context=context)
+        html_content = render_to_string("common/user_status_activate.html", context=context)
 
         msg = EmailMessage(
             subject,
@@ -163,7 +163,7 @@ def resend_activation_link_to_user(
         recipients = [context["complete_url"]]
         recipients.append(user_email)
         subject = "Welcome to SLCW CRM"
-        html_content = render_to_string("user_status_in.html", context=context)
+        html_content = render_to_string("common/user_status_activate.html", context=context)
         if recipients:
             msg = EmailMessage(
                 subject,
