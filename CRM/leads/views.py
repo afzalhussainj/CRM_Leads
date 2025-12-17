@@ -133,11 +133,50 @@ class LeadListView(APIView, LimitOffsetPagination):
         return Response(context)
 
     def post(self, request, *args, **kwargs):
+        """
+        Create a new lead.
+        Managers can assign leads to any employee.
+        Employees can only create leads assigned to themselves.
+        """
         params = request.data
         data = {}
         for key, value in params.items():
             if key not in ["csrfmiddlewaretoken", "tags", "contacts"]:
                 data[key] = value
+
+        # Get user profile and role
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based assignment validation
+        if data.get("assigned_to"):
+            try:
+                assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
+                
+                # Employees can only assign to themselves
+                if user_role == UserRole.EMPLOYEE.value:
+                    if assigned_to.id != user_profile.id:
+                        return Response(
+                            {"error": True, "message": "You can only assign leads to yourself."},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+                
+                # Managers can assign to any employee
+                # DEV_LEAD can also assign to any employee
+                data["assigned_to"] = assigned_to.id
+            except Profile.DoesNotExist:
+                return Response(
+                    {"error": True, "message": "Invalid assigned_to profile ID."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # If no assignment, employees are auto-assigned to themselves
+            if user_role == UserRole.EMPLOYEE.value:
+                data["assigned_to"] = user_profile.id
+
+        # Set is_active to True by default for new leads
+        if "is_active" not in data:
+            data["is_active"] = True
 
         serializer = LeadCreateSerializer(data=data)
         if serializer.is_valid():
@@ -151,8 +190,13 @@ class LeadListView(APIView, LimitOffsetPagination):
                 lead_obj.assigned_to = assigned_to
                 lead_obj.save()
 
+            # Return the created lead with full details
+            lead_serializer = LeadSerializer(lead_obj)
             return Response(
-                {"error": False, "message": "Lead Created Successfully"},
+                {
+                    "message": "Lead created successfully",
+                    "lead": lead_serializer.data
+                },
                 status=status.HTTP_201_CREATED,
             )
         return Response(
