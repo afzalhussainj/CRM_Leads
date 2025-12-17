@@ -2,7 +2,7 @@ import os
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path
+from django.urls import path, include
 from django.views.generic import TemplateView
 from .views import SiteAdminView
 from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadTogglePriorityView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
@@ -16,6 +16,10 @@ app_name = "crm"
 
 urlpatterns = [
     path("django-admin/", admin.site.urls),
+    
+    # API endpoints
+    path("api/common/", include("common.urls")),
+    path("api/leads/", include("leads.urls")),
 
     path("dashboard/", TemplateView.as_view(template_name="dashboard.html"), name="dashboard"),
     # Contacts/Companies removed in embedded leads mode

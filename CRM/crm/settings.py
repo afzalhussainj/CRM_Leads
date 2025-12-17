@@ -326,6 +326,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 _csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [
     "https://*.onrender.com",
+    "https://skycrm.vercel.app",  # Frontend URL
 ] + [o.strip() for o in _csrf_env.split(",") if o.strip()]
 
 SECURE_HSTS_SECONDS = 3600
