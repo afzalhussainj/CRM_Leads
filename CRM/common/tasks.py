@@ -177,23 +177,23 @@ def resend_activation_link_to_user(
 
 @app.task
 def send_email_to_reset_password(user_email):
-    """Send Mail To Users When their account is restored"""
-    user = User.objects.filter(email=user_email).first()
+    """Send Mail To Users When they request password reset"""
+    user = User.objects.filter(email=user_email, is_deleted=False).first()
+    if not user:
+        return
+    
     context = {}
     context["user_email"] = user_email
-    context["url"] = settings.DOMAIN_NAME
-    context["uid"] = (urlsafe_base64_encode(force_bytes(user.pk)),)
+    context["uid"] = urlsafe_base64_encode(force_bytes(user.pk))
     context["token"] = default_token_generator.make_token(user)
-    context["token"] = context["token"]
     context["UserRole"] = UserRole
-    context["complete_url"] = context[
-        "url"
-    ] + "/auth/reset-password/{uidb64}/{token}/".format(
-        uidb64=context["uid"][0], token=context["token"]
-    )
-    subject = "Set a New Password"
-    recipients = []
-    recipients.append(user_email)
+    
+    # Use FRONTEND_URL for the reset link (points to React frontend)
+    frontend_url = getattr(settings, "FRONTEND_URL", "https://skycrm.vercel.app")
+    context["complete_url"] = f"{frontend_url}/reset-password/{context['uid']}/{context['token']}/"
+    
+    subject = "Reset Your Password"
+    recipients = [user_email]
     html_content = render_to_string(
         "registration/password_reset_email.html", context=context
     )

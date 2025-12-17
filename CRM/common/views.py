@@ -96,6 +96,129 @@ def logout_view(request):
     logout(request)
     return Response({'message': 'Logged out successfully'})
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    """
+    Request password reset link.
+    Takes email and sends password reset link to user's email.
+    """
+    email = request.data.get('email')
+    
+    if not email:
+        return Response({
+            'error': 'Email is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check if user exists (but don't reveal if account exists for security)
+    user = User.objects.filter(email=email, is_deleted=False).first()
+    
+    if not user:
+        # Return generic message for security (don't reveal if account exists)
+        return Response({
+            'message': 'If an account with this email exists, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+    
+    # Check if user is active
+    if not user.is_active:
+        return Response({
+            'error': 'Account not found. Please contact your manager for assistance.'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Send password reset email
+    try:
+        from common.tasks import send_email_to_reset_password
+        send_email_to_reset_password.delay(user.email)
+        
+        return Response({
+            'message': 'If an account with this email exists, a password reset link has been sent.'
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'error': 'Failed to send password reset email. Please try again later.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    """
+    Confirm password reset with token.
+    Takes uid, token, and new password.
+    Returns JWT tokens to log the user in.
+    """
+    uidb64 = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('password')
+    
+    if not uidb64 or not token or not new_password:
+        return Response({
+            'error': 'uid, token, and password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Validate password length
+    if len(new_password) < 8:
+        return Response({
+            'error': 'Password must be at least 8 characters long'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        from django.utils.encoding import force_str
+        from django.utils.http import urlsafe_base64_decode
+        from django.contrib.auth.tokens import default_token_generator
+        
+        # Decode user ID
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid, is_deleted=False)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+        
+        if user is None:
+            return Response({
+                'error': 'Invalid reset link. Please request a new password reset link.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify token
+        if not default_token_generator.check_token(user, token):
+            return Response({
+                'error': 'Invalid or expired reset link. Please request a new password reset link.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Check if user is active
+        if not user.is_active:
+            return Response({
+                'error': 'Account is inactive. Please contact your manager for assistance.'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        # Set new password
+        user.set_password(new_password)
+        user.save()
+        
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+        
+        # Get user profile
+        try:
+            profile = Profile.objects.select_related('user').get(user=user, is_active=True)
+            role = profile.role
+        except Profile.DoesNotExist:
+            role = None
+        
+        return Response({
+            'message': 'Password reset successfully. You are now logged in.',
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
+            'user': {
+                'email': user.email,
+                'role': role
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'error': 'An error occurred while resetting your password. Please try again.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class AddEmployeeView(View):
     """View for managers to add new employees"""
     template_name = 'ui/add_employee.html'
