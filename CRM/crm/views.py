@@ -5,6 +5,7 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect
+from django.conf import settings
 import datetime
 import json
 
@@ -17,10 +18,10 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

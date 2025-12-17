@@ -96,59 +96,17 @@ def logout_view(request):
     logout(request)
     return Response({'message': 'Logged out successfully'})
 
-class LoginUIView(View):
-    """UI Login view"""
-    template_name = 'ui/login.html'
-    
-    def get(self, request):
-        if request.user.is_authenticated:
-            return redirect('/ui/leads/')
-        return render(request, self.template_name)
-    
-    def post(self, request):
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        
-        if not email or not password:
-            messages.error(request, 'Email and password are required')
-            return render(request, self.template_name)
-        
-        user = authenticate(request, email=email, password=password)
-        
-        if user is not None:
-            try:
-                # Optimize: Use select_related
-                profile = Profile.objects.select_related('user').get(user=user, is_active=True)
-                login(request, user)
-                request.user.profile = profile  # Set profile for middleware compatibility
-                messages.success(request, f'Welcome back, {user.first_name or user.email}!')
-                return redirect('/')
-            except Profile.DoesNotExist:
-                messages.error(request, 'User profile not found or inactive')
-        else:
-            messages.error(request, 'Invalid credentials')
-        
-        return render(request, self.template_name)
-
-@login_required
-def logout_ui_view(request):
-    """UI Logout view"""
-    logout(request)
-    messages.success(request, 'You have been logged out successfully.')
-    return redirect('/login/')
-
-
 class AddEmployeeView(View):
     """View for managers to add new employees"""
     template_name = 'ui/add_employee.html'
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Only managers can add employees
         if int(request.user.profile.role) != int(UserRole.MANAGER.value):

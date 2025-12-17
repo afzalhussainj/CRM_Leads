@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import render
+from django.conf import settings
 import csv
 
 from .models import Lead, LeadNote
@@ -173,12 +174,12 @@ class LeadCreateUI(LoginRequiredMixin, CreateView):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Managers and employees can create leads
         if int(request.user.profile.role) not in [UserRole.MANAGER.value, UserRole.EMPLOYEE.value]:
@@ -223,12 +224,12 @@ class LeadUpdateUI(LoginRequiredMixin, UpdateView):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         if int(request.user.profile.role) == UserRole.EMPLOYEE.value:
             # Employees cannot edit leads - they can only update status and assignment through dropdowns
             raise PermissionDenied("Employees cannot edit leads. Use the inline dropdowns to update status and assignment.")
@@ -250,12 +251,12 @@ class LeadDeleteUI(LoginRequiredMixin, DeleteView):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Only managers can delete leads
         if int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -327,12 +328,12 @@ class LeadDetailUI(LoginRequiredMixin, DetailView):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check permissions
         lead = self.get_object()
@@ -480,11 +481,11 @@ class RemindersView(LoginRequiredMixin, View):
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Only employees and managers can access reminders
         if int(request.user.profile.role) not in [UserRole.EMPLOYEE.value, UserRole.MANAGER.value]:
@@ -792,12 +793,12 @@ class ProjectsListView(LoginRequiredMixin, ListView):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Only managers can view projects
         if int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -864,12 +865,12 @@ class ProjectsColumnCustomizationView(LoginRequiredMixin, View):
     def dispatch(self, request, *args, **kwargs):
         # Check if user is authenticated
         if not request.user.is_authenticated:
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Check if user has a profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
             messages.error(request, "User profile not found. Please contact administrator.")
-            return redirect('/login/')
+            return redirect(settings.FRONTEND_LOGIN_URL)
         
         # Only managers can customize project columns
         if int(request.user.profile.role) != UserRole.MANAGER.value:

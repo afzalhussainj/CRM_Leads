@@ -182,6 +182,13 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 # Site URL for email links
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
 
+# Frontend URL (React app hosted on Vercel)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://slcwcrm.vercel.app")
+FRONTEND_LOGIN_URL = f"{FRONTEND_URL}/login"
+
+# Django login URL - redirect to frontend
+LOGIN_URL = FRONTEND_LOGIN_URL
+
 AUTH_USER_MODEL = "common.User"
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
