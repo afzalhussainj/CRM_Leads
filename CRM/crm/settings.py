@@ -322,6 +322,7 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_HEADERS = default_headers
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
 # CSRF Trusted Origins - fully configurable via environment variables
 _csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = []
@@ -350,6 +351,13 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost")
 
+# Cookie settings for HTTP-only JWT tokens
+JWT_COOKIE_NAME = "access_token"
+JWT_REFRESH_COOKIE_NAME = "refresh_token"
+JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "1").lower() in ("1", "true", "yes")  # True in production (HTTPS)
+JWT_COOKIE_HTTPONLY = True  # Always True for security
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")  # Lax, Strict, or None
+JWT_COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN", None)  # Set for cross-domain cookies if needed
 
 SIMPLE_JWT = {
     #'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),
@@ -369,7 +377,4 @@ SIMPLE_JWT = {
 }
 # it is needed in custome middlewere to get the user from the token
 JWT_ALGO = "HS256"
-
-
-DOMAIN_NAME = os.getenv("DOMAIN_NAME", DOMAIN_NAME)
 

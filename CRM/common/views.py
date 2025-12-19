@@ -16,6 +16,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from datetime import timedelta
 
 from common.models import Leads, Profile, User
 from common.serializer import *
@@ -25,10 +26,71 @@ from utils.roles_enum import UserRole
 
 User = get_user_model()
 
+
+def set_jwt_cookies(response, refresh_token):
+    """
+    Helper function to set HTTP-only cookies for JWT tokens.
+    
+    Args:
+        response: Django Response object
+        refresh_token: RefreshToken instance
+    """
+    access_token = refresh_token.access_token
+    access_lifetime = settings.SIMPLE_JWT.get('ACCESS_TOKEN_LIFETIME', timedelta(days=1))
+    refresh_lifetime = settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME', timedelta(days=365))
+    
+    # Set access token cookie
+    response.set_cookie(
+        key=settings.JWT_COOKIE_NAME,
+        value=str(access_token),
+        max_age=int(access_lifetime.total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        domain=settings.JWT_COOKIE_DOMAIN,
+        path='/',
+    )
+    
+    # Set refresh token cookie
+    response.set_cookie(
+        key=settings.JWT_REFRESH_COOKIE_NAME,
+        value=str(refresh_token),
+        max_age=int(refresh_lifetime.total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        domain=settings.JWT_COOKIE_DOMAIN,
+        path='/',
+    )
+    
+    return response
+
+
+def clear_jwt_cookies(response):
+    """
+    Helper function to clear HTTP-only JWT cookies.
+    
+    Args:
+        response: Django Response object
+    """
+    response.delete_cookie(
+        key=settings.JWT_COOKIE_NAME,
+        path='/',
+        domain=settings.JWT_COOKIE_DOMAIN,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+    )
+    response.delete_cookie(
+        key=settings.JWT_REFRESH_COOKIE_NAME,
+        path='/',
+        domain=settings.JWT_COOKIE_DOMAIN,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+    )
+    return response
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    """Login view that returns JWT tokens"""
+    """Login view that sets JWT tokens in HTTP-only cookies"""
     email = request.data.get('email')
     password = request.data.get('password')
     
@@ -48,14 +110,21 @@ def login_view(request):
             # Generate JWT tokens
             refresh = RefreshToken.for_user(user)
             
-            return Response({
-                'access_token': str(refresh.access_token),
-                'refresh_token': str(refresh),
+            # Create response with user data (no tokens in body)
+            response = Response({
+                'message': 'Login successful',
                 'user': {
                     'email': user.email,
-                    'role': profile.role
+                    'role': profile.role,
+                    'id': user.id
+                    'name': user.first_name + ' ' + user.last_name
                 }
-            })
+            }, status=status.HTTP_200_OK)
+            
+            # Set HTTP-only cookies
+            set_jwt_cookies(response, refresh)
+            
+            return response
         except Profile.DoesNotExist:
             return Response({
                 'error': 'User profile not found or inactive'
@@ -67,9 +136,66 @@ def login_view(request):
 
 @api_view(['POST'])
 def logout_view(request):
-    """Logout view"""
+    """Logout view that clears JWT cookies"""
     logout(request)
-    return Response({'message': 'Logged out successfully'})
+    
+    response = Response({'message': 'Logged out successfully'})
+    clear_jwt_cookies(response)
+    
+    return response
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def refresh_token_view(request):
+    """
+    Refresh token view that reads refresh token from HTTP-only cookie
+    and returns new access token in HTTP-only cookie.
+    """
+    # Get refresh token from cookie
+    refresh_token_str = request.COOKIES.get(settings.JWT_REFRESH_COOKIE_NAME)
+    
+    if not refresh_token_str:
+        return Response({
+            'error': 'Refresh token not found. Please login again.'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+    
+    try:
+        # Create RefreshToken instance from string
+        refresh = RefreshToken(refresh_token_str)
+        
+        # Generate new access token
+        access_token = refresh.access_token
+        
+        # Create response
+        response = Response({
+            'message': 'Token refreshed successfully'
+        }, status=status.HTTP_200_OK)
+        
+        # Set new access token cookie
+        access_lifetime = settings.SIMPLE_JWT.get('ACCESS_TOKEN_LIFETIME', timedelta(days=1))
+        response.set_cookie(
+            key=settings.JWT_COOKIE_NAME,
+            value=str(access_token),
+            max_age=int(access_lifetime.total_seconds()),
+            httponly=settings.JWT_COOKIE_HTTPONLY,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite=settings.JWT_COOKIE_SAMESITE,
+            domain=settings.JWT_COOKIE_DOMAIN,
+            path='/',
+        )
+        
+        return response
+        
+    except Exception as e:
+        # Token is invalid or expired
+        response = Response({
+            'error': 'Invalid or expired refresh token. Please login again.'
+        }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        # Clear cookies on error
+        clear_jwt_cookies(response)
+        
+        return response
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -271,15 +397,21 @@ def password_reset_confirm(request):
         except Profile.DoesNotExist:
             role = None
         
-        return Response({
+        # Create response with user data (no tokens in body)
+        response = Response({
             'message': 'Password reset successfully. You are now logged in.',
-            'access_token': str(refresh.access_token),
-            'refresh_token': str(refresh),
             'user': {
                 'email': user.email,
-                'role': role
+                'role': role,
+                'id': user.id,
+                'name': user.first_name + ' ' + user.last_name
             }
         }, status=status.HTTP_200_OK)
+        
+        # Set HTTP-only cookies
+        set_jwt_cookies(response, refresh)
+        
+        return response
         
     except Exception as e:
         return Response({
@@ -684,10 +816,26 @@ class GoogleLoginView(APIView):
             user.email = data['email']
             user.save()
         token = RefreshToken.for_user(user)  # generate token without username & password
-        response = {}
-        response['username'] = user.email
-        response['access_token'] = str(token.access_token)
-        response['refresh_token'] = str(token)
-        response['user_id'] = user.id
-        return Response(response)
+        
+        # Get user profile
+        try:
+            profile = Profile.objects.select_related('user').get(user=user, is_active=True)
+            role = profile.role
+        except Profile.DoesNotExist:
+            role = None
+        
+        # Create response with user data (no tokens in body)
+        response = Response({
+            'message': 'Google login successful',
+            'user': {
+                'email': user.email,
+                'role': role,
+                'id': user.id
+            }
+        }, status=status.HTTP_200_OK)
+        
+        # Set HTTP-only cookies
+        set_jwt_cookies(response, token)
+        
+        return response
 
