@@ -116,7 +116,7 @@ def login_view(request):
                 'user': {
                     'email': user.email,
                     'role': profile.role,
-                    'id': user.id
+                    'id': user.id,
                     'name': user.first_name + ' ' + user.last_name
                 }
             }, status=status.HTTP_200_OK)
@@ -830,7 +830,8 @@ class GoogleLoginView(APIView):
             'user': {
                 'email': user.email,
                 'role': role,
-                'id': user.id
+                'id': user.id,
+                'name': user.first_name + ' ' + user.last_name
             }
         }, status=status.HTTP_200_OK)
         
