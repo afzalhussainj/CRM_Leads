@@ -17,6 +17,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "crm.settings")
 # Import Django WSGI application
 from django.core.wsgi import get_wsgi_application
 
-# Get the WSGI application - Vercel's Python runtime will handle WSGI apps automatically
+# Get the WSGI application
+# Vercel's Python runtime automatically detects WSGI applications
+# and passes the request path correctly
 application = get_wsgi_application()
 

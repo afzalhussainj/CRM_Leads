@@ -1,8 +1,8 @@
 {
-  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true && cp -r staticfiles/* ../public/ 2>/dev/null || true",
-  "outputDirectory": "public",
+  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index/$1" }
+    { "source": "/static/(.*)", "destination": "/CRM/staticfiles/$1" },
+    { "source": "/(.*)", "destination": "/api/index" }
   ],
   "env": {
     "PYTHONPATH": "CRM"
