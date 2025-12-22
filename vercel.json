@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true",
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/media/(.*)",
+      "dest": "/media/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": "CRM"
+  },
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 30
+    }
+  }
+}
+

@@ -46,3 +46,6 @@ celerybeat-schedule
 
 # Docs
 docs/build/
+
+# Vercel
+.vercel

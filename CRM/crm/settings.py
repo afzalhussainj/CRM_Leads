@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 DEBUG = os.getenv("DEBUG", "1").lower() in ("1", "true", "yes")
 
 
-# ALLOWED_HOSTS: Support Render and custom hosts via env, with smart defaults
+# ALLOWED_HOSTS: Support Render, Vercel, and custom hosts via env, with smart defaults
 _allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
 
@@ -30,6 +30,19 @@ if render_host:
     render_host_clean = render_host.split(":")[0]
     if render_host_clean not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(render_host_clean)
+
+# Automatically allow Vercel hostname
+# Vercel sets VERCEL_URL env var (e.g., "your-app.vercel.app")
+vercel_url = os.getenv("VERCEL_URL")
+if vercel_url:
+    # Remove protocol if present
+    vercel_host = vercel_url.replace("https://", "").replace("http://", "").split("/")[0]
+    if vercel_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(vercel_host)
+    # Also add without port
+    vercel_host_clean = vercel_host.split(":")[0]
+    if vercel_host_clean not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(vercel_host_clean)
 
 # Fallback to localhost for local development
 if not ALLOWED_HOSTS:
@@ -330,6 +343,10 @@ CSRF_TRUSTED_ORIGINS = []
 # Add Render wildcard if on Render (can be overridden via env)
 if render_host or os.getenv("CSRF_INCLUDE_RENDER", "1").lower() in ("1", "true", "yes"):
     CSRF_TRUSTED_ORIGINS.append("https://*.onrender.com")
+
+# Add Vercel wildcard if on Vercel
+if vercel_url or os.getenv("CSRF_INCLUDE_VERCEL", "1").lower() in ("1", "true", "yes"):
+    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
 
 # Automatically add frontend URL if set
 if FRONTEND_URL:
