@@ -390,7 +390,8 @@ JWT_COOKIE_NAME = "access_token"
 JWT_REFRESH_COOKIE_NAME = "refresh_token"
 JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "1").lower() in ("1", "true", "yes")  # True in production (HTTPS)
 JWT_COOKIE_HTTPONLY = True  # Always True for security
-JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")  # Lax, Strict, or None
+# For cross-domain: use None with Secure=True, for same-domain: use Lax
+JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "None" if os.getenv("JWT_COOKIE_SECURE", "1").lower() in ("1", "true", "yes") else "Lax")
 JWT_COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN", None)  # Set for cross-domain cookies if needed
 
 SIMPLE_JWT = {
