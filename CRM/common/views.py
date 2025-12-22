@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import LimitOffsetPagination
@@ -87,6 +88,7 @@ def clear_jwt_cookies(response):
     )
     return response
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
@@ -134,6 +136,7 @@ def login_view(request):
             'error': 'Invalid credentials'
         }, status=status.HTTP_401_UNAUTHORIZED)
 
+@csrf_exempt
 @api_view(['POST'])
 def logout_view(request):
     """Logout view that clears JWT cookies"""
@@ -144,6 +147,7 @@ def logout_view(request):
     
     return response
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def refresh_token_view(request):
@@ -197,6 +201,7 @@ def refresh_token_view(request):
         
         return response
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_request(request):
@@ -331,6 +336,7 @@ def create_employee(request):
             'error': f'Error creating employee: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_confirm(request):
@@ -789,6 +795,9 @@ class DomainDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_exempt, name='dispatch')
 class GoogleLoginView(APIView):
     """
     Check for authentication with google
