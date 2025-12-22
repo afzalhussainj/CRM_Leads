@@ -61,9 +61,7 @@ class StatusCreateView(LoginRequiredMixin, View):
             name=status_name,
             sort_order=sort_order
         )
-        
-        # Cache is automatically invalidated by the model's save() method
-        
+                
         return JsonResponse({
             "success": True,
             "status": {
@@ -110,7 +108,7 @@ class SourceCreateView(LoginRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
     
     def post(self, request):
-        source_name = request.POST.get('source', '').strip()
+        source_name = request.POST.get('name', '').strip()
         
         if not source_name:
             return JsonResponse({"success": False, "error": "name_required"}, status=400)
@@ -120,9 +118,7 @@ class SourceCreateView(LoginRequiredMixin, View):
             return JsonResponse({"success": False, "error": "source_exists"}, status=400)
         
         source = LeadSource.objects.create(source=source_name)
-        
-        # Cache is automatically invalidated by the model's save() method
-        
+                
         return JsonResponse({
             "success": True,
             "source": {

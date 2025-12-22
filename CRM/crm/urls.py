@@ -7,7 +7,7 @@ from django.urls import path, include
 # from django.views.generic import TemplateView
 # from .views import SiteAdminView
 # from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadTogglePriorityView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
-# from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
+from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView
 # from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
 # from common.views import AddEmployeeView, TestEmailView
 
@@ -43,9 +43,9 @@ urlpatterns = [
     # path("ui/projects/customize-columns/", ProjectsColumnCustomizationView.as_view(), name="ui-projects-customize-columns"),
     # # Combined Options Management URLs
     # path("ui/options/", CombinedManagementView.as_view(), name="ui-options"),
-    # path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),
+    path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),
     # path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
-    # path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
+    path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
     # path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
     # # Employee Management URLs
     # path("ui/employees/", EmployeeManagementView.as_view(), name="ui-employees"),
