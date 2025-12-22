@@ -1,5 +1,6 @@
 {
-  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true",
+  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true && cp -r staticfiles/* ../public/ 2>/dev/null || true",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ],
