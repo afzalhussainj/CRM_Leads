@@ -17,12 +17,6 @@
   ],
   "env": {
     "PYTHONPATH": "CRM"
-  },
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.9",
-      "maxDuration": 30
-    }
   }
 }
 
