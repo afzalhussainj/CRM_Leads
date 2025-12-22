@@ -31,7 +31,6 @@ class LeadListView(APIView, LimitOffsetPagination):
                 'assigned_to',
                 'assigned_to__user'
             )
-            .exclude(status="development phase")
             .filter(is_active=True, is_project=False)  # Only active leads, exclude projects
             .order_by("-created_at")
         )
@@ -72,7 +71,6 @@ class LeadListView(APIView, LimitOffsetPagination):
                 queryset = queryset.filter(assigned_to=request_post.get("assigned_to"))
 
         context = {}
-        context["UserRole"] = UserRole
         search = False
         if (
             params.get("name")
@@ -99,24 +97,8 @@ class LeadListView(APIView, LimitOffsetPagination):
         context["offset"] = offset
         context["limit"] = page_size
         context["search"] = search
-
-        # Get close leads - optimize with select_related
-        close_leads = self.model.objects.select_related(
-            'status',
-            'assigned_to',
-            'assigned_to__user'
-        ).filter(
-            status="closed"
-        ).order_by("-created_at")[:5]
-        context["close_leads"] = {
-            "leads_count": len(close_leads),
-            "close_leads": close_leads,
-            "offset": offset,
-        }
         
-        # Contacts and companies are now embedded in leads
-        # Tags functionality removed as part of simplification
-        # Optimize with select_related
+        # Get users list for assignment
         users = Profile.objects.select_related('user').filter(
             is_active=True,
             user__is_deleted=False
@@ -129,7 +111,6 @@ class LeadListView(APIView, LimitOffsetPagination):
 
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
-        context["UserRole"] = UserRole
         return Response(context)
 
     def post(self, request, *args, **kwargs):

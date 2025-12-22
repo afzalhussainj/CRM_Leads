@@ -27,13 +27,20 @@ class CustomDualAuthentication(BaseAuthentication):
         if jwt_token:
             is_valid, jwt_payload = verify_jwt_token(jwt_token)
             if is_valid:
-                # Optimize: Use select_related
-                jwt_user = (User.objects.get(id=jwt_payload['user_id']), True)
+                # Get the user object
+                user = User.objects.get(id=jwt_payload['user_id'])
+                
+                # Try to get the profile for this user
                 if jwt_payload['user_id'] is not None:
-                    profile = Profile.objects.select_related('user').get(
-                        user_id=jwt_payload['user_id'], is_active=True
-                    )
-                    if profile:
-                        request.user.profile = profile
+                    try:
+                        profile = Profile.objects.select_related('user').get(
+                            user_id=jwt_payload['user_id'], is_active=True
+                        )
+                        # Attach profile to user object (avoid accessing request.user which triggers auth)
+                        user.profile = profile
+                    except Profile.DoesNotExist:
+                        pass
+                
+                return (user, None)
 
-        return jwt_user or profile
+        return None

@@ -9,7 +9,7 @@ from leads.models import Lead
 
 class LeadSerializer(serializers.ModelSerializer):
     assigned_to = ProfileSerializer(read_only=True)
-    created_by = UserSerializer()
+    created_by = UserSerializer(read_only=True)
 
     class Meta:
         model = Lead
@@ -82,7 +82,7 @@ class LeadCreateSerializer(serializers.ModelSerializer):
 
 class LeadDetailEditSerializer(serializers.ModelSerializer):
     assigned_to = ProfileSerializer(read_only=True)
-    created_by = UserSerializer()
+    created_by = UserSerializer(read_only=True)
 
     class Meta:
         model = Lead
