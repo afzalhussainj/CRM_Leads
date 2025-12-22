@@ -4,7 +4,7 @@
     { "source": "/(.*)", "destination": "/api/index" }
   ],
   "functions": {
-    "api/*.py": { "maxDuration": 60 }
+    "api/index": { "maxDuration": 60 }
   },
   "env": {
     "PYTHONPATH": "CRM"
