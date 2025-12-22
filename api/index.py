@@ -1,24 +1,17 @@
-"""
-Vercel serverless function entry point for Django application.
-This file is used by Vercel to serve the Django application.
-"""
 import os
 import sys
-
-# Add the CRM directory to the Python path
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CRM_DIR = os.path.join(BASE_DIR, "CRM")
-sys.path.insert(0, BASE_DIR)
-sys.path.insert(0, CRM_DIR)
-
-# Set Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "crm.settings")
-
-# Import Django WSGI application
+from pathlib import Path
 from django.core.wsgi import get_wsgi_application
 
-# Get the WSGI application
-# Vercel's Python runtime automatically detects WSGI applications
-# and passes the request path correctly
-application = get_wsgi_application()
+BASE_DIR = Path(__file__).resolve().parent.parent  # repo root
+CRM_DIR = BASE_DIR / "CRM"
+
+# Ensure Django project is importable
+sys.path.insert(0, str(CRM_DIR))
+
+# IMPORTANT: this must match your settings module path exactly (case-sensitive)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "crm.settings")
+
+# Create WSGI app
+app = get_wsgi_application()
 
