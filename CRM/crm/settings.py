@@ -44,9 +44,15 @@ if vercel_url:
     if vercel_host_clean not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(vercel_host_clean)
 
-# Fallback to localhost for local development
+# Always allow localhost for local development (frontend testing)
+localhost_hosts = ["localhost", "127.0.0.1", "0.0.0.0"]
+for host in localhost_hosts:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
+
+# Fallback to localhost if no hosts are configured
 if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS = localhost_hosts
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -339,6 +345,17 @@ CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
 # CSRF Trusted Origins - fully configurable via environment variables
 _csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = []
+
+# Always add localhost origins for local frontend development
+localhost_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",  # Vite default port
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8080",
+]
+CSRF_TRUSTED_ORIGINS.extend(localhost_origins)
 
 # Add Render wildcard if on Render (can be overridden via env)
 if render_host or os.getenv("CSRF_INCLUDE_RENDER", "1").lower() in ("1", "true", "yes"):
