@@ -5,9 +5,12 @@ from django.contrib import messages
 from django.urls import reverse_lazy
 from django.http import JsonResponse
 from django.views import View
+from rest_framework.views import APIView
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import PermissionDenied
-
-from common.models import LeadStatus, LeadSource
+from rest_framework.response import Response
+from common.models import LeadStatus, LeadSource, LeadStatus, LeadSource
 from utils.roles_enum import UserRole
 
 
@@ -151,3 +154,33 @@ class SourceDeleteView(LoginRequiredMixin, View):
         
         source.delete()
         return JsonResponse({"success": True})
+
+class LeadStatusListView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
+        print("Fetched statuses:", statuses)
+        data = [
+            {
+                'id': s.id,
+                'name': s.name,
+            }
+            for s in statuses
+        ]
+        return Response({'statuses': data}, status=status.HTTP_200_OK)
+
+
+class LeadSourceListView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        sources = LeadSource.objects.all().order_by('source')
+        data = [
+            {
+                'id': src.id,
+                'name': src.source,
+            }
+            for src in sources
+        ]
+        return Response({'sources': data}, status=status.HTTP_200_OK)

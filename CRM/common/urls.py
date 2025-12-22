@@ -7,6 +7,7 @@ app_name = "api_common"
 
 urlpatterns = [
     path("dashboard/", views.ApiHomeView.as_view()),
+    
     # Authentication endpoints
     path("auth/login/", views.login_view, name="api_login"),
     path("auth/logout/", views.logout_view, name="api_logout"),

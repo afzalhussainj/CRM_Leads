@@ -666,7 +666,6 @@ class ProfileView(APIView):
         context["user_obj"] = ProfileSerializer(self.request.user.profile).data
         return Response(context, status=status.HTTP_200_OK)
 
-
 class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
