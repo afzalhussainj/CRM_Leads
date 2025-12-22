@@ -1,10 +1,10 @@
 {
   "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/index" }
+    { "source": "/(.*)", "destination": "/api/index.py" }
   ],
   "functions": {
-    "api/index": { "maxDuration": 60 }
+    "api/index.py": { "maxDuration": 60 }
   },
   "env": {
     "PYTHONPATH": "CRM"
