@@ -48,9 +48,9 @@ urlpatterns = [
     path("ui/options/statuses/", LeadStatusListView.as_view(), name="api_options_statuses"),
     path("ui/options/sources/", LeadSourceListView.as_view(), name="api_options_sources"),
     path("ui/options/statuses/create/", StatusCreateView.as_view(), name="ui-options-statuses-create"),
-    # path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
+    path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
     path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
-    # path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
+    path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
     
     # # Employee Management URLs
     # path("ui/employees/", EmployeeManagementView.as_view(), name="ui-employees"),

@@ -81,28 +81,31 @@ class StatusCreateView(APIView):
 
 
 
-class StatusDeleteView(LoginRequiredMixin, View):
-    """View for deleting lead statuses"""
+class StatusDeleteView(APIView):
+    """API View for deleting lead statuses - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
     
-    def dispatch(self, request, *args, **kwargs):
+    def delete(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
-            return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
-        return super().dispatch(request, *args, **kwargs)
-    
-    def post(self, request, pk):
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
-            status = LeadStatus.objects.get(pk=pk)
+            status_obj = LeadStatus.objects.get(pk=pk)
         except LeadStatus.DoesNotExist:
-            return JsonResponse({"success": False, "error": "status_not_found"}, status=404)
+            return Response({"success": False, "error": "status_not_found"}, status=status.HTTP_404_NOT_FOUND)
         
         # Check if status is being used by any leads
         from leads.models import Lead
-        if Lead.objects.filter(status=status).exists():
-            return JsonResponse({"success": False, "error": "status_in_use"}, status=400)
+        if Lead.objects.filter(status=status_obj).exists():
+            return Response({"success": False, "error": "status_in_use"}, status=status.HTTP_400_BAD_REQUEST)
         
-        status.delete()
-        return JsonResponse({"success": True})
+        status_obj.delete()
+        return Response({"success": True}, status=status.HTTP_200_OK)
+    
+    def post(self, request, pk):
+        # Support POST for backward compatibility (curl uses POST)
+        return self.delete(request, pk)
 
 
 class SourceCreateView(APIView):
@@ -138,29 +141,32 @@ class SourceCreateView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class SourceDeleteView(LoginRequiredMixin, View):
-    """View for deleting lead sources"""
+class SourceDeleteView(APIView):
+    """API View for deleting lead sources - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
     
-    def dispatch(self, request, *args, **kwargs):
+    def delete(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
-            return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
-        return super().dispatch(request, *args, **kwargs)
-    
-    def post(self, request, pk):
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
         try:
             # No need for select_related on LeadSource (no foreign keys)
             source = LeadSource.objects.get(pk=pk)
         except LeadSource.DoesNotExist:
-            return JsonResponse({"success": False, "error": "source_not_found"}, status=404)
+            return Response({"success": False, "error": "source_not_found"}, status=status.HTTP_404_NOT_FOUND)
         
         # Check if source is being used by any leads
         from leads.models import Lead
         if Lead.objects.filter(source=source.source).exists():
-            return JsonResponse({"success": False, "error": "source_in_use"}, status=400)
+            return Response({"success": False, "error": "source_in_use"}, status=status.HTTP_400_BAD_REQUEST)
         
         source.delete()
-        return JsonResponse({"success": True})
+        return Response({"success": True}, status=status.HTTP_200_OK)
+    
+    def post(self, request, pk):
+        # Support POST for backward compatibility (curl uses POST)
+        return self.delete(request, pk)
 
 class LeadStatusListView(APIView):
     permission_classes = (IsAuthenticated,)
