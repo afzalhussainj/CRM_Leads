@@ -72,13 +72,13 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # CORS middleware should be as early as possible
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "crum.CurrentRequestUserMiddleware",
     "common.middleware.get_company.GetProfile",
 ]
@@ -202,7 +202,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:8000")
 
 # Frontend URL (React app hosted on Vercel)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://skycrm.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://slcwcrm.vercel.app")
 FRONTEND_LOGIN_URL = f"{FRONTEND_URL}/login"
 
 # Django login URL - redirect to frontend
@@ -339,8 +339,14 @@ REST_FRAMEWORK = {
 
 
 
-CORS_ALLOW_HEADERS = default_headers
+# CORS Configuration
 CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # CORS Allowed Origins - simple configuration
 CORS_ALLOWED_ORIGINS = [
@@ -349,7 +355,10 @@ CORS_ALLOWED_ORIGINS = [
 
 # Add frontend URL from environment variable (Vercel)
 if FRONTEND_URL:
-    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+    # Ensure no trailing slash
+    frontend_url_clean = FRONTEND_URL.rstrip('/')
+    if frontend_url_clean not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(frontend_url_clean)
 
 CORS_ORIGIN_ALLOW_ALL = False
 
