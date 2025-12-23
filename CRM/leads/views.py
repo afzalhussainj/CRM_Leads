@@ -17,11 +17,26 @@ from utils.roles_enum import UserRole
 
 
 class LeadListView(APIView, LimitOffsetPagination):
+    """
+    API View for listing and creating leads.
+    
+    GET: Returns all leads with role-based filtering
+        - Employees: Only see leads assigned to them
+        - Managers: See all leads
+    
+    POST: Creates a new lead
+        - Anyone can create leads
+        - Employees can only assign to themselves
+        - Managers can assign to any employee
+    """
     model = Lead
     permission_classes = (IsAuthenticated,)
 
-    def get_context_data(self, **kwargs):
-        params = self.request.query_params
+    def get_queryset(self):
+        """
+        Get queryset with role-based filtering.
+        Employees see only assigned leads, Managers see all leads.
+        """
         request = self.request
         
         # Base queryset with optimizations
@@ -29,7 +44,8 @@ class LeadListView(APIView, LimitOffsetPagination):
             self.model.objects.select_related(
                 'status',
                 'assigned_to',
-                'assigned_to__user'
+                'assigned_to__user',
+                'created_by'
             )
             .filter(is_active=True, is_project=False)  # Only active leads, exclude projects
             .order_by("-created_at")
@@ -43,32 +59,39 @@ class LeadListView(APIView, LimitOffsetPagination):
             # Employees can only see leads assigned to them
             if user_role == UserRole.EMPLOYEE.value:
                 queryset = queryset.filter(assigned_to=user_profile)
-            # Managers can see all leads (no additional filter needed)
-            # DEV_LEAD can also see all leads
+            # Managers and DEV_LEAD can see all leads (no additional filter needed)
+        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        params = self.request.query_params
+        request = self.request
+        
+        # Get base queryset with role-based filtering
+        queryset = self.get_queryset()
         
         # Apply search filters
-        request_post = params
-        if request_post:
-            if request_post.get("name"):
+        if params:
+            if params.get("name"):
                 queryset = queryset.filter(
-                    Q(company_name__icontains=request_post.get("name"))
-                    | Q(contact_first_name__icontains=request_post.get("name"))
-                    | Q(contact_last_name__icontains=request_post.get("name"))
+                    Q(company_name__icontains=params.get("name"))
+                    | Q(contact_first_name__icontains=params.get("name"))
+                    | Q(contact_last_name__icontains=params.get("name"))
                 )
-            if request_post.get("city"):
+            if params.get("city"):
                 queryset = queryset.filter(
-                    Q(company_name__icontains=request_post.get("city"))
+                    Q(company_name__icontains=params.get("city"))
                 )
-            if request_post.get("email"):
+            if params.get("email"):
                 queryset = queryset.filter(
-                    contact_email__icontains=request_post.get("email")
+                    contact_email__icontains=params.get("email")
                 )
-            if request_post.get("status"):
-                queryset = queryset.filter(status=request_post.get("status"))
-            if request_post.get("source"):
-                queryset = queryset.filter(source=request_post.get("source"))
-            if request_post.get("assigned_to"):
-                queryset = queryset.filter(assigned_to=request_post.get("assigned_to"))
+            if params.get("status"):
+                queryset = queryset.filter(status=params.get("status"))
+            if params.get("source"):
+                queryset = queryset.filter(source=params.get("source"))
+            if params.get("assigned_to"):
+                queryset = queryset.filter(assigned_to=params.get("assigned_to"))
 
         context = {}
         search = False
@@ -116,18 +139,25 @@ class LeadListView(APIView, LimitOffsetPagination):
     def post(self, request, *args, **kwargs):
         """
         Create a new lead.
-        Managers can assign leads to any employee.
-        Employees can only create leads assigned to themselves.
+        - Anyone (authenticated user) can create leads
+        - Employees can only assign leads to themselves
+        - Managers can assign leads to any employee
         """
-        params = request.data
-        data = {}
-        for key, value in params.items():
-            if key not in ["csrfmiddlewaretoken", "tags", "contacts"]:
-                data[key] = value
-
-        # Get user profile and role
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
         user_profile = request.user.profile
         user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Prepare data (exclude CSRF token and other non-model fields)
+        data = {}
+        for key, value in request.data.items():
+            if key not in ["csrfmiddlewaretoken", "tags", "contacts"]:
+                data[key] = value
         
         # Role-based assignment validation
         if data.get("assigned_to"):
@@ -142,8 +172,7 @@ class LeadListView(APIView, LimitOffsetPagination):
                             status=status.HTTP_403_FORBIDDEN,
                         )
                 
-                # Managers can assign to any employee
-                # DEV_LEAD can also assign to any employee
+                # Managers and DEV_LEAD can assign to any employee
                 data["assigned_to"] = assigned_to.id
             except Profile.DoesNotExist:
                 return Response(
@@ -151,21 +180,22 @@ class LeadListView(APIView, LimitOffsetPagination):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
         else:
-            # If no assignment, employees are auto-assigned to themselves
+            # If no assignment specified, employees are auto-assigned to themselves
             if user_role == UserRole.EMPLOYEE.value:
                 data["assigned_to"] = user_profile.id
 
-        # Set is_active to True by default for new leads
+        # Set defaults for new leads
         if "is_active" not in data:
             data["is_active"] = True
 
+        # Validate and create lead
         serializer = LeadCreateSerializer(data=data)
         if serializer.is_valid():
             lead_obj = serializer.save(
-                created_by=request.user.profile.user,
+                created_by=request.user,
             )
 
-            # Handle assignment - optimize with select_related
+            # Handle assignment
             if data.get("assigned_to"):
                 assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
                 lead_obj.assigned_to = assigned_to
@@ -175,6 +205,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             lead_serializer = LeadSerializer(lead_obj)
             return Response(
                 {
+                    "success": True,
                     "message": "Lead created successfully",
                     "lead": lead_serializer.data
                 },
