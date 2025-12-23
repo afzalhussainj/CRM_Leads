@@ -397,11 +397,15 @@ DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost")
 # Cookie settings for HTTP-only JWT tokens
 JWT_COOKIE_NAME = "access_token"
 JWT_REFRESH_COOKIE_NAME = "refresh_token"
-JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "1").lower() in ("1", "true", "yes")  # True in production (HTTPS)
+# For cross-origin cookies (different domains), Secure must be True
+JWT_COOKIE_SECURE = True  # Always True for HTTPS (required for SameSite=None)
 JWT_COOKIE_HTTPONLY = True  # Always True for security
-# For cross-domain: use None with Secure=True, for same-domain: use Lax
-JWT_COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "None" if os.getenv("JWT_COOKIE_SECURE", "1").lower() in ("1", "true", "yes") else "Lax")
-JWT_COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN", None)  # Set for cross-domain cookies if needed
+# For cross-domain cookies: SameSite=None with Secure=True
+# For same-domain: use Lax
+JWT_COOKIE_SAMESITE = "None"  # Required for cross-origin cookies
+# DO NOT set domain for cross-origin cookies - leave as None
+# Setting domain restricts which domains can receive the cookie
+JWT_COOKIE_DOMAIN = None  # Must be None for cross-origin cookies
 
 SIMPLE_JWT = {
     #'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),

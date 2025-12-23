@@ -36,28 +36,34 @@ def set_jwt_cookies(response, refresh_token):
     refresh_lifetime = settings.SIMPLE_JWT.get('REFRESH_TOKEN_LIFETIME', timedelta(days=365))
     
     # Set access token cookie
-    response.set_cookie(
-        key=settings.JWT_COOKIE_NAME,
-        value=str(access_token),
-        max_age=int(access_lifetime.total_seconds()),
-        httponly=settings.JWT_COOKIE_HTTPONLY,
-        secure=settings.JWT_COOKIE_SECURE,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-        domain=settings.JWT_COOKIE_DOMAIN,
-        path='/',
-    )
+    cookie_kwargs = {
+        'key': settings.JWT_COOKIE_NAME,
+        'value': str(access_token),
+        'max_age': int(access_lifetime.total_seconds()),
+        'httponly': settings.JWT_COOKIE_HTTPONLY,
+        'secure': settings.JWT_COOKIE_SECURE,
+        'samesite': settings.JWT_COOKIE_SAMESITE,
+        'path': '/',
+    }
+    # Only set domain if it's explicitly configured (None for cross-origin)
+    if settings.JWT_COOKIE_DOMAIN:
+        cookie_kwargs['domain'] = settings.JWT_COOKIE_DOMAIN
+    response.set_cookie(**cookie_kwargs)
     
     # Set refresh token cookie
-    response.set_cookie(
-        key=settings.JWT_REFRESH_COOKIE_NAME,
-        value=str(refresh_token),
-        max_age=int(refresh_lifetime.total_seconds()),
-        httponly=settings.JWT_COOKIE_HTTPONLY,
-        secure=settings.JWT_COOKIE_SECURE,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-        domain=settings.JWT_COOKIE_DOMAIN,
-        path='/',
-    )
+    refresh_cookie_kwargs = {
+        'key': settings.JWT_REFRESH_COOKIE_NAME,
+        'value': str(refresh_token),
+        'max_age': int(refresh_lifetime.total_seconds()),
+        'httponly': settings.JWT_COOKIE_HTTPONLY,
+        'secure': settings.JWT_COOKIE_SECURE,
+        'samesite': settings.JWT_COOKIE_SAMESITE,
+        'path': '/',
+    }
+    # Only set domain if it's explicitly configured (None for cross-origin)
+    if settings.JWT_COOKIE_DOMAIN:
+        refresh_cookie_kwargs['domain'] = settings.JWT_COOKIE_DOMAIN
+    response.set_cookie(**refresh_cookie_kwargs)
     
     return response
 
@@ -69,18 +75,24 @@ def clear_jwt_cookies(response):
     Args:
         response: Django Response object
     """
-    response.delete_cookie(
-        key=settings.JWT_COOKIE_NAME,
-        path='/',
-        domain=settings.JWT_COOKIE_DOMAIN,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-    )
-    response.delete_cookie(
-        key=settings.JWT_REFRESH_COOKIE_NAME,
-        path='/',
-        domain=settings.JWT_COOKIE_DOMAIN,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-    )
+    delete_kwargs = {
+        'key': settings.JWT_COOKIE_NAME,
+        'path': '/',
+        'samesite': settings.JWT_COOKIE_SAMESITE,
+    }
+    if settings.JWT_COOKIE_DOMAIN:
+        delete_kwargs['domain'] = settings.JWT_COOKIE_DOMAIN
+    response.delete_cookie(**delete_kwargs)
+    
+    refresh_delete_kwargs = {
+        'key': settings.JWT_REFRESH_COOKIE_NAME,
+        'path': '/',
+        'samesite': settings.JWT_COOKIE_SAMESITE,
+    }
+    if settings.JWT_COOKIE_DOMAIN:
+        refresh_delete_kwargs['domain'] = settings.JWT_COOKIE_DOMAIN
+    response.delete_cookie(**refresh_delete_kwargs)
+    
     return response
 
 @csrf_exempt
