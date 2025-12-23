@@ -340,38 +340,21 @@ REST_FRAMEWORK = {
 
 
 CORS_ALLOW_HEADERS = default_headers
-CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
-# CSRF Trusted Origins - fully configurable via environment variables
-_csrf_env = os.getenv("CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = []
 
-# Always add localhost origins for local frontend development
-localhost_origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",  # Vite default port
-    "http://localhost:8080",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:8080",
+# CORS Allowed Origins - simple configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Local development (Vite default port)
 ]
-CSRF_TRUSTED_ORIGINS.extend(localhost_origins)
 
-# Add Render wildcard if on Render (can be overridden via env)
-if render_host or os.getenv("CSRF_INCLUDE_RENDER", "1").lower() in ("1", "true", "yes"):
-    CSRF_TRUSTED_ORIGINS.append("https://*.onrender.com")
-
-# Add Vercel wildcard if on Vercel
-if vercel_url or os.getenv("CSRF_INCLUDE_VERCEL", "1").lower() in ("1", "true", "yes"):
-    CSRF_TRUSTED_ORIGINS.append("https://*.vercel.app")
-
-# Automatically add frontend URL if set
+# Add frontend URL from environment variable (Vercel)
 if FRONTEND_URL:
-    CSRF_TRUSTED_ORIGINS.append(FRONTEND_URL)
+    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
 
-# Add any additional origins from environment variable
-if _csrf_env:
-    CSRF_TRUSTED_ORIGINS.extend([o.strip() for o in _csrf_env.split(",") if o.strip()])
+CORS_ORIGIN_ALLOW_ALL = False
+
+# CSRF Trusted Origins - same as CORS_ALLOWED_ORIGINS
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
 
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
