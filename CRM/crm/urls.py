@@ -8,7 +8,7 @@ from django.urls import path, include
 # from .views import SiteAdminView
 # from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadTogglePriorityView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView, LeadSourceListView, LeadStatusListView
-# from leads.employee_management_views import EmployeeManagementView, EmployeeToggleActiveView, EmployeeSoftDeleteView
+from leads.employee_management_views import EmployeeListView, EmployeeToggleActiveView, EmployeeDeleteView
 # from common.views import AddEmployeeView, TestEmailView
 
  
@@ -52,10 +52,10 @@ urlpatterns = [
     path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
     path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
     
-    # # Employee Management URLs
-    # path("ui/employees/", EmployeeManagementView.as_view(), name="ui-employees"),
-    # path("ui/employees/<uuid:pk>/toggle-active/", EmployeeToggleActiveView.as_view(), name="ui-employees-toggle-active"),
-    # path("ui/employees/<uuid:pk>/delete/", EmployeeSoftDeleteView.as_view(), name="ui-employees-delete"),
+    # Employee Management URLs
+    path("ui/employees/", EmployeeListView.as_view(), name="api-employees-list"),
+    path("ui/employees/<uuid:pk>/toggle-active/", EmployeeToggleActiveView.as_view(), name="api-employees-toggle-active"),
+    path("ui/employees/<uuid:pk>/delete/", EmployeeDeleteView.as_view(), name="api-employees-delete"),
     # path("add-employee/", AddEmployeeView.as_view(), name="add-employee"),
     # path("reminders/", RemindersView.as_view(), name="reminders"),
     # path("test-email/", TestEmailView.as_view(), name="test-email"),
