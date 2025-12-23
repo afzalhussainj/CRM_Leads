@@ -76,6 +76,32 @@ class ProfileSerializer(serializers.ModelSerializer):
         )
 
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    """Serializer for employee list with flat structure including User fields"""
+    user_id = serializers.UUIDField(source='user.id', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user_is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = (
+            "id",
+            "user_id",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "phone",
+            "alternate_phone",
+            "is_active",
+            "user_is_active",
+            "created_at",
+            "updated_at",
+        )
+
+
 
 def find_urls(string):
     # website_regex = "^((http|https)://)?([A-Za-z0-9.-]+\.[A-Za-z]{2,63})?$"  # (http(s)://)google.com or google.com

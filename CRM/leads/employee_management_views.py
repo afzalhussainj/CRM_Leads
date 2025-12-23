@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
 
 from common.models import Profile, User
-from common.serializer import ProfileSerializer
+from common.serializer import ProfileSerializer, EmployeeSerializer
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
@@ -30,8 +30,8 @@ class EmployeeListView(APIView):
             user__is_deleted=False
         ).select_related('user').order_by('-created_at')
         
-        # Serialize employees
-        serializer = ProfileSerializer(employees, many=True)
+        # Serialize employees with flat structure
+        serializer = EmployeeSerializer(employees, many=True)
         
         # Get counts using aggregation
         base_queryset = Profile.objects.exclude(user=request.user)
@@ -76,7 +76,7 @@ class EmployeeToggleActiveView(APIView):
             profile.is_active = not profile.is_active
             profile.save(update_fields=['is_active'])
             
-            serializer = ProfileSerializer(profile)
+            serializer = EmployeeSerializer(profile)
             return Response({
                 "success": True,
                 "is_active": profile.is_active,
