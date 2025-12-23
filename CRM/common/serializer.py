@@ -64,6 +64,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    user_details = serializers.ReadOnlyField()  # Property from Profile model
 
     class Meta:
         model = Profile
@@ -71,10 +72,11 @@ class ProfileSerializer(serializers.ModelSerializer):
             "id",
             "user_details",
             "role",
-            "address",
             "phone",
-            "date_of_joining",
+            "alternate_phone",
             "is_active",
+            "created_at",
+            "updated_at",
         )
 
 
