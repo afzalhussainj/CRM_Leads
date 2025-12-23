@@ -9,10 +9,6 @@ from common.models import (
 )
 
 
-class SocialLoginSerializer(serializers.Serializer):
-    token = serializers.CharField()
-
-
 class CreateUserSerializer(serializers.ModelSerializer):
 
     class Meta:

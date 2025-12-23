@@ -1,10 +1,5 @@
-import json
-
-import requests
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.hashers import make_password
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -794,57 +789,4 @@ class DomainDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
-from django.utils.decorators import method_decorator
-
-@method_decorator(csrf_exempt, name='dispatch')
-class GoogleLoginView(APIView):
-    """
-    Check for authentication with google
-    post:
-        Returns token of logged In user
-    """
-
-
-    def post(self, request):
-        payload = {'access_token': request.data.get("token")}  # validate the token
-        r = requests.get('https://www.googleapis.com/oauth2/v2/userinfo', params=payload)
-        data = json.loads(r.text)
-        if 'error' in data:
-            content = {'message': 'wrong google token / this google token is already expired.'}
-            return Response(content)
-        # create user if not exist
-        try:
-            user = User.objects.get(email=data['email'])
-        except User.DoesNotExist:
-            user = User()
-            user.email = data['email']
-            user.profile_pic = data['picture']
-            # provider random default password
-            user.password = make_password(BaseUserManager().make_random_password())
-            user.email = data['email']
-            user.save()
-        token = RefreshToken.for_user(user)  # generate token without username & password
-        
-        # Get user profile
-        try:
-            profile = Profile.objects.select_related('user').get(user=user, is_active=True)
-            role = profile.role
-        except Profile.DoesNotExist:
-            role = None
-        
-        # Create response with user data (no tokens in body)
-        response = Response({
-            'message': 'Google login successful',
-            'user': {
-                'email': user.email,
-                'role': role,
-                'id': user.id,
-                'name': user.first_name + ' ' + user.last_name
-            }
-        }, status=status.HTTP_200_OK)
-        
-        # Set HTTP-only cookies
-        set_jwt_cookies(response, token)
-        
-        return response
 
