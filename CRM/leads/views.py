@@ -264,7 +264,7 @@ class CreateLeadFromSite(APIView):
             "title": params.get("title"),
             "description": params.get("description"),
             "source": params.get("source"),
-            "status": "new",
+            "status": params.get("status"),
         }
 
         serializer = LeadCreateSerializer(data=data)

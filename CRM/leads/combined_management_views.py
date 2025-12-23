@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import PermissionDenied
 from rest_framework.response import Response
-from common.models import LeadStatus, LeadSource, LeadStatus, LeadSource
+from common.models import LeadStatus, LeadSource
 from utils.roles_enum import UserRole
 
 
@@ -35,44 +35,48 @@ class CombinedManagementView(LoginRequiredMixin, ListView):
         return context
 
 
-class StatusCreateView(LoginRequiredMixin, View):
-    """View for creating new lead statuses"""
-    
-    def dispatch(self, request, *args, **kwargs):
-        # Check if user is a manager
-        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
-            return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
-        return super().dispatch(request, *args, **kwargs)
+class StatusCreateView(APIView):
+    """API View for creating new lead statuses - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
     
     def post(self, request):
-        status_name = request.POST.get('name', '').strip()
-        sort_order = request.POST.get('sort_order', 0)
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Support both JSON and form data
+        if request.content_type == 'application/json':
+            status_name = request.data.get('name', '').strip()
+            sort_order = request.data.get('sort_order', 0)
+        else:
+            status_name = request.POST.get('name', '').strip()
+            sort_order = request.POST.get('sort_order', 0)
         
         if not status_name:
-            return JsonResponse({"success": False, "error": "name_required"}, status=400)
+            return Response({"success": False, "error": "name_required"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             sort_order = int(sort_order)
-        except ValueError:
+        except (ValueError, TypeError):
             sort_order = 0
         
         # Check if status already exists
         if LeadStatus.objects.filter(name=status_name).exists():
-            return JsonResponse({"success": False, "error": "status_exists"}, status=400)
+            return Response({"success": False, "error": "status_exists"}, status=status.HTTP_400_BAD_REQUEST)
         
-        status = LeadStatus.objects.create(
+        status_obj = LeadStatus.objects.create(
             name=status_name,
             sort_order=sort_order
         )
                 
-        return JsonResponse({
+        return Response({
             "success": True,
             "status": {
-                "id": status.id,
-                "name": status.name,
-                "sort_order": status.sort_order
+                "id": status_obj.id,
+                "name": status_obj.name,
+                "sort_order": status_obj.sort_order
             }
-        })
+        }, status=status.HTTP_201_CREATED)
 
 
 
@@ -101,34 +105,37 @@ class StatusDeleteView(LoginRequiredMixin, View):
         return JsonResponse({"success": True})
 
 
-class SourceCreateView(LoginRequiredMixin, View):
-    """View for creating new lead sources"""
-    
-    def dispatch(self, request, *args, **kwargs):
-        # Check if user is a manager
-        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
-            return JsonResponse({"success": False, "error": "unauthorized"}, status=403)
-        return super().dispatch(request, *args, **kwargs)
+class SourceCreateView(APIView):
+    """API View for creating new lead sources - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
     
     def post(self, request):
-        source_name = request.POST.get('name', '').strip()
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Support both JSON and form data
+        if request.content_type == 'application/json':
+            source_name = request.data.get('name', '').strip()
+        else:
+            source_name = request.POST.get('name', '').strip()
         
         if not source_name:
-            return JsonResponse({"success": False, "error": "name_required"}, status=400)
+            return Response({"success": False, "error": "name_required"}, status=status.HTTP_400_BAD_REQUEST)
         
         # Check if source already exists
         if LeadSource.objects.filter(source=source_name).exists():
-            return JsonResponse({"success": False, "error": "source_exists"}, status=400)
+            return Response({"success": False, "error": "source_exists"}, status=status.HTTP_400_BAD_REQUEST)
         
         source = LeadSource.objects.create(source=source_name)
                 
-        return JsonResponse({
+        return Response({
             "success": True,
             "source": {
                 "id": source.id,
                 "source": source.source
             }
-        })
+        }, status=status.HTTP_201_CREATED)
 
 
 class SourceDeleteView(LoginRequiredMixin, View):
