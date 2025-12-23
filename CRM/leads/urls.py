@@ -6,5 +6,6 @@ app_name = "api_leads"
 urlpatterns = [
     # create-from-site endpoint removed - it depended on the Leads model which has been removed
     path("", views.LeadListView.as_view()),
+    path("reminders/", views.RemindersListView.as_view(), name="api_reminders"),
     path("<str:pk>/", views.LeadDetailView.as_view()),
 ]
