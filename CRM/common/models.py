@@ -140,37 +140,3 @@ class LeadSource(models.Model):
 
 
 
-
-class Leads(BaseModel):
-    status = models.ForeignKey(LeadStatus, on_delete=models.CASCADE)
-    source = models.ForeignKey(LeadSource, on_delete=models.CASCADE)
-    title = models.TextField()
-    lead_assigned_to = models.ManyToManyField(
-        Profile, related_name="lead_assignee_users"
-    )
-    created_by = models.ForeignKey(
-        Profile,
-        related_name="settings_created_by",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-    )
-    contact_name = models.CharField(max_length=100, unique=True)
-    phone = PhoneNumberField(null=True, unique=True)
-    linkdein = models.CharField(
-        max_length=150
-    )
-    company = models.CharField(
-        max_length=30,
-        null=True
-        )
-
-    class Meta:
-        verbose_name = "Leads"
-        verbose_name_plural = "Leads"
-        db_table = "leads"
-        ordering = ("-created_at",)
-
-    def __str__(self):
-        return f"{self.title}"
-

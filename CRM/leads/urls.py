@@ -4,11 +4,7 @@ from leads import views
 app_name = "api_leads"
 
 urlpatterns = [
-    path(
-        "create-from-site/",
-        views.CreateLeadFromSite.as_view(),
-        name="create_lead_from_site",
-    ),
+    # create-from-site endpoint removed - it depended on the Leads model which has been removed
     path("", views.LeadListView.as_view()),
     path("<str:pk>/", views.LeadDetailView.as_view()),
 ]

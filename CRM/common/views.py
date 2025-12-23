@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
 
-from common.models import Leads, Profile, User
+from common.models import Profile, User
 from common.serializer import *
 from common.tasks import send_email_user_delete
 from leads.models import Lead
@@ -717,88 +717,7 @@ class UserStatusView(APIView):
         return Response(context)
 
 
-class DomainList(APIView):
-    model = Leads
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, *args, **kwargs):
-        # Optimize: Use select_related
-        api_settings = Leads.objects.select_related('created_by', 'created_by__user').filter()
-        # Optimize: Use select_related and fix typo
-        users = Profile.objects.select_related('user').filter(
-            is_active=True,
-            user__is_deleted=False
-        ).order_by("user__email")
-        return Response(
-            {
-                "error": False,
-                "api_settings": LeadsListSerializer(api_settings, many=True).data,
-                "users": ProfileSerializer(users, many=True).data,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    def post(self, request, *args, **kwargs):
-        params = request.data
-        assign_to_list = []
-        if params.get("lead_assigned_to"):
-            assign_to_list = params.get("lead_assigned_to")
-        serializer = LeadsSerializer(data=params)
-        if serializer.is_valid():
-            settings_obj = serializer.save(created_by=request.user.profile.user)
-            if assign_to_list:
-                settings_obj.lead_assigned_to.add(*assign_to_list)
-            return Response(
-                {"error": False, "message": "API key added sucessfully"},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {"error": True, "errors": serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-
-class DomainDetailView(APIView):
-    model = Leads
-    #authentication_classes = (CustomDualAuthentication,)
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, pk, format=None):
-        api_setting = self.get_object(pk)
-        return Response(
-            {"error": False, "domain": LeadsListSerializer(api_setting).data},
-            status=status.HTTP_200_OK,
-        )
-
-    def put(self, request, pk, **kwargs):
-        api_setting = self.get_object(pk)
-        params = request.data
-        assign_to_list = []
-        if params.get("lead_assigned_to"):
-            assign_to_list = params.get("lead_assigned_to")
-        serializer = LeadsSerializer(data=params, instance=api_setting)
-        if serializer.is_valid():
-            api_setting = serializer.save()
-            api_setting.tags.clear()
-            api_setting.lead_assigned_to.clear()
-            if assign_to_list:
-                api_setting.lead_assigned_to.add(*assign_to_list)
-            return Response(
-                {"error": False, "message": "API setting Updated sucessfully"},
-                status=status.HTTP_200_OK,
-            )
-        return Response(
-            {"error": True, "errors": serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    def delete(self, request, pk, **kwargs):
-        api_setting = self.get_object(pk)
-        if api_setting:
-            api_setting.delete()
-        return Response(
-            {"error": False, "message": "API setting deleted sucessfully"},
-            status=status.HTTP_200_OK,
-        )
+# DomainList and DomainDetailView removed - they depended on the Leads model which has been removed
+# These views were for API settings management and are no longer needed
 
 

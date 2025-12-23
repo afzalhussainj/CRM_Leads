@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.models import Leads, Profile
+from common.models import Profile
 from .models import Lead
 from leads.serializer import (
     LeadCreateSerializer,
@@ -240,43 +240,5 @@ class LeadDetailView(APIView):
         )
 
 
-class CreateLeadFromSite(APIView):
-    permission_classes = ()
-
-    def post(self, request, *args, **kwargs):
-        params = request.data
-        # Optimize with select_related
-        api_setting = Leads.objects.select_related('created_by', 'created_by__user').filter(
-            website=request.META.get("HTTP_REFERER")
-        ).first()
-        if not api_setting:
-            return Response(
-                {"error": True, "message": "Invalid request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        data = {
-            "company_name": params.get("company_name"),
-            "contact_first_name": params.get("first_name"),
-            "contact_last_name": params.get("last_name"),
-            "contact_email": params.get("email"),
-            "contact_phone": params.get("phone"),
-            "title": params.get("title"),
-            "description": params.get("description"),
-            "source": params.get("source"),
-            "status": params.get("status"),
-        }
-
-        serializer = LeadCreateSerializer(data=data)
-        if serializer.is_valid():
-            lead_obj = serializer.save(
-                created_by=api_setting.created_by.user,
-            )
-            return Response(
-                {"error": False, "message": "Lead Created Successfully"},
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {"error": True, "message": serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+# CreateLeadFromSite removed - it depended on the Leads model which has been removed
+# This view was for creating leads from external sites via API and is no longer functional

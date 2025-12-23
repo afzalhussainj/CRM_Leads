@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    User, Profile, Leads, LeadSource, LeadStatus
+    User, Profile, LeadSource, LeadStatus
 )
 
 
@@ -40,8 +40,3 @@ class ProfileAdmin(admin.ModelAdmin):
     search_fields = ['user__email']
 
 
-@admin.register(Leads)
-class Leads(admin.ModelAdmin):
-    list_display = ['title', 'status', 'source', 'created_by', 'contact_name', 'linkdein', 'phone', 'company']
-    list_filter = ['title']
-    search_fields = ['title']

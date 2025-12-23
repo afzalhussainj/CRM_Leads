@@ -3,7 +3,6 @@ import re
 from rest_framework import serializers
 
 from common.models import (
-    Leads,
     Profile,
     User,
 )
@@ -117,45 +116,6 @@ def find_urls(string):
     return url_port
 
 
-class LeadsSerializer(serializers.ModelSerializer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    class Meta:
-        model = Leads
-        fields = ("title", "website")
-
-    def validate_website(self, website):
-        if website and not (
-            website.startswith("http://") or website.startswith("https://")
-        ):
-            raise serializers.ValidationError("Please provide valid schema")
-        if not len(find_urls(website)) > 0:
-            raise serializers.ValidationError(
-                "Please provide a valid URL with schema and without trailing slash - Example: http://google.com"
-            )
-        return website
-
-
-class LeadsListSerializer(serializers.ModelSerializer):
-    created_by = UserSerializer()
-    lead_assigned_to = ProfileSerializer(read_only=True, many=True)
-    tags = serializers.SerializerMethodField()
-
-    def get_tags(self, obj):
-        return obj.tags.all().values()
-
-    class Meta:
-        model = Leads
-        fields = [
-            "title",
-            "apikey",
-            "website",
-            "created_at",
-            "created_by",
-            "lead_assigned_to",
-            "tags",
-        ]
 
 
 
