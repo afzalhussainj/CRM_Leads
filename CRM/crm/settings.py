@@ -341,19 +341,36 @@ REST_FRAMEWORK = {
 
 # CORS Configuration
 CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
+CORS_PREFLIGHT_MAX_AGE = 86400  # Cache preflight requests for 24 hours
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'content-type',
     'authorization',
     'x-csrftoken',
     'x-requested-with',
+    'accept',
+    'accept-encoding',
+    'accept-language',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'authorization',
 ]
 
 # CORS Allowed Origins - simple configuration
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Local development (Vite default port)
+    "https://slcwcrm.vercel.app",  # Frontend URL (hardcoded for reliability)
 ]
 
-# Add frontend URL from environment variable (Vercel)
+# Add frontend URL from environment variable (Vercel) if different
 if FRONTEND_URL:
     # Ensure no trailing slash
     frontend_url_clean = FRONTEND_URL.rstrip('/')
