@@ -108,27 +108,6 @@ class EmployeeDeleteView(APIView):
         try:
             profile = get_object_or_404(Profile, pk=pk)
             
-            # Support both JSON and form data for password
-            if request.content_type == 'application/json':
-                password = request.data.get('password', '').strip()
-            else:
-                password = request.POST.get('password', '').strip()
-            
-            if not password:
-                return Response({
-                    "success": False,
-                    "error": "Password confirmation is required to delete employee"
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Verify manager's password
-            from django.contrib.auth import authenticate
-            user = authenticate(request, email=request.user.email, password=password)
-            if not user:
-                return Response({
-                    "success": False,
-                    "error": "Invalid password. Please try again."
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
             # Don't allow managers to delete themselves
             if profile.user == request.user:
                 return Response({"success": False, "error": "cannot_delete_self"}, status=status.HTTP_400_BAD_REQUEST)
