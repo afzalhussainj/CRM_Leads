@@ -14,7 +14,6 @@ class CreateUserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "email",
-            "profile_pic",
         )
 
     def __init__(self, *args, **kwargs):
@@ -55,7 +54,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id","email","profile_pic"]
+        fields = ["id","email"]
 
 
 class ProfileSerializer(serializers.ModelSerializer):

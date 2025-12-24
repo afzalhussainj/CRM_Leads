@@ -13,9 +13,7 @@ class Lead(BaseModel):
     )
     status = models.ForeignKey(
         LeadStatus, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True
+        on_delete=models.SET_NULL
     )
     source = models.CharField(
         _("Source of Lead"), max_length=255, blank=True, null=True
