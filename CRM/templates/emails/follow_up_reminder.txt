@@ -19,7 +19,7 @@ Source: {{ lead.source|title|default:"Not specified" }}
 
 🔗 VIEW LEAD DETAILS
 ====================
-{{ site_url }}/ui/leads/{{ lead.pk }}/
+{{ lead_detail_url }}
 
 ⚠️ ACTION REQUIRED
 ==================

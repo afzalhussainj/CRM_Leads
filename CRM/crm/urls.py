@@ -3,10 +3,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
-# UI views commented out - using React frontend instead
-# from django.views.generic import TemplateView
-# from .views import SiteAdminView
-# from leads.ui_views import LeadListUI, LeadCreateUI, LeadUpdateUI, LeadDeleteUI, LeadFollowUpStatusUpdateUI, LeadStatusUpdateUI, LeadDetailUI, LeadNotesView, RemindersView, LeadAssignmentUpdateUI, LeadColumnCustomizationView, LeadCSVExportView, LeadToggleAlwaysActiveView, LeadTogglePriorityView, LeadToggleProjectView, ProjectsListView, ProjectsColumnCustomizationView
+# UI views removed - using React frontend instead
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView, LeadSourceListView, LeadStatusListView
 from leads.employee_management_views import EmployeeListView, EmployeeToggleActiveView, EmployeeDeleteView
 # from common.views import AddEmployeeView, TestEmailView

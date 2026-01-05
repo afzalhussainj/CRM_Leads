@@ -43,13 +43,16 @@ def send_follow_up_reminder(lead, hours_before=2):
             return False
         
         # Prepare email context
+        # Use FRONTEND_URL for React app links
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://slcwcrm.vercel.app')
         context = {
             'lead': lead,
             'follow_up_time': lead.follow_up_at,
             'current_time': current_time,
             'hours_until': hours_before,
             'UserRole': UserRole,
-            'site_url': getattr(settings, 'SITE_URL', 'http://127.0.0.1:8000'),
+            'frontend_url': frontend_url,
+            'lead_detail_url': f"{frontend_url}/leads/{lead.pk}",
         }
         
         # Render email templates
