@@ -309,7 +309,6 @@ class LeadDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
-
 class LeadFollowUpStatusUpdateView(APIView):
     """
     API View for updating follow-up status of a lead.

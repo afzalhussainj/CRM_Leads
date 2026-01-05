@@ -26,7 +26,12 @@ class Lead(BaseModel):
         ("pending", "Pending"),
         ("done", "Done"),
     )
-    follow_up_status = models.CharField(max_length=16, choices=FOLLOW_UP_STATUS_CHOICES, default="pending")
+    follow_up_status = models.CharField(
+        max_length=16,
+        choices=FOLLOW_UP_STATUS_CHOICES,
+        null=True,
+        blank=True
+        )
     is_active = models.BooleanField(default=False)
     always_active = models.BooleanField(default=False)
     priority = models.BooleanField(default=False)
@@ -42,8 +47,6 @@ class Lead(BaseModel):
     assigned_to = models.ForeignKey(
         Profile, 
         on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
         related_name="assigned_leads",
         help_text="Employee assigned to work on this lead"
     )

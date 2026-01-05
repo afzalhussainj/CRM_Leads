@@ -174,6 +174,32 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate(self, data):
+        """
+        Cross-field validation: If one of follow_up_at or follow_up_status is provided,
+        the other must also be provided.
+        """
+        follow_up_at = data.get('follow_up_at')
+        follow_up_status = data.get('follow_up_status')
+        
+        # Check if follow_up_status is provided (not None and not empty string)
+        has_follow_up_status = follow_up_status is not None and follow_up_status != ''
+        # Check if follow_up_at is provided (not None)
+        has_follow_up_at = follow_up_at is not None
+        
+        # If one is provided but the other is not, raise validation error
+        if has_follow_up_at and not has_follow_up_status:
+            raise serializers.ValidationError({
+                'follow_up_status': 'follow_up_status is required when follow_up_at is provided.'
+            })
+        
+        if has_follow_up_status and not has_follow_up_at:
+            raise serializers.ValidationError({
+                'follow_up_at': 'follow_up_at is required when follow_up_status is provided.'
+            })
+        
+        return data
+
     def validate_source(self, value):
         """Trim whitespace from source field."""
         if value:
@@ -343,6 +369,32 @@ class LeadDetailEditSerializer(serializers.ModelSerializer):
                 f"follow_up_status must be one of: {', '.join(valid_choices)}"
             )
         return value
+
+    def validate(self, data):
+        """
+        Cross-field validation: If one of follow_up_at or follow_up_status is provided,
+        the other must also be provided.
+        """
+        follow_up_at = data.get('follow_up_at')
+        follow_up_status = data.get('follow_up_status')
+        
+        # Check if follow_up_status is provided (not None and not empty string)
+        has_follow_up_status = follow_up_status is not None and follow_up_status != ''
+        # Check if follow_up_at is provided (not None)
+        has_follow_up_at = follow_up_at is not None
+        
+        # If one is provided but the other is not, raise validation error
+        if has_follow_up_at and not has_follow_up_status:
+            raise serializers.ValidationError({
+                'follow_up_status': 'follow_up_status is required when follow_up_at is provided.'
+            })
+        
+        if has_follow_up_status and not has_follow_up_at:
+            raise serializers.ValidationError({
+                'follow_up_at': 'follow_up_at is required when follow_up_status is provided.'
+            })
+        
+        return data
 
     def validate_source(self, value):
         """Trim whitespace from source field."""
