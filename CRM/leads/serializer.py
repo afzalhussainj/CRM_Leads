@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from datetime import datetime
 
 from common.serializer import (
     ProfileSerializer,
@@ -36,6 +37,13 @@ class LeadSerializer(serializers.ModelSerializer):
 
 
 class LeadCreateSerializer(serializers.ModelSerializer):
+    # Override follow_up_status to accept any case variant
+    follow_up_status = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Only title is required
@@ -80,6 +88,39 @@ class LeadCreateSerializer(serializers.ModelSerializer):
                     "Lead already exists with this title"
                 )
         return title
+
+    def validate_follow_up_at(self, value):
+        """
+        Handle date-only strings and convert to datetime.
+        Accepts '2025-12-23' and converts to datetime.
+        """
+        if value is None or value == '':
+            return None
+        
+        # If already a datetime, return as-is
+        if isinstance(value, datetime):
+            return value
+        
+        # If string, try to parse as date-only first, then datetime
+        if isinstance(value, str):
+            value = value.strip()
+            # Try date-only format (YYYY-MM-DD)
+            try:
+                dt = datetime.strptime(value, '%Y-%m-%d')
+                return dt
+            except ValueError:
+                pass
+            # Try ISO datetime format
+            try:
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                return dt
+            except ValueError:
+                pass
+            raise serializers.ValidationError(
+                "Invalid date format. Use YYYY-MM-DD or ISO 8601 datetime format."
+            )
+        
+        return value
 
     def validate_follow_up_status(self, value):
         """
@@ -166,6 +207,12 @@ class LeadCreateSerializer(serializers.ModelSerializer):
 class LeadDetailEditSerializer(serializers.ModelSerializer):
     assigned_to = ProfileSerializer(read_only=True)
     created_by = UserSerializer(read_only=True)
+    # Override follow_up_status to accept any case variant
+    follow_up_status = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -191,6 +238,39 @@ class LeadDetailEditSerializer(serializers.ModelSerializer):
             self.fields["status"].required = False
             if hasattr(self.fields["status"], 'allow_null'):
                 self.fields["status"].allow_null = True
+
+    def validate_follow_up_at(self, value):
+        """
+        Handle date-only strings and convert to datetime.
+        Accepts '2025-12-23' and converts to datetime.
+        """
+        if value is None or value == '':
+            return None
+        
+        # If already a datetime, return as-is
+        if isinstance(value, datetime):
+            return value
+        
+        # If string, try to parse as date-only first, then datetime
+        if isinstance(value, str):
+            value = value.strip()
+            # Try date-only format (YYYY-MM-DD)
+            try:
+                dt = datetime.strptime(value, '%Y-%m-%d')
+                return dt
+            except ValueError:
+                pass
+            # Try ISO datetime format
+            try:
+                dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                return dt
+            except ValueError:
+                pass
+            raise serializers.ValidationError(
+                "Invalid date format. Use YYYY-MM-DD or ISO 8601 datetime format."
+            )
+        
+        return value
 
     def validate_follow_up_status(self, value):
         """
