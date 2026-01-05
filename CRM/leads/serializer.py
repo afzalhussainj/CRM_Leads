@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from datetime import datetime
+import re
 
 from common.serializer import (
     ProfileSerializer,
@@ -181,6 +182,26 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             return value.strip()
         return value
 
+    def validate_contact_phone(self, value):
+        """
+        Clean phone number by removing dashes, spaces, and other formatting characters.
+        Accepts any format and just removes formatting.
+        """
+        if not value or value == '':
+            return None
+        
+        # Convert to string and trim whitespace
+        phone_str = str(value).strip()
+        
+        # Remove common formatting characters: dashes, spaces, parentheses, dots
+        phone_clean = re.sub(r'[-\s()\.]', '', phone_str)
+        
+        # If empty after cleaning, return None
+        if not phone_clean:
+            return None
+        
+        return phone_clean
+
     class Meta:
         model = Lead
         fields = (
@@ -330,6 +351,26 @@ class LeadDetailEditSerializer(serializers.ModelSerializer):
         if value:
             return value.strip()
         return value
+
+    def validate_contact_phone(self, value):
+        """
+        Clean phone number by removing dashes, spaces, and other formatting characters.
+        Accepts any format and just removes formatting.
+        """
+        if not value or value == '':
+            return None
+        
+        # Convert to string and trim whitespace
+        phone_str = str(value).strip()
+        
+        # Remove common formatting characters: dashes, spaces, parentheses, dots
+        phone_clean = re.sub(r'[-\s()\.]', '', phone_str)
+        
+        # If empty after cleaning, return None
+        if not phone_clean:
+            return None
+        
+        return phone_clean
 
     class Meta:
         model = Lead

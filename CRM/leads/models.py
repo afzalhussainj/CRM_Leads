@@ -2,7 +2,6 @@ import arrow
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
-from phonenumber_field.modelfields import PhoneNumberField
 
 from common.models import Profile, LeadStatus
 from common.base import BaseModel 
@@ -36,7 +35,7 @@ class Lead(BaseModel):
     contact_first_name = models.CharField(max_length=255, blank=True, default="")
     contact_last_name = models.CharField(max_length=255, blank=True, default="")
     contact_email = models.EmailField(blank=True, default="")
-    contact_phone = PhoneNumberField(null=True, blank=True)
+    contact_phone = models.CharField(max_length=255, blank=True, null=True)
     contact_position_title = models.CharField(max_length=255, blank=True, default="")
     contact_linkedin_url = models.URLField(blank=True, default="")
     # Workflow assignment fields
