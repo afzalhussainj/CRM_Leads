@@ -27,7 +27,6 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
 
         # Get user profile and role
         user_profile = self.request.user.profile

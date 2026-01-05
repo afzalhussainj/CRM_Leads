@@ -73,6 +73,40 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             if hasattr(self.fields["status"], 'allow_null'):
                 self.fields["status"].allow_null = True
 
+    def validate_status(self, value):
+        """
+        Validate status field. Accepts either:
+        - LeadStatus ID (integer)
+        - LeadStatus instance
+        - None (to clear status)
+        """
+        if value is None:
+            return None
+        
+        # If already a LeadStatus instance, return as-is
+        from common.models import LeadStatus
+        if isinstance(value, LeadStatus):
+            return value
+        
+        # If it's an integer/string that looks like an ID, try to get by ID
+        if isinstance(value, (int, str)) and str(value).isdigit():
+            try:
+                return LeadStatus.objects.get(pk=int(value))
+            except LeadStatus.DoesNotExist:
+                raise serializers.ValidationError(f"LeadStatus with ID {value} does not exist.")
+        
+        # If it's a string (name), try to get by name
+        if isinstance(value, str):
+            try:
+                return LeadStatus.objects.get(name=value)
+            except LeadStatus.DoesNotExist:
+                raise serializers.ValidationError(f"LeadStatus with name '{value}' does not exist.")
+            except LeadStatus.MultipleObjectsReturned:
+                raise serializers.ValidationError(f"Multiple LeadStatus objects found with name '{value}'.")
+        
+        # If we get here, value is not a valid format
+        raise serializers.ValidationError("Status must be a LeadStatus ID (integer) or name (string).")
+
     def validate_title(self, title):
         if self.instance:
             if (

@@ -37,8 +37,6 @@ urlpatterns = [
     # path("ui/leads/<uuid:pk>/toggle-project/", LeadToggleProjectView.as_view(), name="ui-leads-toggle-project"),
     # path("ui/leads/<uuid:pk>/notes/", LeadNotesView.as_view(), name="ui-leads-notes"),
     # path("ui/leads/<uuid:pk>/", LeadDetailUI.as_view(), name="ui-leads-detail"),
-    # path("ui/leads/customize-columns/", LeadColumnCustomizationView.as_view(), name="ui-leads-customize-columns"),
-    # path("ui/leads/export/", LeadCSVExportView.as_view(), name="ui-leads-export"),
     # path("ui/projects/", ProjectsListView.as_view(), name="ui-projects"),
     # path("ui/projects/customize-columns/", ProjectsColumnCustomizationView.as_view(), name="ui-projects-customize-columns"),
     

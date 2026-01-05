@@ -449,7 +449,7 @@ class UsersListView(APIView, LimitOffsetPagination):
 
     permission_classes = (IsAuthenticated,)
     def post(self, request, format=None):
-        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -496,7 +496,7 @@ class UsersListView(APIView, LimitOffsetPagination):
 
 
     def get(self, request, format=None):
-        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -561,7 +561,7 @@ class UserDetailView(APIView):
     def get(self, request, pk, format=None):
         profile_obj = self.get_object(pk)
         if (
-            int(self.request.user.profile.role) != UserRole.DEV_LEAD.value
+            int(self.request.user.profile.role) != UserRole.MANAGER.value
             and not self.request.user.profile.is_admin
             and self.request.user.profile.id != profile_obj.id
         ):
@@ -581,7 +581,7 @@ class UserDetailView(APIView):
         profile = self.get_object(pk)
         address_obj = profile.address
         if (
-            int(self.request.user.profile.role) != UserRole.DEV_LEAD.value
+            int(self.request.user.profile.role) != UserRole.MANAGER.value
             and not self.request.user.is_superuser
             and self.request.user.profile.id != profile.id
         ):
@@ -622,7 +622,7 @@ class UserDetailView(APIView):
         )
 
     def delete(self, request, pk, format=None):
-        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.profile.is_admin:
+        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.profile.is_admin:
             return Response(
                 {"error": True, "errors": "Permission Denied"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -650,7 +650,7 @@ class ApiHomeView(APIView):
         # Accounts/Contacts removed
         
 
-        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             leads = leads.filter(
                 Q(assigned_to__id__in=self.request.user.profile)
                 | Q(created_by=self.request.user.profile.user)
@@ -677,7 +677,7 @@ class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, format=None):
-        if int(self.request.user.profile.role) != UserRole.DEV_LEAD.value and not self.request.user.is_superuser:
+        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(
                 {
                     "error": True,
@@ -707,7 +707,6 @@ class UserStatusView(APIView):
 
         context = {}
         context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value
-        context["ROLE_DEV_LEAD_VALUE"] = UserRole.DEV_LEAD.value
         active_profiles = profiles.filter(is_active=True)
         inactive_profiles = profiles.filter(is_active=False)
         context["active_profiles"] = ProfileSerializer(active_profiles, many=True).data

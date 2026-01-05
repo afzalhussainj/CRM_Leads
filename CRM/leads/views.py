@@ -61,7 +61,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             # Employees can only see leads assigned to them
             if user_role == UserRole.EMPLOYEE.value:
                 queryset = queryset.filter(assigned_to=user_profile)
-            # Managers and DEV_LEAD can see all leads (no additional filter needed)
+            # Managers can see all leads (no additional filter needed)
         
         return queryset
 
@@ -174,7 +174,7 @@ class LeadListView(APIView, LimitOffsetPagination):
                             status=status.HTTP_403_FORBIDDEN,
                         )
                 
-                # Managers and DEV_LEAD can assign to any employee
+                # Managers can assign to any employee
                 data["assigned_to"] = assigned_to.id
             except Profile.DoesNotExist:
                 return Response(
@@ -238,7 +238,32 @@ class LeadDetailView(APIView):
         return Response(context)
 
     def put(self, request, pk, **kwargs):
+        """
+        Update a lead.
+        - Employees can only update leads assigned to them
+        - Managers can update any lead
+        """
         lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only update leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only update leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
         params = request.data
         data = {}
         for key, value in params.items():
@@ -251,12 +276,24 @@ class LeadDetailView(APIView):
 
             # Handle assignment - optimize with select_related
             if data.get("assigned_to"):
-                assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
-                lead_obj.assigned_to = assigned_to
-                lead_obj.save()
+                try:
+                    assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
+                    lead_obj.assigned_to = assigned_to
+                    lead_obj.save()
+                except Profile.DoesNotExist:
+                    return Response(
+                        {"error": True, "message": "Invalid assigned_to profile ID."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
+            # Return updated lead data
+            lead_serializer = LeadSerializer(lead_obj)
             return Response(
-                {"error": False, "message": "Lead Updated Successfully"},
+                {
+                    "error": False,
+                    "message": "Lead Updated Successfully",
+                    "lead": lead_serializer.data
+                },
                 status=status.HTTP_200_OK,
             )
         return Response(
@@ -269,6 +306,86 @@ class LeadDetailView(APIView):
         lead_obj.delete()
         return Response(
             {"error": False, "message": "Lead Deleted Successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class LeadFollowUpStatusUpdateView(APIView):
+    """
+    API View for updating follow-up status of a lead.
+    
+    PATCH: Updates the follow_up_status field
+        - Employees can only update leads assigned to them
+        - Managers can update any lead
+    
+    Accepts: 'pending' or 'done' (case-insensitive)
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def patch(self, request, pk, **kwargs):
+        """
+        Update follow-up status of a lead.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only update leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only update follow-up status for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Get follow_up_status from request data
+        follow_up_status = request.data.get("follow_up_status")
+        
+        if follow_up_status is None:
+            return Response(
+                {"error": True, "message": "follow_up_status is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Validate and normalize follow_up_status (case-insensitive)
+        follow_up_status = str(follow_up_status).lower().strip()
+        valid_choices = ['pending', 'done']
+        
+        if follow_up_status not in valid_choices:
+            return Response(
+                {"error": True, "message": f"follow_up_status must be one of: {', '.join(valid_choices)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Update the follow-up status
+        lead_obj.follow_up_status = follow_up_status
+        lead_obj.save(update_fields=["follow_up_status"])
+        
+        # Return updated lead data
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Follow-up status updated successfully",
+                "follow_up_status": follow_up_status,
+                "lead": lead_serializer.data
+            },
             status=status.HTTP_200_OK,
         )
 

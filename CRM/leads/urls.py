@@ -8,4 +8,5 @@ urlpatterns = [
     path("", views.LeadListView.as_view()),
     path("reminders/", views.RemindersListView.as_view(), name="api_reminders"),
     path("<str:pk>/", views.LeadDetailView.as_view()),
+    path("<str:pk>/follow-up-status/", views.LeadFollowUpStatusUpdateView.as_view(), name="api_lead_follow_up_status"),
 ]

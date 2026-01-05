@@ -39,8 +39,6 @@ class LeadListUI(LoginRequiredMixin, ListView):
         # Role-based filtering
         if int(self.request.user.profile.role) == UserRole.EMPLOYEE.value:
             queryset = queryset.filter(assigned_to=self.request.user.profile)
-        elif int(self.request.user.profile.role) == UserRole.DEV_LEAD.value:
-            pass
         # Managers can see all leads
         
         # Search functionality
@@ -304,9 +302,7 @@ class LeadStatusUpdateUI(LoginRequiredMixin, View):
         
         status_value = request.POST.get("status")
         
-        # Role-based status restrictions
-        if int(request.user.profile.role) == UserRole.DEV_LEAD.value and status_value != 'closed':
-            return JsonResponse({"ok": False, "error": "development_lead_can_only_close"}, status=400)
+        # Role-based status restrictions (removed DEV_LEAD)
         
         # Get the LeadStatus object by name
         from common.models import LeadStatus
@@ -399,7 +395,7 @@ class LeadNotesView(LoginRequiredMixin, View):
             # Employees can only see notes for leads assigned to them (not None, not other employees)
             if not lead.assigned_to or lead.assigned_to != request.user.profile:
                 return JsonResponse({"error": "unauthorized", "message": "You can only view notes for leads assigned to you."}, status=403)
-        # Managers and DEV_LEAD can see all notes (no restriction)
+        # Managers can see all notes (no restriction)
         
         # Use prefetch_related to avoid N+1 queries
         notes = lead.notes.select_related('author', 'author__user').prefetch_related('read_by').all()
