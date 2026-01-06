@@ -443,8 +443,8 @@ def create_employee(request):
             'message': f'Employee {first_name or email} {last_name or ""} created successfully.',
             'employee': profile_serializer.data
         }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
+        
+    except Exception as e:
         return Response({
             'error': f'Error creating employee: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
