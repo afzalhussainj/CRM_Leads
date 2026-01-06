@@ -409,20 +409,20 @@ def create_employee(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-            # Create user
-            user = User.objects.create_user(
-                email=email,
-                first_name=first_name,
+        # Create user
+        user = User.objects.create_user(
+            email=email,
+            first_name=first_name,
             last_name=last_name,
             password=password,
             is_active=True
-            )
-            
+        )
+        
         # Create profile with employee role
         profile = Profile.objects.create(
-                user=user,
-                role=UserRole.EMPLOYEE.value,
-                is_active=True,
+            user=user,
+            role=UserRole.EMPLOYEE.value,
+            is_active=True,
             phone=phone if phone else None,
             alternate_phone=alternate_phone if alternate_phone else None,
         )
