@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 
 from common.models import Profile, User
@@ -303,7 +303,7 @@ def password_reset_request(request):
             # Check if it's a Celery task (has .delay method)
             if hasattr(send_email_to_reset_password, 'delay'):
                 send_email_to_reset_password.delay(user.email)
-            else:
+        else:
                 # Synchronous call
                 send_email_to_reset_password(user.email)
         except AttributeError:
@@ -408,20 +408,20 @@ def create_employee(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        # Create user
-        user = User.objects.create_user(
-            email=email,
-            first_name=first_name,
+            # Create user
+            user = User.objects.create_user(
+                email=email,
+                first_name=first_name,
             last_name=last_name,
             password=password,
             is_active=True
-        )
-        
+            )
+            
         # Create profile with employee role
         profile = Profile.objects.create(
-            user=user,
-            role=UserRole.EMPLOYEE.value,
-            is_active=True,
+                user=user,
+                role=UserRole.EMPLOYEE.value,
+                is_active=True,
             phone=phone if phone else None,
             alternate_phone=alternate_phone if alternate_phone else None,
         )
@@ -442,8 +442,8 @@ def create_employee(request):
             'message': f'Employee {first_name or email} {last_name or ""} created successfully.',
             'employee': profile_serializer.data
         }, status=status.HTTP_201_CREATED)
-        
-    except Exception as e:
+            
+        except Exception as e:
         return Response({
             'error': f'Error creating employee: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
