@@ -6,7 +6,7 @@ from common.serializer import (
     ProfileSerializer,
     UserSerializer,
 )
-from leads.models import Lead
+from leads.models import Lead, LeadNote, LeadNoteRead
 
 
 class LeadSerializer(serializers.ModelSerializer):
@@ -497,3 +497,43 @@ class CreateLeadFromSiteSerializer(serializers.ModelSerializer):
             "contact_position_title",
             "contact_linkedin_url",
         )
+
+
+class LeadNoteSerializer(serializers.ModelSerializer):
+    """Serializer for lead notes"""
+    author = ProfileSerializer(read_only=True)
+    is_read = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LeadNote
+        fields = (
+            "id",
+            "lead",
+            "author",
+            "message",
+            "created_at",
+            "updated_at",
+            "is_read",
+        )
+        read_only_fields = ("id", "author", "created_at", "updated_at")
+    
+    def get_is_read(self, obj):
+        """Check if the current user has read this note"""
+        request = self.context.get('request')
+        if request and request.user and request.user.is_authenticated:
+            return obj.read_by.filter(user=request.user).exists()
+        return False
+
+
+class LeadNoteCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating lead notes"""
+    
+    class Meta:
+        model = LeadNote
+        fields = ("message",)
+    
+    def validate_message(self, value):
+        """Validate message is not empty"""
+        if not value or not value.strip():
+            raise serializers.ValidationError("Message cannot be empty.")
+        return value.strip()

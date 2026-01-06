@@ -175,12 +175,11 @@ def resend_activation_link_to_user(
             msg.send()
 
 
-@app.task
-def send_email_to_reset_password(user_email):
-    """Send Mail To Users When they request password reset"""
+def _send_email_to_reset_password_sync(user_email):
+    """Send Mail To Users When they request password reset (synchronous)"""
     user = User.objects.filter(email=user_email, is_deleted=False).first()
     if not user:
-        return
+        return False
     
     context = {}
     context["user_email"] = user_email
@@ -189,7 +188,7 @@ def send_email_to_reset_password(user_email):
     context["UserRole"] = UserRole
     
     # Use FRONTEND_URL for the reset link (points to React frontend)
-    frontend_url = getattr(settings, "FRONTEND_URL", "https://skycrm.vercel.app")
+    frontend_url = getattr(settings, "FRONTEND_URL")
     context["complete_url"] = f"{frontend_url}/reset-password/{context['uid']}/{context['token']}/"
     
     subject = "Reset Your Password"
@@ -198,11 +197,31 @@ def send_email_to_reset_password(user_email):
         "registration/password_reset_email.html", context=context
     )
     if recipients:
-        msg = EmailMessage(
-            subject,
-            html_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=recipients
-        )
-        msg.content_subtype = "html"
-        msg.send()
+        try:
+            msg = EmailMessage(
+                subject,
+                html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=recipients
+            )
+            msg.content_subtype = "html"
+            msg.send()
+            return True
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to send password reset email: {str(e)}")
+            return False
+    return False
+
+# Create Celery task wrapper if Celery is available
+try:
+    @app.task
+    def send_email_to_reset_password(user_email):
+        """Celery task for password reset email"""
+        return _send_email_to_reset_password_sync(user_email)
+except Exception:
+    # If Celery is not available, use sync version directly
+    def send_email_to_reset_password(user_email):
+        """Send password reset email (synchronous fallback)"""
+        return _send_email_to_reset_password_sync(user_email)

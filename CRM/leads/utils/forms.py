@@ -1,5 +1,5 @@
 from django import forms
-from leads.models import Lead, LeadNote
+from leads.models import Lead
 from utils.roles_enum import UserRole
 
 email_regex = r"^[_a-zA-Z0-9-]+(\.[_a-zA-Z0-9-]+)*@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)*(\.[a-zA-Z]{2,4})$"
@@ -142,21 +142,3 @@ class LeadCreateForm(forms.ModelForm):
                 ]
                 continue
             field.widget.attrs.update(attrs)
-
-
-class LeadNoteForm(forms.ModelForm):
-    """Form for creating lead notes/chat messages"""
-    
-    class Meta:
-        model = LeadNote
-        fields = ['message']
-        widgets = {
-            'message': forms.Textarea(attrs={
-                'class': 'form-input',
-                'rows': 4,
-                'placeholder': 'Add your note or message here...'
-            })
-        }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)

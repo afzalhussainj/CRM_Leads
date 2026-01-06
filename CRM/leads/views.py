@@ -10,10 +10,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.models import Profile
-from .models import Lead
+from .models import Lead, LeadNote, LeadNoteRead
 from leads.serializer import (
     LeadCreateSerializer,
     LeadSerializer,
+    LeadNoteSerializer,
+    LeadNoteCreateSerializer,
 )
 from utils.roles_enum import UserRole
 
@@ -384,6 +386,325 @@ class LeadFollowUpStatusUpdateView(APIView):
                 "message": "Follow-up status updated successfully",
                 "follow_up_status": follow_up_status,
                 "lead": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LeadNotesListView(APIView):
+    """
+    API View for listing and creating notes for a lead.
+    
+    GET: Returns all notes for a specific lead
+        - Employees: Can only see notes for leads assigned to them
+        - Managers: Can see all notes
+    
+    POST: Creates a new note for a lead
+        - Employees: Can only create notes for leads assigned to them
+        - Managers: Can create notes for any lead
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_lead(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def get(self, request, pk, **kwargs):
+        """
+        Get all notes for a specific lead.
+        """
+        lead_obj = self.get_lead(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only see notes for leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only view notes for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Get all notes for this lead, ordered by created_at (oldest first)
+        notes = LeadNote.objects.filter(lead=lead_obj).select_related(
+            'author',
+            'author__user'
+        ).order_by('created_at')
+        
+        # Serialize notes with read status
+        serializer = LeadNoteSerializer(notes, many=True, context={'request': request})
+        
+        return Response({
+            "success": True,
+            "lead_id": str(lead_obj.id),
+            "count": notes.count(),
+            "notes": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def post(self, request, pk, **kwargs):
+        """
+        Create a new note for a lead.
+        """
+        lead_obj = self.get_lead(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only create notes for leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only create notes for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Validate and create note
+        serializer = LeadNoteCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            note_obj = serializer.save(
+                lead=lead_obj,
+                author=user_profile,
+                created_by=request.user,
+            )
+            
+            # Return the created note with full details
+            note_serializer = LeadNoteSerializer(note_obj, context={'request': request})
+            return Response(
+                {
+                    "success": True,
+                    "message": "Note created successfully",
+                    "note": note_serializer.data
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(
+            {"error": True, "message": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class LeadNotesUnreadListView(APIView):
+    """
+    API View for getting unread notes for a specific lead.
+    
+    GET: Returns all unread notes for a lead
+        - Employees: Can only see unread notes for leads assigned to them
+        - Managers: Can see all unread notes
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_lead(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def get(self, request, pk, **kwargs):
+        """
+        Get all unread notes for a specific lead.
+        """
+        lead_obj = self.get_lead(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only see unread notes for leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only view unread notes for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Get unread notes for this lead (notes that the current user hasn't read)
+        # Use exclude to filter out notes that have been read by the current user
+        unread_notes = LeadNote.objects.filter(
+            lead=lead_obj
+        ).exclude(
+            read_by__user=request.user
+        ).select_related(
+            'author',
+            'author__user'
+        ).order_by('created_at')
+        
+        # Serialize unread notes
+        serializer = LeadNoteSerializer(unread_notes, many=True, context={'request': request})
+        
+        return Response({
+            "success": True,
+            "lead_id": str(lead_obj.id),
+            "count": unread_notes.count(),
+            "unread_notes": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class LeadNoteDetailView(APIView):
+    """
+    API View for retrieving and deleting a specific note.
+    
+    GET: Get a specific note
+    DELETE: Delete a note (only by author)
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_note(self, pk, note_pk):
+        """Get note object with optimizations"""
+        lead_obj = get_object_or_404(Lead, pk=pk)
+        return get_object_or_404(
+            LeadNote.objects.select_related('lead', 'author', 'author__user'),
+            pk=note_pk,
+            lead=lead_obj
+        )
+
+    def get(self, request, pk, note_pk, **kwargs):
+        """
+        Get a specific note.
+        """
+        note_obj = self.get_note(pk, note_pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only see notes for leads assigned to them
+            if note_obj.lead.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only view notes for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        serializer = LeadNoteSerializer(note_obj, context={'request': request})
+        return Response({
+            "success": True,
+            "note": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk, note_pk, **kwargs):
+        """
+        Delete a note (only by author).
+        """
+        note_obj = self.get_note(pk, note_pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        
+        # Only the author can delete the note
+        if note_obj.author != user_profile:
+            return Response(
+                {"error": True, "message": "You can only delete your own notes."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        note_obj.delete()
+        return Response(
+            {"success": True, "message": "Note deleted successfully"},
+            status=status.HTTP_200_OK,
+        )
+
+
+class LeadNoteMarkReadView(APIView):
+    """
+    API View for marking a note as read.
+    
+    POST: Mark a note as read by the current user
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_note(self, pk, note_pk):
+        """Get note object"""
+        lead_obj = get_object_or_404(Lead, pk=pk)
+        return get_object_or_404(
+            LeadNote.objects.select_related('lead', 'author', 'author__user'),
+            pk=note_pk,
+            lead=lead_obj
+        )
+
+    def post(self, request, pk, note_pk, **kwargs):
+        """
+        Mark a note as read by the current user.
+        """
+        note_obj = self.get_note(pk, note_pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only mark notes as read for leads assigned to them
+            if note_obj.lead.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only mark notes as read for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Check if already read
+        read_record, created = LeadNoteRead.objects.get_or_create(
+            note=note_obj,
+            user=request.user,
+            defaults={'created_by': request.user}
+        )
+        
+        if created:
+            message = "Note marked as read"
+        else:
+            message = "Note was already marked as read"
+        
+        return Response(
+            {
+                "success": True,
+                "message": message,
+                "note_id": str(note_obj.id),
+                "is_read": True
             },
             status=status.HTTP_200_OK,
         )
