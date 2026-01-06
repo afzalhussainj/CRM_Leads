@@ -8,6 +8,8 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from common.models import Profile
 from .models import Lead, LeadNote, LeadNoteRead
@@ -20,6 +22,11 @@ from leads.serializer import (
 from utils.roles_enum import UserRole
 
 
+@extend_schema(
+    tags=['Leads'],
+    summary='List and create leads',
+    description='GET: Returns all leads with role-based filtering. POST: Creates a new lead.',
+)
 class LeadListView(APIView, LimitOffsetPagination):
     """
     API View for listing and creating leads.
@@ -136,10 +143,52 @@ class LeadListView(APIView, LimitOffsetPagination):
 
         return context
 
+    @extend_schema(
+        summary='List leads',
+        description='Get all leads with optional filtering, search, and pagination',
+        parameters=[
+            OpenApiParameter(name='search', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description='Search in title, company name, contact name, or email'),
+            OpenApiParameter(name='status', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, description='Filter by status ID'),
+            OpenApiParameter(name='source', type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, description='Filter by source'),
+            OpenApiParameter(name='assigned_to', type=OpenApiTypes.UUID, location=OpenApiParameter.QUERY, description='Filter by assigned profile ID'),
+            OpenApiParameter(name='is_active', type=OpenApiTypes.BOOL, location=OpenApiParameter.QUERY, description='Filter by active status'),
+            OpenApiParameter(name='is_project', type=OpenApiTypes.BOOL, location=OpenApiParameter.QUERY, description='Filter by project status'),
+            OpenApiParameter(name='limit', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, description='Number of results per page'),
+            OpenApiParameter(name='offset', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, description='Number of results to skip'),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request, *args, **kwargs):
         context = self.get_context_data(**kwargs)
         return Response(context)
 
+    @extend_schema(
+        summary='Create a new lead',
+        description='Create a new lead. Only title is required. Employees can only assign to themselves.',
+        request=LeadCreateSerializer,
+        responses={
+            201: LeadSerializer,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Example Request',
+                value={
+                    'title': 'New Client Inquiry',
+                    'status': 1,
+                    'source': 'linkedin',
+                    'company_name': 'ABC Corporation',
+                    'contact_first_name': 'John',
+                    'contact_last_name': 'Doe',
+                    'contact_email': 'john.doe@example.com',
+                    'contact_phone': '1234567890',
+                    'assigned_to': '4607e30f-b594-4bfe-93d3-fe97c718092c',
+                    'is_active': True,
+                }
+            ),
+        ],
+    )
     def post(self, request, *args, **kwargs):
         """
         Create a new lead.
@@ -221,6 +270,11 @@ class LeadListView(APIView, LimitOffsetPagination):
         )
 
 
+@extend_schema(
+    tags=['Leads'],
+    summary='Get, update, or delete a lead',
+    description='GET: Retrieve lead details. PUT: Update lead. DELETE: Delete lead.',
+)
 class LeadDetailView(APIView):
     model = Lead
     permission_classes = (IsAuthenticated,)
@@ -232,6 +286,11 @@ class LeadDetailView(APIView):
             pk=pk
         )
 
+    @extend_schema(
+        summary='Get lead details',
+        description='Retrieve detailed information about a specific lead',
+        responses={200: LeadSerializer},
+    )
     def get(self, request, pk, **kwargs):
         lead_obj = self.get_object(pk)
         context = {}
@@ -239,6 +298,16 @@ class LeadDetailView(APIView):
         context["lead_obj"] = LeadSerializer(lead_obj).data
         return Response(context)
 
+    @extend_schema(
+        summary='Update a lead',
+        description='Update lead information. Employees can only update leads assigned to them.',
+        request=LeadCreateSerializer,
+        responses={
+            200: LeadSerializer,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def put(self, request, pk, **kwargs):
         """
         Update a lead.
@@ -303,6 +372,14 @@ class LeadDetailView(APIView):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    @extend_schema(
+        summary='Delete a lead',
+        description='Permanently delete a lead',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk, **kwargs):
         lead_obj = self.get_object(pk)
         lead_obj.delete()
@@ -311,6 +388,11 @@ class LeadDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+@extend_schema(
+    tags=['Leads'],
+    summary='Update always active status',
+    description='Update the always_active field of a lead. Employees can only update leads assigned to them.',
+)
 class LeadAlwaysActiveUpdateView(APIView):
     """
     API View for updating always_active status of a lead.
@@ -330,6 +412,26 @@ class LeadAlwaysActiveUpdateView(APIView):
             pk=pk
         )
 
+    @extend_schema(
+        summary='Update always active status',
+        description='Set always_active to true or false for a lead',
+        request={
+            'type': 'object',
+            'properties': {
+                'always_active': {'type': 'boolean', 'description': 'Set to true to make lead always active'}
+            },
+            'required': ['always_active']
+        },
+        responses={
+            200: LeadSerializer,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample('Set always active', value={'always_active': True}),
+            OpenApiExample('Remove always active', value={'always_active': False}),
+        ],
+    )
     def patch(self, request, pk, **kwargs):
         """
         Update always_active status of a lead.
@@ -387,6 +489,11 @@ class LeadAlwaysActiveUpdateView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Leads'],
+    summary='Update follow-up status',
+    description='Update the follow_up_status field of a lead. Employees can only update leads assigned to them.',
+)
 class LeadFollowUpStatusUpdateView(APIView):
     """
     API View for updating follow-up status of a lead.
@@ -406,6 +513,26 @@ class LeadFollowUpStatusUpdateView(APIView):
             pk=pk
         )
 
+    @extend_schema(
+        summary='Update follow-up status',
+        description='Update follow_up_status to "pending" or "done" (case-insensitive)',
+        request={
+            'type': 'object',
+            'properties': {
+                'follow_up_status': {'type': 'string', 'enum': ['pending', 'done'], 'description': 'Follow-up status'}
+            },
+            'required': ['follow_up_status']
+        },
+        responses={
+            200: LeadSerializer,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample('Set to pending', value={'follow_up_status': 'pending'}),
+            OpenApiExample('Mark as done', value={'follow_up_status': 'done'}),
+        ],
+    )
     def patch(self, request, pk, **kwargs):
         """
         Update follow-up status of a lead.
@@ -467,6 +594,11 @@ class LeadFollowUpStatusUpdateView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Lead Notes'],
+    summary='List and create notes',
+    description='GET: Returns all notes for a lead. POST: Creates a new note.',
+)
 class LeadNotesListView(APIView):
     """
     API View for listing and creating notes for a lead.
@@ -488,6 +620,11 @@ class LeadNotesListView(APIView):
             pk=pk
         )
 
+    @extend_schema(
+        summary='Get all notes for a lead',
+        description='Retrieve all notes for a specific lead, ordered by creation date',
+        responses={200: LeadNoteSerializer(many=True)},
+    )
     def get(self, request, pk, **kwargs):
         """
         Get all notes for a specific lead.
@@ -529,6 +666,19 @@ class LeadNotesListView(APIView):
             "notes": serializer.data
         }, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary='Create a note',
+        description='Create a new note for a lead',
+        request=LeadNoteCreateSerializer,
+        responses={
+            201: LeadNoteSerializer,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample('Create note', value={'message': 'Followed up with client. They are interested in our services.'}),
+        ],
+    )
     def post(self, request, pk, **kwargs):
         """
         Create a new note for a lead.
@@ -579,6 +729,11 @@ class LeadNotesListView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Lead Notes'],
+    summary='Get unread notes',
+    description='Get all unread notes for a specific lead',
+)
 class LeadNotesUnreadListView(APIView):
     """
     API View for getting unread notes for a specific lead.
@@ -596,6 +751,11 @@ class LeadNotesUnreadListView(APIView):
             pk=pk
         )
 
+    @extend_schema(
+        summary='Get unread notes',
+        description='Retrieve all unread notes for a specific lead',
+        responses={200: LeadNoteSerializer(many=True)},
+    )
     def get(self, request, pk, **kwargs):
         """
         Get all unread notes for a specific lead.
@@ -643,6 +803,11 @@ class LeadNotesUnreadListView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=['Lead Notes'],
+    summary='Get or delete a note',
+    description='GET: Retrieve a specific note. DELETE: Delete a note (only by author).',
+)
 class LeadNoteDetailView(APIView):
     """
     API View for retrieving and deleting a specific note.
@@ -692,6 +857,15 @@ class LeadNoteDetailView(APIView):
             "note": serializer.data
         }, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        summary='Delete a note',
+        description='Delete a note. Only the author can delete their own notes.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk, note_pk, **kwargs):
         """
         Delete a note (only by author).
@@ -721,6 +895,11 @@ class LeadNoteDetailView(APIView):
         )
 
 
+@extend_schema(
+    tags=['Lead Notes'],
+    summary='Mark note as read',
+    description='Mark a note as read by the current user',
+)
 class LeadNoteMarkReadView(APIView):
     """
     API View for marking a note as read.
@@ -738,6 +917,15 @@ class LeadNoteMarkReadView(APIView):
             lead=lead_obj
         )
 
+    @extend_schema(
+        summary='Mark note as read',
+        description='Mark a note as read by the current user',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request, pk, note_pk, **kwargs):
         """
         Mark a note as read by the current user.

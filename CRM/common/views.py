@@ -13,6 +13,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 
 from common.models import Profile, User
 from common.serializer import *
@@ -96,6 +98,26 @@ def clear_jwt_cookies(response):
     return response
 
 @csrf_exempt
+@extend_schema(
+    tags=['Authentication'],
+    summary='Login',
+    description='Authenticate user and set JWT tokens in HTTP-only cookies',
+    request={
+        'type': 'object',
+        'properties': {
+            'email': {'type': 'string', 'format': 'email'},
+            'password': {'type': 'string', 'format': 'password'}
+        },
+        'required': ['email', 'password']
+    },
+    responses={
+        200: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample('Login', value={'email': 'user@example.com', 'password': 'password123'}),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
@@ -144,6 +166,12 @@ def login_view(request):
         }, status=status.HTTP_401_UNAUTHORIZED)
 
 @csrf_exempt
+@extend_schema(
+    tags=['Authentication'],
+    summary='Logout',
+    description='Logout user and clear JWT cookies',
+    responses={200: OpenApiTypes.OBJECT},
+)
 @api_view(['POST'])
 def logout_view(request):
     """Logout view that clears JWT cookies"""
@@ -155,6 +183,15 @@ def logout_view(request):
     return response
 
 @csrf_exempt
+@extend_schema(
+    tags=['Authentication'],
+    summary='Refresh token',
+    description='Refresh access token using refresh token from HTTP-only cookie',
+    responses={
+        200: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def refresh_token_view(request):
@@ -209,6 +246,26 @@ def refresh_token_view(request):
         return response
 
 @csrf_exempt
+@extend_schema(
+    tags=['Authentication'],
+    summary='Request password reset',
+    description='Request password reset link. Sends email with reset link.',
+    request={
+        'type': 'object',
+        'properties': {
+            'email': {'type': 'string', 'format': 'email'}
+        },
+        'required': ['email']
+    },
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        500: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample('Request reset', value={'email': 'user@example.com'}),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_request(request):
@@ -267,6 +324,38 @@ def password_reset_request(request):
             'error': 'Failed to send password reset email. Please try again later.'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@extend_schema(
+    tags=['Employees'],
+    summary='Create employee',
+    description='Create a new employee. Managers only.',
+    request={
+        'type': 'object',
+        'properties': {
+            'email': {'type': 'string', 'format': 'email'},
+            'first_name': {'type': 'string'},
+            'last_name': {'type': 'string'},
+            'password': {'type': 'string', 'format': 'password', 'description': 'Min 8 characters'},
+            'phone': {'type': 'string'},
+            'alternate_phone': {'type': 'string'},
+            'send_activation_email': {'type': 'boolean', 'description': 'Send activation email (optional)'}
+        },
+        'required': ['email', 'password']
+    },
+    responses={
+        201: ProfileSerializer,
+        400: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample('Create employee', value={
+            'email': 'employee@example.com',
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'password': 'password123',
+            'phone': '+1234567890'
+        }),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_employee(request):
@@ -360,6 +449,28 @@ def create_employee(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @csrf_exempt
+@extend_schema(
+    tags=['Authentication'],
+    summary='Confirm password reset',
+    description='Reset password using uid and token from reset link. Returns JWT tokens.',
+    request={
+        'type': 'object',
+        'properties': {
+            'uid': {'type': 'string', 'description': 'User ID from reset link'},
+            'token': {'type': 'string', 'description': 'Token from reset link'},
+            'password': {'type': 'string', 'format': 'password', 'description': 'New password (min 8 characters)'}
+        },
+        'required': ['uid', 'token', 'password']
+    },
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        403: OpenApiTypes.OBJECT,
+    },
+    examples=[
+        OpenApiExample('Reset password', value={'uid': 'base64_uid', 'token': 'reset_token', 'password': 'newpassword123'}),
+    ],
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def password_reset_confirm(request):
@@ -449,8 +560,19 @@ def password_reset_confirm(request):
 
 
 
+@extend_schema(
+    tags=['Users'],
+    summary='Get teams and users',
+    description='Get all active profiles (teams and users)',
+)
 class GetTeamsAndUsersView(APIView):
     permission_classes = (IsAuthenticated,)
+    
+    @extend_schema(
+        summary='Get teams and users',
+        description='Get all active profiles ordered by email',
+        responses={200: ProfileSerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs):
         # Optimize: Use select_related
         profiles = Profile.objects.select_related('user').filter(
@@ -461,9 +583,24 @@ class GetTeamsAndUsersView(APIView):
         return Response({"profiles": profiles_data})
 
 
+@extend_schema(
+    tags=['Users'],
+    summary='List and create users',
+    description='GET: List users. POST: Create user. Managers only.',
+)
 class UsersListView(APIView, LimitOffsetPagination):
 
     permission_classes = (IsAuthenticated,)
+    @extend_schema(
+        summary='Create user',
+        description='Create a new user. Managers only.',
+        request=CreateUserSerializer,
+        responses={
+            201: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request, format=None):
         if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(
@@ -511,6 +648,15 @@ class UsersListView(APIView, LimitOffsetPagination):
                 )
 
 
+    @extend_schema(
+        summary='List users',
+        description='Get paginated list of active and inactive users. Managers only.',
+        parameters=[
+            OpenApiParameter(name='limit', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+            OpenApiParameter(name='offset', type=OpenApiTypes.INT, location=OpenApiParameter.QUERY),
+        ],
+        responses={200: ProfileSerializer(many=True)},
+    )
     def get(self, request, format=None):
         if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(
@@ -567,6 +713,11 @@ class UsersListView(APIView, LimitOffsetPagination):
         return Response(context)
 
 
+@extend_schema(
+    tags=['Users'],
+    summary='Get, update, or delete user',
+    description='GET: Get user details. PUT: Update user. DELETE: Delete user.',
+)
 class UserDetailView(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -574,6 +725,11 @@ class UserDetailView(APIView):
         profile = get_object_or_404(Profile, pk=pk)
         return profile
 
+    @extend_schema(
+        summary='Get user details',
+        description='Retrieve user profile details',
+        responses={200: ProfileSerializer},
+    )
     def get(self, request, pk, format=None):
         profile_obj = self.get_object(pk)
         if (
@@ -592,6 +748,16 @@ class UserDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+    @extend_schema(
+        summary='Update user',
+        description='Update user profile information',
+        request=CreateUserSerializer,
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def put(self, request, pk, format=None):
         params = request.data
         profile = self.get_object(pk)
@@ -637,6 +803,14 @@ class UserDetailView(APIView):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    @extend_schema(
+        summary='Delete user',
+        description='Delete a user. Managers only.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk, format=None):
         if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.profile.is_admin:
             return Response(
@@ -658,10 +832,20 @@ class UserDetailView(APIView):
         return Response({"status": "success"}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=['Dashboard'],
+    summary='Dashboard data',
+    description='Get dashboard statistics and data',
+)
 class ApiHomeView(APIView):
 
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        summary='Get dashboard',
+        description='Get dashboard data including leads count and opportunities',
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request, format=None):
         # Accounts/Contacts removed
         
@@ -680,18 +864,49 @@ class ApiHomeView(APIView):
         return Response(context, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=['Profile'],
+    summary='Get current user profile',
+    description='Get profile information for the authenticated user',
+)
 class ProfileView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        summary='Get profile',
+        description='Get current user profile information',
+        responses={200: ProfileSerializer},
+    )
     def get(self, request, format=None):
         # profile=Profile.objects.get(user=request.user)
         context = {}
         context["user_obj"] = ProfileSerializer(self.request.user.profile).data
         return Response(context, status=status.HTTP_200_OK)
 
+@extend_schema(
+    tags=['Users'],
+    summary='Update user status',
+    description='Activate or deactivate a user. Managers only.',
+)
 class UserStatusView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        summary='Update user status',
+        description='Activate or deactivate a user',
+        request={
+            'type': 'object',
+            'properties': {
+                'is_active': {'type': 'boolean'}
+            },
+            'required': ['is_active']
+        },
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+    )
     def post(self, request, pk, format=None):
         if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
             return Response(

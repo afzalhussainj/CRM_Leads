@@ -10,6 +10,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import PermissionDenied
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
 from common.models import LeadStatus, LeadSource
 from utils.roles_enum import UserRole
 
@@ -35,10 +37,35 @@ class CombinedManagementView(LoginRequiredMixin, ListView):
         return context
 
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='Create lead status',
+    description='Create a new lead status. Managers only.',
+)
 class StatusCreateView(APIView):
     """API View for creating new lead statuses - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
+    @extend_schema(
+        summary='Create lead status',
+        description='Create a new lead status with name and optional sort_order',
+        request={
+            'type': 'object',
+            'properties': {
+                'name': {'type': 'string', 'description': 'Status name'},
+                'sort_order': {'type': 'integer', 'description': 'Sort order (default: 0)'}
+            },
+            'required': ['name']
+        },
+        responses={
+            201: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample('Create status', value={'name': 'In Progress', 'sort_order': 2}),
+        ],
+    )
     def post(self, request):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -81,10 +108,25 @@ class StatusCreateView(APIView):
 
 
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='Delete lead status',
+    description='Delete a lead status. Managers only. Status must not be in use.',
+)
 class StatusDeleteView(APIView):
     """API View for deleting lead statuses - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
+    @extend_schema(
+        summary='Delete lead status',
+        description='Delete a lead status. Fails if status is used by any leads.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -108,10 +150,34 @@ class StatusDeleteView(APIView):
         return self.delete(request, pk)
 
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='Create lead source',
+    description='Create a new lead source. Managers only.',
+)
 class SourceCreateView(APIView):
     """API View for creating new lead sources - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
+    @extend_schema(
+        summary='Create lead source',
+        description='Create a new lead source',
+        request={
+            'type': 'object',
+            'properties': {
+                'name': {'type': 'string', 'description': 'Source name'}
+            },
+            'required': ['name']
+        },
+        responses={
+            201: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample('Create source', value={'name': 'LinkedIn'}),
+        ],
+    )
     def post(self, request):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -141,10 +207,25 @@ class SourceCreateView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='Delete lead source',
+    description='Delete a lead source. Managers only. Source must not be in use.',
+)
 class SourceDeleteView(APIView):
     """API View for deleting lead sources - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
+    @extend_schema(
+        summary='Delete lead source',
+        description='Delete a lead source. Fails if source is used by any leads.',
+        responses={
+            200: OpenApiTypes.OBJECT,
+            400: OpenApiTypes.OBJECT,
+            403: OpenApiTypes.OBJECT,
+            404: OpenApiTypes.OBJECT,
+        },
+    )
     def delete(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
@@ -168,9 +249,19 @@ class SourceDeleteView(APIView):
         # Support POST for backward compatibility (curl uses POST)
         return self.delete(request, pk)
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='List lead statuses',
+    description='Get all available lead statuses',
+)
 class LeadStatusListView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        summary='List lead statuses',
+        description='Get all lead statuses ordered by sort_order and name',
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
         print("Fetched statuses:", statuses)
@@ -184,9 +275,19 @@ class LeadStatusListView(APIView):
         return Response({'statuses': data}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=['Options Management'],
+    summary='List lead sources',
+    description='Get all available lead sources',
+)
 class LeadSourceListView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    @extend_schema(
+        summary='List lead sources',
+        description='Get all lead sources ordered by name',
+        responses={200: OpenApiTypes.OBJECT},
+    )
     def get(self, request):
         sources = LeadSource.objects.all().order_by('source')
         data = [
