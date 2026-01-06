@@ -973,3 +973,124 @@ class LeadNoteMarkReadView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+@extend_schema(
+    tags=['Reminders'],
+    summary='Get reminders',
+    description='Get all reminders categorized into overdue, due today, upcoming, and done. Only returns active leads with follow_up_at set.',
+)
+class RemindersListView(APIView):
+    """
+    API View for getting reminders categorized by status.
+    
+    GET: Returns reminders in 4 categories:
+        - overdue: follow_up_at is in the past and follow_up_status is 'pending'
+        - due_today: follow_up_at is today and follow_up_status is 'pending'
+        - upcoming: follow_up_at is in the future and follow_up_status is 'pending'
+        - done: follow_up_status is 'done'
+    
+    Role-based filtering:
+        - Employees: Only see reminders for leads assigned to them
+        - Managers: See all reminders
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        """Get queryset with role-based filtering"""
+        request = self.request
+        
+        # Base queryset: only active leads with follow_up_at set
+        queryset = Lead.objects.filter(
+            is_active=True,
+            follow_up_at__isnull=False
+        ).select_related(
+            'status',
+            'assigned_to',
+            'assigned_to__user',
+            'created_by'
+        )
+        
+        # Role-based filtering
+        if request.user.is_authenticated and hasattr(request.user, 'profile'):
+            user_profile = request.user.profile
+            user_role = int(user_profile.role) if user_profile.role is not None else None
+            
+            # Employees can only see reminders for leads assigned to them
+            if user_role == UserRole.EMPLOYEE.value:
+                queryset = queryset.filter(assigned_to=user_profile)
+            # Managers can see all reminders (no additional filter needed)
+        
+        return queryset
+
+    @extend_schema(
+        summary='Get categorized reminders',
+        description='Get reminders categorized into overdue, due today, upcoming, and done',
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    def get(self, request, *args, **kwargs):
+        """
+        Get all reminders categorized by status.
+        """
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        
+        queryset = self.get_queryset()
+        
+        # Overdue: follow_up_at is in the past and status is 'pending'
+        overdue = queryset.filter(
+            follow_up_at__lt=today_start,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Due today: follow_up_at is today and status is 'pending'
+        due_today = queryset.filter(
+            follow_up_at__gte=today_start,
+            follow_up_at__lt=today_end,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Upcoming: follow_up_at is in the future (after today) and status is 'pending'
+        upcoming = queryset.filter(
+            follow_up_at__gte=today_end,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Done: follow_up_status is 'done'
+        done = queryset.filter(
+            follow_up_status='done'
+        ).order_by('-follow_up_at')
+        
+        # Serialize all categories
+        overdue_serializer = LeadSerializer(overdue, many=True)
+        due_today_serializer = LeadSerializer(due_today, many=True)
+        upcoming_serializer = LeadSerializer(upcoming, many=True)
+        done_serializer = LeadSerializer(done, many=True)
+        
+        return Response({
+            "success": True,
+            "overdue": {
+                "count": overdue.count(),
+                "leads": overdue_serializer.data
+            },
+            "due_today": {
+                "count": due_today.count(),
+                "leads": due_today_serializer.data
+            },
+            "upcoming": {
+                "count": upcoming.count(),
+                "leads": upcoming_serializer.data
+            },
+            "done": {
+                "count": done.count(),
+                "leads": done_serializer.data
+            }
+        }, status=status.HTTP_200_OK)
+
