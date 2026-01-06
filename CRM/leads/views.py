@@ -311,6 +311,82 @@ class LeadDetailView(APIView):
             status=status.HTTP_200_OK,
         )
 
+class LeadAlwaysActiveUpdateView(APIView):
+    """
+    API View for updating always_active status of a lead.
+    
+    PATCH: Updates the always_active field
+        - Employees can only update leads assigned to them
+        - Managers can update any lead
+    
+    Accepts: true/false or 1/0 (boolean)
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def patch(self, request, pk, **kwargs):
+        """
+        Update always_active status of a lead.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only update leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only update always_active status for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Get always_active from request data
+        always_active = request.data.get("always_active")
+        
+        if always_active is None:
+            return Response(
+                {"error": True, "message": "always_active is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Convert to boolean (handle string "true"/"false", 1/0, etc.)
+        if isinstance(always_active, str):
+            always_active = always_active.lower() in ('true', '1', 'yes', 'on')
+        else:
+            always_active = bool(always_active)
+        
+        # Update the always_active status
+        lead_obj.always_active = always_active
+        lead_obj.save(update_fields=["always_active"])
+        
+        # Return updated lead data
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Always active status updated successfully",
+                "always_active": always_active,
+                "lead": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class LeadFollowUpStatusUpdateView(APIView):
     """
     API View for updating follow-up status of a lead.

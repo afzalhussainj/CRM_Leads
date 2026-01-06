@@ -34,6 +34,7 @@ class LeadSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "is_active",
+            "always_active",
         )
 
 
@@ -282,6 +283,7 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             "follow_up_status",
             "created_at",
             "is_active",
+            "always_active",
         )
 
 
@@ -479,6 +481,7 @@ class LeadDetailEditSerializer(serializers.ModelSerializer):
             "created_by",
             "created_at",
             "is_active",
+            "always_active",
         )
 
 class CreateLeadFromSiteSerializer(serializers.ModelSerializer):
