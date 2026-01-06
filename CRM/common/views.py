@@ -19,6 +19,7 @@ from drf_spectacular.types import OpenApiTypes
 from common.models import Profile, User
 from common.serializer import *
 from common.tasks import send_email_user_delete
+from common.utils.choices import ROLES
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
@@ -303,7 +304,7 @@ def password_reset_request(request):
             # Check if it's a Celery task (has .delay method)
             if hasattr(send_email_to_reset_password, 'delay'):
                 send_email_to_reset_password.delay(user.email)
-        else:
+            else:
                 # Synchronous call
                 send_email_to_reset_password(user.email)
         except AttributeError:
@@ -847,19 +848,23 @@ class ApiHomeView(APIView):
         responses={200: OpenApiTypes.OBJECT},
     )
     def get(self, request, format=None):
-        # Accounts/Contacts removed
+        # Get leads queryset based on user role
+        from leads.serializer import LeadSerializer
         
-
         if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
-            leads = leads.filter(
-                Q(assigned_to__id__in=self.request.user.profile)
-                | Q(created_by=self.request.user.profile.user)
-            ).exclude(status="closed")
-            opportunities = opportunities
+            # Employees: only see leads assigned to them
+            leads = Lead.objects.filter(
+                Q(assigned_to=self.request.user.profile)
+                | Q(created_by=self.request.user)
+            ).exclude(is_active=False)
+        else:
+            # Managers: see all active leads
+            leads = Lead.objects.filter(is_active=True)
+        
         context = {}
         context["leads_count"] = leads.count()
         context["opportunities_count"] = 0
-        context["leads"] = LeadSerializer(leads, many=True).data
+        context["leads"] = LeadSerializer(leads[:10], many=True).data  # Limit to 10 for dashboard
         context["opportunities"] = []
         return Response(context, status=status.HTTP_200_OK)
 
