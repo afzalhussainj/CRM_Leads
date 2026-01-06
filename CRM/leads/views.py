@@ -3,12 +3,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
 
-from rest_framework import status
+from rest_framework import status, serializers
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 
 from common.models import Profile
@@ -18,6 +18,7 @@ from leads.serializer import (
     LeadSerializer,
     LeadNoteSerializer,
     LeadNoteCreateSerializer,
+    RemindersResponseSerializer,
 )
 from utils.roles_enum import UserRole
 
@@ -1025,7 +1026,34 @@ class RemindersListView(APIView):
     @extend_schema(
         summary='Get categorized reminders',
         description='Get reminders categorized into overdue, due today, upcoming, and done',
-        responses={200: OpenApiTypes.OBJECT},
+        responses={
+            200: RemindersResponseSerializer,
+            400: OpenApiTypes.OBJECT,
+        },
+        examples=[
+            OpenApiExample(
+                'Reminders Response',
+                value={
+                    'success': True,
+                    'overdue': {
+                        'count': 2,
+                        'leads': []
+                    },
+                    'due_today': {
+                        'count': 1,
+                        'leads': []
+                    },
+                    'upcoming': {
+                        'count': 5,
+                        'leads': []
+                    },
+                    'done': {
+                        'count': 3,
+                        'leads': []
+                    }
+                }
+            ),
+        ],
     )
     def get(self, request, *args, **kwargs):
         """

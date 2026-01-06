@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_serializer
 from datetime import datetime
 import re
 
@@ -540,3 +541,18 @@ class LeadNoteCreateSerializer(serializers.ModelSerializer):
         if not value or not value.strip():
             raise serializers.ValidationError("Message cannot be empty.")
         return value.strip()
+
+
+class ReminderCategorySerializer(serializers.Serializer):
+    """Serializer for reminder category (overdue, due_today, upcoming, done)"""
+    count = serializers.IntegerField()
+    leads = LeadSerializer(many=True)
+
+
+class RemindersResponseSerializer(serializers.Serializer):
+    """Serializer for reminders API response"""
+    success = serializers.BooleanField()
+    overdue = ReminderCategorySerializer()
+    due_today = ReminderCategorySerializer()
+    upcoming = ReminderCategorySerializer()
+    done = ReminderCategorySerializer()
