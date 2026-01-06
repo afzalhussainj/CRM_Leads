@@ -3,6 +3,11 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 # UI views removed - using React frontend instead
 from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView, LeadSourceListView, LeadStatusListView
 from leads.employee_management_views import EmployeeListView, EmployeeToggleActiveView, EmployeeDeleteView
@@ -14,6 +19,11 @@ app_name = "crm"
 
 urlpatterns = [
     path("django-admin/", admin.site.urls),
+    
+    # API Documentation (Swagger/OpenAPI)
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     
     # API endpoints
     path("api/common/", include("common.urls")),
