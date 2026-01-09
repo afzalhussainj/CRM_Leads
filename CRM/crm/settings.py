@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-me")
 DEBUG = os.getenv("DEBUG", "1").lower() in ("1", "true", "yes")
 
 
-# ALLOWED_HOSTS: Support Render, Vercel, and custom hosts via env, with smart defaults
+# ALLOWED_HOSTS: Support Render, Vercel, Railway, and custom hosts via env, with smart defaults
 _allowed_hosts_env = os.getenv("ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
 
@@ -43,6 +43,15 @@ if vercel_url:
     vercel_host_clean = vercel_host.split(":")[0]
     if vercel_host_clean not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(vercel_host_clean)
+
+# Automatically allow Railway hostname
+# Railway sets RAILWAY_STATIC_URL or PUBLIC_URL env var
+railway_url = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+if railway_url:
+    # Railway provides the full domain (e.g., "app-production.up.railway.app")
+    railway_host = railway_url.replace("https://", "").replace("http://", "").split("/")[0]
+    if railway_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(railway_host)
 
 # Always allow localhost for local development (frontend testing)
 localhost_hosts = ["localhost", "127.0.0.1", "0.0.0.0"]
