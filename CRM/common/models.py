@@ -80,6 +80,8 @@ class Profile(BaseModel):
             'email': self.user.email,
             'id': self.user.id,
             'is_active': self.user.is_active,
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
         }
 
 

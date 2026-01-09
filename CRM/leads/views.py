@@ -138,7 +138,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             is_active=True,
             user__is_deleted=False
         ).values(
-            "id", "user__email"
+            "id", "user__email", "user__first_name", "user__last_name"
         )
         context["users"] = users
 
