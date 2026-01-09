@@ -46,7 +46,7 @@ class Lead(BaseModel):
     # Workflow assignment fields
     assigned_to = models.ForeignKey(
         Profile, 
-        on_delete=models.SET_NULL, 
+        on_delete=models.PROTECT, 
         related_name="assigned_leads",
         help_text="Employee assigned to work on this lead"
     )
