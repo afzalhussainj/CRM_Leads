@@ -242,12 +242,12 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 import ssl
 if CELERY_BROKER_URL and CELERY_BROKER_URL.startswith("rediss://"):
     CELERY_BROKER_USE_SSL = {
-        'ssl_cert_reqs': ssl.CERT_NONE  # For self-signed certificates or no verification
+        'ssl_cert_reqs': ssl.CERT_REQUIRED  # Verify SSL certificates (recommended for production)
     }
     
 if CELERY_RESULT_BACKEND and CELERY_RESULT_BACKEND.startswith("rediss://"):
     CELERY_REDIS_BACKEND_USE_SSL = {
-        'ssl_cert_reqs': ssl.CERT_NONE  # For self-signed certificates or no verification
+        'ssl_cert_reqs': ssl.CERT_REQUIRED  # Verify SSL certificates (recommended for production)
     }
 
 # Caching Configuration
