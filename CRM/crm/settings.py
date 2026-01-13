@@ -235,8 +235,20 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
 
 
 # celery Tasks
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+
+# SSL configuration for rediss:// URLs
+import ssl
+if CELERY_BROKER_URL and CELERY_BROKER_URL.startswith("rediss://"):
+    CELERY_BROKER_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_NONE  # For self-signed certificates or no verification
+    }
+    
+if CELERY_RESULT_BACKEND and CELERY_RESULT_BACKEND.startswith("rediss://"):
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_NONE  # For self-signed certificates or no verification
+    }
 
 # Caching Configuration
 # Try to use Redis cache if available, otherwise fallback to local memory
