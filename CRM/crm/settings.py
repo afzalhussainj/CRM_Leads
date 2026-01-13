@@ -246,7 +246,7 @@ if cache_backend == "redis" and CELERY_BROKER_URL and "redis" in CELERY_BROKER_U
         CACHES = {
             'default': {
                 'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-                'LOCATION': os.getenv("CACHE_URL", "redis://localhost:6379/2"),
+                'LOCATION': os.getenv("CACHE_URL", "redis://localhost:6379/0"),
                 'KEY_PREFIX': 'crm_leads',
                 'TIMEOUT': 3600,  # Default cache timeout: 1 hour
             }
