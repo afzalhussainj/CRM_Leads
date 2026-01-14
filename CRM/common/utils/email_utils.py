@@ -118,34 +118,3 @@ def send_bulk_follow_up_reminders():
     except Exception as e:
         logger.error(f"Error in bulk follow-up reminder process: {str(e)}")
         return 0
-
-def send_test_email(to_email):
-    """
-    Send a test email to verify email configuration.
-    
-    Args:
-        to_email: Email address to send test email to
-    """
-    try:
-        subject = "🧪 Test Email - Lead Management System"
-        message = "This is a test email to verify your email configuration is working correctly."
-        
-        success = send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[to_email],
-            fail_silently=False,
-        )
-        
-        if success:
-            logger.info(f"Test email sent successfully to {to_email}")
-            return True
-        else:
-            logger.error(f"Failed to send test email to {to_email}")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error sending test email to {to_email}: {str(e)}")
-        return False
-

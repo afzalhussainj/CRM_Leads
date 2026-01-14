@@ -13,20 +13,11 @@ from leads.models import Lead
 from utils.roles_enum import UserRole
 
 
-@extend_schema(
-    tags=['Employees'],
-    summary='List employees',
-    description='Get all employees. Managers only.',
-)
+
 class EmployeeListView(APIView):
     """API View for listing employees - JWT authenticated, managers only"""
     permission_classes = (IsAuthenticated,)
     
-    @extend_schema(
-        summary='List all employees',
-        description='Get list of all employees with counts (active, inactive, total). Managers only.',
-        responses={200: EmployeeSerializer(many=True)},
-    )
     def get(self, request):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or request.user.profile is None:
@@ -64,24 +55,10 @@ class EmployeeListView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@extend_schema(
-    tags=['Employees'],
-    summary='Toggle employee active status',
-    description='Activate or deactivate an employee. Managers only.',
-)
 class EmployeeToggleActiveView(APIView):
     """API View for toggling employee active status - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
-    @extend_schema(
-        summary='Toggle employee active status',
-        description='Toggle the is_active status of an employee',
-        responses={
-            200: EmployeeSerializer,
-            400: OpenApiTypes.OBJECT,
-            403: OpenApiTypes.OBJECT,
-        },
-    )
     def post(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or request.user.profile is None:
@@ -118,24 +95,10 @@ class EmployeeToggleActiveView(APIView):
         return self.post(request, pk)
 
 
-@extend_schema(
-    tags=['Employees'],
-    summary='Delete employee',
-    description='Soft delete an employee. Managers only. Employee must have no assigned leads.',
-)
 class EmployeeDeleteView(APIView):
     """API View for soft deleting employees - JWT authenticated"""
     permission_classes = (IsAuthenticated,)
     
-    @extend_schema(
-        summary='Delete employee',
-        description='Soft delete an employee. Checks if employee has assigned leads.',
-        responses={
-            200: OpenApiTypes.OBJECT,
-            400: OpenApiTypes.OBJECT,
-            403: OpenApiTypes.OBJECT,
-        },
-    )
     def delete(self, request, pk):
         # Check if user is a manager
         if not hasattr(request.user, 'profile') or request.user.profile is None:
