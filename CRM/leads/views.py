@@ -273,7 +273,7 @@ class LeadDetailView(APIView):
         return Response(context)
 
 
-    def put(self, request, pk, **kwargs):
+    def patch(self, request, pk, **kwargs):
         """
         Update a lead.
         - Employees can only update leads assigned to them
