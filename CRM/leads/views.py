@@ -157,8 +157,6 @@ class LeadListView(APIView, LimitOffsetPagination):
             users = Profile.objects.select_related('user').filter(
                 is_active=True,
                 user__is_deleted=False
-            ).values(
-                "id", "user__email", "user__first_name", "user__last_name"
             )
 
             users = ProfileSerializer(users, many=True).data
