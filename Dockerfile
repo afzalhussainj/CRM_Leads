@@ -39,6 +39,5 @@ USER appuser
 EXPOSE 8000
 
 # Use startup script that runs migrations before starting server
-CMD ["/app/start.sh"]
-
+CMD ["sh", "-c", "$START_COMMAND"]
 
