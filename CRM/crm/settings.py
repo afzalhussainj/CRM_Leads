@@ -74,8 +74,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-    "drf_spectacular",  # Swagger/OpenAPI documentation
-
     "common",
     "leads",
 ]
@@ -348,18 +346,8 @@ REST_FRAMEWORK = {
         "common.utils.external_auth.CustomDualAuthentication"
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
-    "PAGE_SIZE": 10,
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "PAGE_SIZE": 10
 }
-
-
-
-
-# JWT_SETTINGS = {
-#     'bearerFormat': ('Bearer', 'jwt', 'Jwt')
-# }
-
-
 
 # CORS Configuration
 CORS_ALLOW_CREDENTIALS = True  # Required for HTTP-only cookies
@@ -388,8 +376,8 @@ CORS_EXPOSE_HEADERS = [
 
 # CORS Allowed Origins - simple configuration
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Local development (Vite default port)
-    "https://slcwcrm.vercel.app",  # Frontend URL (hardcoded for reliability)
+    "http://localhost:5173",  
+    "https://slcwcrm.vercel.app",  
 ]
 
 # Add frontend URL from environment variable (Vercel) if different
@@ -404,32 +392,6 @@ CORS_ORIGIN_ALLOW_ALL = False
 # CSRF Trusted Origins - same as CORS_ALLOWED_ORIGINS
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
 
-# Swagger/OpenAPI Configuration
-SPECTACULAR_SETTINGS = {
-    "TITLE": "CRM Leads API",
-    "DESCRIPTION": "API documentation for CRM Leads Management System",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "COMPONENT_SPLIT_REQUEST": True,
-    "SCHEMA_PATH_PREFIX": "/api/",
-    "AUTHENTICATION_WHITELIST": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ],
-    "SWAGGER_UI_SETTINGS": {
-        "deepLinking": True,
-        "persistAuthorization": True,
-        "displayOperationId": False,
-        "filter": True,
-        "tryItOutEnabled": True,
-    },
-    "SWAGGER_UI_FAVICON_HREF": None,
-    "REDOC_UI_SETTINGS": {
-        "hideDownloadButton": False,
-        "expandResponses": "200,201",
-        "pathInMiddlePanel": True,
-    },
-}
-
 SECURE_HSTS_SECONDS = 3600
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
@@ -438,25 +400,18 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-# STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
 
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost")
 
 # Cookie settings for HTTP-only JWT tokens
 JWT_COOKIE_NAME = "access_token"
 JWT_REFRESH_COOKIE_NAME = "refresh_token"
-# For cross-origin cookies (different domains), Secure must be True
-JWT_COOKIE_SECURE = True  # Always True for HTTPS (required for SameSite=None)
-JWT_COOKIE_HTTPONLY = True  # Always True for security
-# For cross-domain cookies: SameSite=None with Secure=True
-# For same-domain: use Lax
-JWT_COOKIE_SAMESITE = "None"  # Required for cross-origin cookies
-# DO NOT set domain for cross-origin cookies - leave as None
-# Setting domain restricts which domains can receive the cookie
-JWT_COOKIE_DOMAIN = None  # Must be None for cross-origin cookies
+JWT_COOKIE_SECURE = True  
+JWT_COOKIE_HTTPONLY = True  
+JWT_COOKIE_SAMESITE = "None"
+JWT_COOKIE_DOMAIN = None
 
 SIMPLE_JWT = {
-    #'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=365),
     "ROTATE_REFRESH_TOKENS": False,
@@ -471,6 +426,5 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
-# it is needed in custome middlewere to get the user from the token
 JWT_ALGO = "HS256"
 

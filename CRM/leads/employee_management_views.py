@@ -4,9 +4,6 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Q
-from drf_spectacular.utils import extend_schema
-from drf_spectacular.types import OpenApiTypes
-
 from common.models import Profile, User
 from common.serializer import ProfileSerializer, EmployeeSerializer
 from leads.models import Lead

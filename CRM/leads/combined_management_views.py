@@ -10,8 +10,6 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import PermissionDenied
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiExample
-from drf_spectacular.types import OpenApiTypes
 from common.models import LeadStatus, LeadSource
 from utils.roles_enum import UserRole
 

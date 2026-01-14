@@ -37,8 +37,6 @@ class SiteAdminView(LoginRequiredMixin, TemplateView):
         
         # Role-based data filtering
         if user_role == UserRole.MANAGER.value:
-            # Manager sees all data (excluding projects)
-            # Optimize: Use select_related and single aggregation query
             base_leads_queryset = Lead.objects.select_related(
                 'status', 'assigned_to', 'assigned_to__user'
             ).filter(is_project=False)
