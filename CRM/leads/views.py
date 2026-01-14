@@ -11,7 +11,8 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 
-from common.models import Profile
+from common.models import LeadSource, LeadStatus, Profile
+from common.serializer import ProfileSerializer
 from .models import Lead, LeadNote, LeadNoteRead
 from leads.serializer import (
     LeadCreateSerializer,
@@ -133,14 +134,45 @@ class LeadListView(APIView, LimitOffsetPagination):
         context["limit"] = page_size
         context["search"] = search
         
-        # Get users list for assignment
-        users = Profile.objects.select_related('user').filter(
-            is_active=True,
-            user__is_deleted=False
-        ).values(
-            "id", "user__email", "user__first_name", "user__last_name"
-        )
-        context["users"] = users
+        #statuses and sources along with lead data
+
+        statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
+        statuses_data = [
+            {
+                'id': s.id,
+                'name': s.name,
+            }
+            for s in statuses
+        ]
+        
+
+        sources = LeadSource.objects.all().order_by('source')
+        sources_data = [
+            {
+                'id': src.id,
+                'name': src.source,
+            }
+            for src in sources
+        ]
+
+        context["statuses"] = statuses_data
+        context["sources"] = sources_data
+
+        # Employees along with leads data
+
+        if int(self.request.user.profile.role) == UserRole.MANAGER.value or self.request.user.is_superuser:
+            users = Profile.objects.select_related('user').filter(
+                is_active=True,
+                user__is_deleted=False
+            ).values(
+                "id", "user__email", "user__first_name", "user__last_name"
+            )
+
+            users = ProfileSerializer(users, many=True).data
+            context["users"] = users
+        else:
+            
+            context["users"] = []
 
         return context
 

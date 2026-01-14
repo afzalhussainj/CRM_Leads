@@ -264,7 +264,6 @@ class LeadStatusListView(APIView):
     )
     def get(self, request):
         statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
-        print("Fetched statuses:", statuses)
         data = [
             {
                 'id': s.id,
