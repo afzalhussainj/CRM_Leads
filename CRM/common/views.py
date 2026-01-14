@@ -297,33 +297,13 @@ def password_reset_request(request):
         }, status=status.HTTP_404_NOT_FOUND)
     
     # Send password reset email
-    try:
-        from common.tasks import send_email_to_reset_password
-        # Try Celery async first, fallback to synchronous if not available
-        try:
-            # Check if it's a Celery task (has .delay method)
-            if hasattr(send_email_to_reset_password, 'delay'):
-                send_email_to_reset_password.delay(user.email)
-            else:
-                # Synchronous call
-                send_email_to_reset_password(user.email)
-        except AttributeError:
-            # Not a Celery task, call synchronously
-            send_email_to_reset_password(user.email)
-        except Exception as e:
-            # If async fails, try sync
-            send_email_to_reset_password(user.email)
-        
-        return Response({
-            'message': 'If an account with this email exists, a password reset link has been sent.'
-        }, status=status.HTTP_200_OK)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Password reset email error: {str(e)}")
-        return Response({
-            'error': 'Failed to send password reset email. Please try again later.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    from common.tasks import send_email_to_reset_password
+    # Use Celery async only
+    send_email_to_reset_password.delay(user.email)
+    
+    return Response({
+        'message': 'If an account with this email exists, a password reset link has been sent.'
+    }, status=status.HTTP_200_OK)
 
 @extend_schema(
     tags=['Employees'],

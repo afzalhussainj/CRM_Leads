@@ -214,14 +214,8 @@ def _send_email_to_reset_password_sync(user_email):
             return False
     return False
 
-# Create Celery task wrapper if Celery is available
-try:
-    @app.task
-    def send_email_to_reset_password(user_email):
-        """Celery task for password reset email"""
-        return _send_email_to_reset_password_sync(user_email)
-except Exception:
-    # If Celery is not available, use sync version directly
-    def send_email_to_reset_password(user_email):
-        """Send password reset email (synchronous fallback)"""
-        return _send_email_to_reset_password_sync(user_email)
+# Celery task for password reset email
+@app.task
+def send_email_to_reset_password(user_email):
+    """Celery task for password reset email (async only)"""
+    return _send_email_to_reset_password_sync(user_email)
