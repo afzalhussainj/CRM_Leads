@@ -659,11 +659,13 @@ class LeadNotesUnreadListView(APIView):
                 )
         
         # Get unread notes for this lead (notes that the current user hasn't read)
-        # Use exclude to filter out notes that have been read by the current user
+        # Exclude notes created by the current user and notes already read by them
         unread_notes = LeadNote.objects.filter(
             lead=lead_obj
         ).exclude(
             read_by__user=request.user
+        ).exclude(
+            author=request.user.profile
         ).select_related(
             'author',
             'author__user'
@@ -793,11 +795,13 @@ class LeadNoteMarkReadView(APIView):
         
        
         
-        # Get all unread notes for this lead (notes not read by current user)
+        # Get all unread notes for this lead (notes not read by current user and not created by them)
         unread_notes = LeadNote.objects.filter(
             lead=lead_obj
         ).exclude(
             read_by__user=request.user
+        ).exclude(
+            author=request.user.profile
         )
         
         # Mark all unread notes as read
