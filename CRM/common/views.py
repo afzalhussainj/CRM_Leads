@@ -627,33 +627,6 @@ class UserDetailView(APIView):
         return Response({"status": "success"}, status=status.HTTP_200_OK)
 
 
-
-class ApiHomeView(APIView):
-
-    permission_classes = (IsAuthenticated,)
-
-    def get(self, request, format=None):
-        # Get leads queryset based on user role
-        from leads.serializer import LeadSerializer
-        
-        if int(self.request.user.profile.role) != UserRole.MANAGER.value and not self.request.user.is_superuser:
-            # Employees: only see leads assigned to them
-            leads = Lead.objects.filter(
-                Q(assigned_to=self.request.user.profile)
-                | Q(created_by=self.request.user)
-            ).exclude(is_active=False)
-        else:
-            # Managers: see all active leads
-            leads = Lead.objects.filter(is_active=True)
-        
-        context = {}
-        context["leads_count"] = leads.count()
-        context["opportunities_count"] = 0
-        context["leads"] = LeadSerializer(leads[:10], many=True).data  # Limit to 10 for dashboard
-        context["opportunities"] = []
-        return Response(context, status=status.HTTP_200_OK)
-
-
 class ProfileView(APIView):
     permission_classes = (IsAuthenticated,)
 

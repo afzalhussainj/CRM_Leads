@@ -6,7 +6,7 @@ app_name = "api_common"
 
 
 urlpatterns = [
-    path("dashboard/", views.ApiHomeView.as_view()),
+    path("dashboard/", views.Dashboard.as_view()),
     
     # Authentication endpoints
     path("auth/login/", views.login_view, name="api_login"),
@@ -31,5 +31,4 @@ urlpatterns = [
     path("users/", views.UsersListView.as_view()),
     path("user/<str:pk>/", views.UserDetailView.as_view()),
     path("user/<str:pk>/status/", views.UserStatusView.as_view()),
-    path("dashboard/", views.Dashboard.as_view(), name="api_user_unread_notes"),
 ]
