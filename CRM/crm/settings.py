@@ -264,10 +264,11 @@ CELERY_RESULT_SERIALIZER = 'json'
 cache_backend = os.getenv("CACHE_BACKEND", "locmem")
 if cache_backend == "redis" and CELERY_BROKER_URL and "redis" in CELERY_BROKER_URL.lower():
     try:
+        cache_url = normalize_redis_url(os.getenv("CACHE_URL"))
         CACHES = {
             'default': {
                 'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-                'LOCATION': os.getenv("CACHE_URL", "redis://localhost:6379/0"),
+                'LOCATION': cache_url,
                 'KEY_PREFIX': 'crm_leads',
                 'TIMEOUT': 3600,  # Default cache timeout: 1 hour
             }
