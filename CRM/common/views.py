@@ -730,8 +730,9 @@ class Dashboard(APIView):
         # Get all unread notes sent TO the user (not BY the user)
         # Find notes by other users that current user hasn't read
         unread_notes = LeadNote.objects.filter(
-            lead__in=leads_queryset,
-            author__user_id__ne=request.user.id
+            lead__in=leads_queryset
+        ).exclude(
+            author__user=request.user
         ).exclude(
             read_by__user=request.user
         ).select_related(
