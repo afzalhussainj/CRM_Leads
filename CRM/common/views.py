@@ -725,7 +725,9 @@ class Dashboard(APIView):
         ]
 
         # Always-active leads (within the same role-based scope)
-        always_active_count = leads_queryset.filter(always_active=True).count()
+        always_active_leads = leads_queryset.filter(always_active=True)
+        always_active_count = always_active_leads.count()
+        always_active_leads = LeadSerializer(always_active_leads, many=True).data
         
         # Get all unread notes sent TO the user (not BY the user)
         # Find notes by other users that current user hasn't read
@@ -787,6 +789,7 @@ class Dashboard(APIView):
             "lead_statuses": status_counts,
             "always_active": {
             "count": always_active_count,
+            "always_active_leads": always_active_leads
             },
             "reminders": {
                 "overdue": {
