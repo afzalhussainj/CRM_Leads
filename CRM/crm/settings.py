@@ -236,17 +236,28 @@ ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
 
-# SSL configuration for rediss:// URLs
-import ssl
-if CELERY_BROKER_URL and CELERY_BROKER_URL.startswith("rediss://"):
-    CELERY_BROKER_USE_SSL = {
-        'ssl_cert_reqs': ssl.CERT_NONE  # Accept any certificate (works with managed Redis services)
-    }
+# Normalize Redis URLs: force database 0 and add SSL parameters for rediss://
+def normalize_redis_url(url):
+    """Normalize Redis URL to add SSL parameters for rediss://"""
+    if not url or "//" not in url:
+        return url
     
-if CELERY_RESULT_BACKEND and CELERY_RESULT_BACKEND.startswith("rediss://"):
-    CELERY_REDIS_BACKEND_USE_SSL = {
-        'ssl_cert_reqs': ssl.CERT_NONE  # Accept any certificate (works with managed Redis services)
-    }
+    # For rediss:// URLs, add ssl_cert_reqs parameter if not already present (required in Celery 5.4+)
+    if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
+        separator = "&" if "?" in url else "?"
+        url = f"{url}{separator}ssl_cert_reqs=CERT_NONE"
+    
+    return url
+
+CELERY_BROKER_URL = normalize_redis_url(CELERY_BROKER_URL)
+CELERY_RESULT_BACKEND = normalize_redis_url(CELERY_RESULT_BACKEND)
+
+# Celery configuration
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 # Caching Configuration
 # Try to use Redis cache if available, otherwise fallback to local memory
