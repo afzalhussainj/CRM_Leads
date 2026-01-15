@@ -761,27 +761,25 @@ class LeadNoteDetailView(APIView):
 
 class LeadNoteMarkReadView(APIView):
     """
-    API View for marking a note as read.
+    API View for marking all unread notes of a lead as read.
     
-    POST: Mark a note as read by the current user
+    POST: Mark all unread notes of a lead as read by the current user
     """
     permission_classes = (IsAuthenticated,)
 
-    def get_note(self, pk, note_pk):
-        """Get note object"""
-        lead_obj = get_object_or_404(Lead, pk=pk)
+    def get_lead(self, pk):
+        """Get lead object"""
         return get_object_or_404(
-            LeadNote.objects.select_related('lead', 'author', 'author__user'),
-            pk=note_pk,
-            lead=lead_obj
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            pk=pk
         )
 
 
-    def post(self, request, pk, note_pk, **kwargs):
+    def post(self, request, pk, **kwargs):
         """
-        Mark a note as read by the current user.
+        Mark all unread notes of a lead as read by the current user.
         """
-        note_obj = self.get_note(pk, note_pk)
+        lead_obj = self.get_lead(pk)
         
         # Validate user has profile
         if not hasattr(request.user, 'profile') or request.user.profile is None:
@@ -793,33 +791,32 @@ class LeadNoteMarkReadView(APIView):
         user_profile = request.user.profile
         user_role = int(user_profile.role) if user_profile.role is not None else None
         
-        # Role-based permission check
-        if user_role == UserRole.EMPLOYEE.value:
-            # Employees can only mark notes as read for leads assigned to them
-            if note_obj.lead.assigned_to != user_profile:
-                return Response(
-                    {"error": True, "message": "You can only mark notes as read for leads assigned to you."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+       
         
-        # Check if already read
-        read_record, created = LeadNoteRead.objects.get_or_create(
-            note=note_obj,
-            user=request.user,
-            defaults={'created_by': request.user}
+        # Get all unread notes for this lead (notes not read by current user)
+        unread_notes = LeadNote.objects.filter(
+            lead=lead_obj
+        ).exclude(
+            read_by__user=request.user
         )
         
-        if created:
-            message = "Note marked as read"
-        else:
-            message = "Note was already marked as read"
+        # Mark all unread notes as read
+        marked_count = 0
+        for note in unread_notes:
+            _, created = LeadNoteRead.objects.get_or_create(
+                note=note,
+                user=request.user,
+                defaults={'created_by': request.user}
+            )
+            if created:
+                marked_count += 1
         
         return Response(
             {
                 "success": True,
-                "message": message,
-                "note_id": str(note_obj.id),
-                "is_read": True
+                "message": f"Marked {marked_count} note(s) as read",
+                "lead_id": str(lead_obj.id),
+                "marked_count": marked_count
             },
             status=status.HTTP_200_OK,
         )
