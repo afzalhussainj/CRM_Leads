@@ -31,4 +31,5 @@ urlpatterns = [
     path("users/", views.UsersListView.as_view()),
     path("user/<str:pk>/", views.UserDetailView.as_view()),
     path("user/<str:pk>/status/", views.UserStatusView.as_view()),
+    path("unread-notes/", views.UserUnreadNotesListView.as_view(), name="api_user_unread_notes"),
 ]

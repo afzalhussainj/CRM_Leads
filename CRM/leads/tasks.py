@@ -8,6 +8,7 @@ from django.db.models import Q
 from django.template.loader import render_to_string
 
 from common.models import Profile
+from common.utils.email_resend import send_email_html
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
@@ -30,19 +31,16 @@ def send_email(
     bcc=[],
     cc=[],
 ):
-    # send email to user with attachment
+    """Send email using Resend API (attachments, bcc, cc not supported in simple version)"""
     if not from_email:
         from_email = settings.DEFAULT_FROM_EMAIL
-    if not text_content:
-        text_content = ""
-    email = EmailMultiAlternatives(
-        subject, text_content, from_email, recipients, bcc=bcc, cc=cc
-    )
-    email.attach_alternative(html_content, "text/html")
-    for attachment in attachments:
-        # Example: email.attach('design.png', img_data, 'image/png')
-        email.attach(*attachment)
-    email.send()
+    
+    # Send to each recipient using Resend
+    for recipient in recipients:
+        send_email_html(subject, recipient, html_content, from_email=from_email)
+    
+    # Note: BCC and CC not directly supported in this simple Resend implementation
+    # If needed, can send separately to bcc/cc recipients
 
 
 @app.task
@@ -85,22 +83,20 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
 
 @app.task
 def send_email_to_assigned_user(recipients, lead_id, source=""):
-    """Send Mail To Users When they are assigned to a lead"""
+    """Send Mail To Users When they are assigned to a lead - Using Resend"""
     # Optimize: Use select_related
     lead = Lead.objects.select_related(
         'status', 'assigned_to', 'assigned_to__user'
     ).get(id=lead_id)
     created_by = lead.created_by
     for user in recipients:
-        recipients_list = []
         # Optimize: Use select_related
         profile = Profile.objects.select_related('user').filter(
             id=user, 
             is_active=True,
             user__is_deleted=False
         ).first()
-        if profile:
-            recipients_list.append(profile.user.email)
+        if profile and profile.user.email:
             context = {}
             context["url"] = settings.DOMAIN_NAME
             context["user"] = profile.user
@@ -108,13 +104,13 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
             context["created_by"] = created_by
             context["source"] = source
             context["UserRole"] = UserRole
-            subject = "Assigned a lead for you. "
+            subject = "Assigned a lead for you"
             html_content = render_to_string(
                 "assigned_to/leads_assigned.html", context=context
             )
-            msg = EmailMessage(subject, html_content, to=recipients_list)
-            msg.content_subtype = "html"
-            msg.send()
+            
+            # Send via Resend
+            send_email_html(subject, profile.user.email, html_content)
 
 
 

@@ -231,6 +231,9 @@ if ENV_TYPE == "dev":
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "dev@example.com")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@example.com")
 
+# Resend Email Service Configuration
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+
 
 # celery Tasks
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")

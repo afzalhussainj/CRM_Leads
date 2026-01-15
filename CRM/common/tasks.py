@@ -1,9 +1,9 @@
 import datetime
+import socket
 
-from celery import Celery
+from celery import Celery, shared_task
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.encoding import force_bytes
@@ -11,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode
 
 from common.models import Profile, User
 from common.utils.token_generator import account_activation_token
+from common.utils.email_resend import send_reset_email, send_email_html
 from utils.roles_enum import UserRole
 
 app = Celery("redis://")
@@ -18,9 +19,7 @@ app = Celery("redis://")
 
 @app.task
 def send_email_to_new_user(user_id):
-
-    """Send Mail To Users When their account is created"""
-    # No need for select_related (User has no foreign keys in this context)
+    """Send Mail To Users When their account is created - Using Resend"""
     user_obj = User.objects.filter(id=user_id, is_deleted=False).first()
 
     if user_obj:
@@ -45,20 +44,12 @@ def send_email_to_new_user(user_id):
             context["token"],
             activation_key,
         )
-        recipients = [
-            user_email,
-        ]
+        
         subject = "Welcome to SLCW CRM"
         html_content = render_to_string("common/user_status_activate.html", context=context)
-
-        msg = EmailMessage(
-            subject,
-            html_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=recipients,
-        )
-        msg.content_subtype = "html"
-        msg.send()
+        
+        # Send via Resend
+        send_email_html(subject, user_email, html_content)
 
 
 @app.task
@@ -66,7 +57,7 @@ def send_email_user_status(
     user_id,
     status_changed_user="",
 ):
-    """Send Mail To Users Regarding their status i.e active or inactive"""
+    """Send Mail To Users Regarding their status i.e active or inactive - Using Resend"""
     user = User.objects.filter(id=user_id).first()
     if user:
         context = {}
@@ -78,26 +69,18 @@ def send_email_user_status(
             context["message"] = "activated"
         context["status_changed_user"] = status_changed_user
         if context["message"] == "activated":
-            subject = "Account Activated "
+            subject = "Account Activated"
             html_content = render_to_string(
                 "user_status_activate.html", context=context
             )
         else:
-            subject = "Account Deactivated "
+            subject = "Account Deactivated"
             html_content = render_to_string(
                 "user_status_deactivate.html", context=context
             )
-        recipients = []
-        recipients.append(user.email)
-        if recipients:
-            msg = EmailMessage(
-                subject,
-                html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=recipients,
-            )
-            msg.content_subtype = "html"
-            msg.send()
+        
+        # Send via Resend
+        send_email_html(subject, user.email, html_content)
 
 
 @app.task
@@ -105,117 +88,97 @@ def send_email_user_delete(
     user_email,
     deleted_by="",
 ):
-    """Send Mail To Users When their account is deleted"""
+    """Send Mail To Users When their account is deleted - Using Resend"""
     if user_email:
         context = {}
         context["message"] = "deleted"
         context["deleted_by"] = deleted_by
         context["email"] = user_email
         context["UserRole"] = UserRole
-        recipients = []
-        recipients.append(user_email)
-        subject = "CRM : Your account is Deleted. "
+        
+        subject = "CRM: Your account has been deleted"
         html_content = render_to_string("user_delete_email.html", context=context)
-        if recipients:
-            msg = EmailMessage(
-                subject,
-                html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=recipients,
-            )
-            msg.content_subtype = "html"
-            msg.send()
+        
+        # Send via Resend
+        send_email_html(subject, user_email, html_content)
 
 
 @app.task
 def resend_activation_link_to_user(
     user_email="",
 ):
-    """Send Mail To Users When requested for resend activation link"""
-
-    # No need for select_related (User has no foreign keys in this context)
+    """Send Mail To Users When requested for resend activation link - Using Resend"""
     user_obj = User.objects.filter(email=user_email, is_deleted=False).first()
+    if not user_obj:
+        return False
+        
     user_obj.is_active = False
     user_obj.save()
-    if user_obj:
-        context = {}
-        context["user_email"] = user_email
-        context["UserRole"] = UserRole
-        context["url"] = settings.DOMAIN_NAME
-        context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
-        context["token"] = account_activation_token.make_token(user_obj)
-        time_delta_two_hours = datetime.datetime.strftime(
-            timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
-        )
-        context["token"] = context["token"]
-        activation_key = context["token"] + time_delta_two_hours
-        user_obj.activation_key = activation_key
-        user_obj.key_expires = timezone.now() + datetime.timedelta(hours=2)
-        user_obj.save()
+    
+    context = {}
+    context["user_email"] = user_email
+    context["UserRole"] = UserRole
+    context["url"] = settings.DOMAIN_NAME
+    context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
+    context["token"] = account_activation_token.make_token(user_obj)
+    time_delta_two_hours = datetime.datetime.strftime(
+        timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
+    )
+    context["token"] = context["token"]
+    activation_key = context["token"] + time_delta_two_hours
+    user_obj.activation_key = activation_key
+    user_obj.key_expires = timezone.now() + datetime.timedelta(hours=2)
+    user_obj.save()
 
-        context["complete_url"] = context[
-            "url"
-        ] + "/auth/activate_user/{}/{}/{}/".format(
-            context["uid"][0],
-            context["token"],
-            activation_key,
-        )
-        recipients = [context["complete_url"]]
-        recipients.append(user_email)
-        subject = "Welcome to SLCW CRM"
-        html_content = render_to_string("common/user_status_activate.html", context=context)
-        if recipients:
-            msg = EmailMessage(
-                subject,
-                html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=recipients,
-            )
-            msg.content_subtype = "html"
-            msg.send()
+    context["complete_url"] = context[
+        "url"
+    ] + "/auth/activate_user/{}/{}/{}/".format(
+        context["uid"][0],
+        context["token"],
+        activation_key,
+    )
+    
+    subject = "Welcome to SLCW CRM - Activation Link"
+    html_content = render_to_string("common/user_status_activate.html", context=context)
+    
+    # Send via Resend
+    send_email_html(subject, user_email, html_content)
 
 
 def _send_email_to_reset_password_sync(user_email):
-    """Send Mail To Users When they request password reset (synchronous)"""
+    """Send Mail To Users When they request password reset (synchronous) - Using Resend"""
     user = User.objects.filter(email=user_email, is_deleted=False).first()
     if not user:
         return False
     
-    context = {}
-    context["user_email"] = user_email
-    context["uid"] = urlsafe_base64_encode(force_bytes(user.pk))
-    context["token"] = default_token_generator.make_token(user)
-    context["UserRole"] = UserRole
+    # Generate reset token
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
     
     # Use FRONTEND_URL for the reset link (points to React frontend)
     frontend_url = getattr(settings, "FRONTEND_URL")
-    context["complete_url"] = f"{frontend_url}/reset-password/{context['uid']}/{context['token']}/"
+    reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
     
-    subject = "Reset Your Password"
-    recipients = [user_email]
-    html_content = render_to_string(
-        "registration/password_reset_email.html", context=context
-    )
-    if recipients:
-        try:
-            msg = EmailMessage(
-                subject,
-                html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=recipients
-            )
-            msg.content_subtype = "html"
-            msg.send()
-            return True
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to send password reset email: {str(e)}")
-            return False
-    return False
+    # Send email using Resend
+    try:
+        result = send_reset_email(user_email, reset_link)
+        return result
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to send password reset email via Resend: {str(e)}")
+        return False
 
 # Celery task for password reset email
-@app.task
-def send_email_to_reset_password(user_email):
-    """Celery task for password reset email (async only)"""
-    return _send_email_to_reset_password_sync(user_email)
+@shared_task(bind=True, max_retries=3)
+def send_email_to_reset_password(self, user_email):
+    """Celery task for password reset email (async) - Uses Resend API"""
+    try:
+        result = _send_email_to_reset_password_sync(user_email)
+        if not result:
+            # Retry if email sending failed
+            raise Exception("Email sending failed")
+        return result
+    except Exception as exc:
+        # Retry after 60 seconds
+        raise self.retry(exc=exc, countdown=60, max_retries=3)

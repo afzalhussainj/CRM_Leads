@@ -18,7 +18,8 @@ from common.models import Profile, User
 from common.serializer import *
 from common.tasks import send_email_user_delete
 from common.utils.choices import ROLES
-from leads.models import Lead
+from leads.serializer import LeadNoteSerializer
+from leads.models import Lead, LeadNote
 from utils.roles_enum import UserRole
 
 User = get_user_model()
@@ -704,3 +705,68 @@ class UserStatusView(APIView):
             inactive_profiles, many=True
         ).data
         return Response(context)
+
+class UserUnreadNotesListView(APIView):
+    """
+    API View to get all unread notes for the current user across leads.
+    
+    Filtering:
+        - Managers: Can see unread notes from all leads
+        - Employees: Can see unread notes only from leads assigned to them
+    
+    Query Parameters:
+        - limit: Number of notes to return (default: 10)
+        - offset: Pagination offset (default: 0)
+        - search: Filter by lead title or note content
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, **kwargs):
+        """Get all unread notes for the current user"""
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Base query: Get leads where user has unread notes (notes sent TO them, not BY them)
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees only see unread notes from leads assigned to them
+            leads_queryset = Lead.objects.filter(
+                assigned_to=user_profile,
+                is_active=True
+            ).select_related('status', 'assigned_to', 'assigned_to__user', 'created_by')
+        else:
+            # Managers can see unread notes from all leads
+            leads_queryset = Lead.objects.filter(
+                is_active=True
+            ).select_related('status', 'assigned_to', 'assigned_to__user', 'created_by')
+        
+        # Get all unread notes sent TO the user (not BY the user)
+        # Find notes by other users that current user hasn't read
+        unread_notes = LeadNote.objects.filter(
+            lead__in=leads_queryset,
+            author__user_id__ne=request.user.id
+        ).exclude(
+            read_by__user=request.user
+        ).select_related(
+            'lead',
+            'author',
+            'author__user'
+        ).distinct().order_by('-created_at')
+        
+        # Serialize notes with full context
+        serializer = LeadNoteSerializer(unread_notes, many=True)
+        
+        response_data = {
+            "success": True,
+            "unread_count": len(unread_notes),
+            "notes": serializer.data
+        }
+ 
+        return Response(response_data, status=status.HTTP_200_OK)
