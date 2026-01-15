@@ -706,19 +706,7 @@ class UserStatusView(APIView):
         ).data
         return Response(context)
 
-class UserUnreadNotesListView(APIView):
-    """
-    API View to get all unread notes for the current user across leads.
-    
-    Filtering:
-        - Managers: Can see unread notes from all leads
-        - Employees: Can see unread notes only from leads assigned to them
-    
-    Query Parameters:
-        - limit: Number of notes to return (default: 10)
-        - offset: Pagination offset (default: 0)
-        - search: Filter by lead title or note content
-    """
+class Dashboard(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, **kwargs):
@@ -763,10 +751,11 @@ class UserUnreadNotesListView(APIView):
         # Serialize notes with full context
         serializer = LeadNoteSerializer(unread_notes, many=True)
         
-        response_data = {
+        response_data = {"unread_notes":{
             "success": True,
             "unread_count": len(unread_notes),
             "notes": serializer.data
+        }
         }
  
         return Response(response_data, status=status.HTTP_200_OK)

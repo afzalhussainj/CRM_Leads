@@ -1,24 +1,18 @@
-from resend import Resend
+import resend
 from django.conf import settings
 
-client = Resend(settings.RESEND_API_KEY)
+# Set API key once
+resend.api_key = settings.RESEND_API_KEY
 
 
 def send_reset_email(email, reset_link):
     """
     Send password reset email using Resend API.
-    
-    Args:
-        email: Recipient email address
-        reset_link: Password reset link
-    
-    Returns:
-        bool: True if email sent successfully, False otherwise
     """
     try:
-        response = client.emails.send({
+        resend.Emails.send({
             "from": settings.DEFAULT_FROM_EMAIL,
-            "to": [email],
+            "to": email,
             "subject": "Password Reset Request",
             "html": f"""
                 <!DOCTYPE html>
@@ -43,13 +37,11 @@ def send_reset_email(email, reset_link):
                     <div class="container">
                         <h2>Password Reset Request</h2>
                         <p>Hello,</p>
-                        <p>We received a request to reset your password. Click the button below to reset it:</p>
+                        <p>Click the button below to reset your password:</p>
                         <a href="{reset_link}" class="button">Reset Password</a>
-                        <p>Or copy and paste this link into your browser:</p>
-                        <p><a href="{reset_link}">{reset_link}</a></p>
-                        <p>If you didn't request this password reset, please ignore this email.</p>
+                        <p>If you didn’t request this, please ignore this email.</p>
                         <div class="footer">
-                            <p>This link will expire in 24 hours for security reasons.</p>
+                            <p>This link expires in 24 hours.</p>
                         </div>
                     </div>
                 </body>
@@ -58,34 +50,22 @@ def send_reset_email(email, reset_link):
         })
         return True
     except Exception as e:
-        print(f"Resend error: {e}")
+        print("Resend error:", e)
         return False
 
 
 def send_email_html(subject, to_email, html_content, from_email=None):
     """
     Send a generic HTML email using Resend API.
-    
-    Args:
-        subject: Email subject
-        to_email: Recipient email address
-        html_content: HTML content of the email
-        from_email: Sender email (optional, uses DEFAULT_FROM_EMAIL if not provided)
-    
-    Returns:
-        bool: True if email sent successfully, False otherwise
     """
-    if not from_email:
-        from_email = settings.DEFAULT_FROM_EMAIL
-    
     try:
-        response = client.emails.send({
-            "from": from_email,
-            "to": [to_email] if isinstance(to_email, str) else to_email,
+        resend.Emails.send({
+            "from": from_email or settings.DEFAULT_FROM_EMAIL,
+            "to": to_email,
             "subject": subject,
-            "html": html_content
+            "html": html_content,
         })
         return True
     except Exception as e:
-        print(f"Resend error: {e}")
+        print("Resend error:", e)
         return False
