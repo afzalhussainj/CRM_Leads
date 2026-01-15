@@ -2,7 +2,6 @@ import re
 
 from celery import Celery
 from django.conf import settings
-from django.core.cache import cache
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.db.models import Q
 from django.template.loader import render_to_string
@@ -114,19 +113,3 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
 
 
 
-
-@app.task
-def update_leads_cache():
-    queryset = (
-        Lead.objects.all()
-        .exclude(status="development phase")
-        .select_related("created_by")
-        .prefetch_related(
-            "tags",
-            "assigned_to",
-        )
-    )
-    open_leads = queryset.exclude(status="closed")
-    close_leads = queryset.filter(status="closed")
-    cache.set("admin_leads_open_queryset", open_leads, 60 * 60)
-    cache.set("admin_leads_close_queryset", close_leads, 60 * 60)

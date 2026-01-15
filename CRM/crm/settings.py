@@ -262,36 +262,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-# Caching Configuration
-# Try to use Redis cache if available, otherwise fallback to local memory
-cache_backend = os.getenv("CACHE_BACKEND", "locmem")
-if cache_backend == "redis" and CELERY_BROKER_URL and "redis" in CELERY_BROKER_URL.lower():
-    try:
-        cache_url = normalize_redis_url(os.getenv("CACHE_URL"))
-        CACHES = {
-            'default': {
-                'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-                'LOCATION': cache_url,
-                'KEY_PREFIX': 'crm_leads',
-                'TIMEOUT': 3600,  # Default cache timeout: 1 hour
-            }
-        }
-    except Exception:
-        # Fallback to local memory if Redis cache fails
-        CACHES = {
-            'default': {
-                'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-                'LOCATION': 'unique-snowflake',
-            }
-        }
-else:
-    # Use local memory cache (works without Redis)
-    CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'unique-snowflake',
-        }
-    }
 
 
 LOGGING = {

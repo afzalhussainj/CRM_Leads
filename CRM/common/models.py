@@ -104,15 +104,9 @@ class LeadStatus(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Invalidate cache when status is saved
-        from django.core.cache import cache
-        cache.delete('lead_status_choices')
     
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)
-        # Invalidate cache when status is deleted
-        from django.core.cache import cache
-        cache.delete('lead_status_choices')
     
 
 class LeadSource(models.Model):
@@ -130,15 +124,9 @@ class LeadSource(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Invalidate cache when source is saved
-        from django.core.cache import cache
-        cache.delete('lead_source_choices')
     
     def delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)
-        # Invalidate cache when source is deleted
-        from django.core.cache import cache
-        cache.delete('lead_source_choices')
 
 
 
