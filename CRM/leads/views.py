@@ -266,7 +266,7 @@ class LeadDetailView(APIView):
     def get(self, request, pk, **kwargs):
         lead_obj = self.get_object(pk)
         context = {}
-        context["UserRole"] = UserRole
+        context["UserRole"] = {role.name: role.value for role in UserRole}
         context["lead_obj"] = LeadSerializer(lead_obj).data
         return Response(context)
 
