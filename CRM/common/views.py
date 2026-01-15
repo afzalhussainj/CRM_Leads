@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -18,7 +18,7 @@ from common.models import Profile, User
 from common.serializer import *
 from common.tasks import send_email_user_delete
 from common.utils.choices import ROLES
-from leads.serializer import LeadNoteSerializer
+from leads.serializer import LeadNoteSerializer, LeadSerializer
 from leads.models import Lead, LeadNote
 from utils.roles_enum import UserRole
 
@@ -734,6 +734,25 @@ class Dashboard(APIView):
             leads_queryset = Lead.objects.filter(
                 is_active=True
             ).select_related('status', 'assigned_to', 'assigned_to__user', 'created_by')
+
+        # Aggregate lead counts by status for the accessible leads
+        status_counts_qs = (
+            leads_queryset
+            .values('status__id', 'status__name')
+            .annotate(count=Count('id'))
+            .order_by('status__name')
+        )
+        status_counts = [
+            {
+                "status_id": item['status__id'],
+                "status_name": item['status__name'],
+                "count": item['count'],
+            }
+            for item in status_counts_qs
+        ]
+
+        # Always-active leads (within the same role-based scope)
+        always_active_count = leads_queryset.filter(always_active=True).count()
         
         # Get all unread notes sent TO the user (not BY the user)
         # Find notes by other users that current user hasn't read
@@ -751,11 +770,68 @@ class Dashboard(APIView):
         # Serialize notes with full context
         serializer = LeadNoteSerializer(unread_notes, many=True)
         
-        response_data = {"unread_notes":{
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        
+        # Overdue: follow_up_at is in the past and status is 'pending'
+        overdue = leads_queryset.filter(
+            follow_up_at__lt=today_start,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Due today: follow_up_at is today and status is 'pending'
+        due_today = leads_queryset.filter(
+            follow_up_at__gte=today_start,
+            follow_up_at__lt=today_end,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Upcoming: follow_up_at is in the future (after today) and status is 'pending'
+        upcoming = leads_queryset.filter(
+            follow_up_at__gte=today_end,
+            follow_up_status='pending'
+        ).order_by('follow_up_at')
+        
+        # Done: follow_up_status is 'done'
+        done = leads_queryset.filter(
+            follow_up_status='done'
+        ).order_by('-follow_up_at')
+        
+        # Serialize all categories
+        overdue_serializer = LeadSerializer(overdue, many=True)
+        due_today_serializer = LeadSerializer(due_today, many=True)
+        upcoming_serializer = LeadSerializer(upcoming, many=True)
+        done_serializer = LeadSerializer(done, many=True)
+                
+        response_data = {
+            "unread_notes":{
             "success": True,
             "unread_count": len(unread_notes),
             "notes": serializer.data
-        }
-        }
+            },
+            "lead_statuses": status_counts,
+            "always_active": {
+            "count": always_active_count,
+            },
+            "reminders": {
+                "overdue": {
+                    "count": overdue.count(),
+                    "leads": overdue_serializer.data
+                },
+                "due_today": {
+                    "count": due_today.count(),
+                    "leads": due_today_serializer.data
+                },
+                "upcoming": {
+                    "count": upcoming.count(),
+                    "leads": upcoming_serializer.data
+                },
+                "done": {
+                    "count": done.count(),
+                    "leads": done_serializer.data
+                }
+                }
+            }
  
         return Response(response_data, status=status.HTTP_200_OK)
