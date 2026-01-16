@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from common.models import LeadSource, LeadStatus, Profile
-from common.serializer import ProfileSerializer
+from common.serializer import EmployeeSerializer, ProfileSerializer
 from .models import Lead, LeadNote, LeadNoteRead
 from leads.serializer import (
     LeadCreateSerializer,
@@ -264,10 +264,61 @@ class LeadDetailView(APIView):
         )
 
     def get(self, request, pk, **kwargs):
+        
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
         lead_obj = self.get_object(pk)
+
+        #statuses and sourcses options
+        statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
+        statuses_data = [
+            {
+                'id': s.id,
+                'name': s.name,
+            }
+            for s in statuses
+        ]
+
+        sources = LeadSource.objects.all().order_by('source')
+        sources_data = [
+            {
+                'id': src.id,
+                'name': src.source,
+            }
+            for src in sources
+        ]
+
+
+        # Employees
+
+        # Check if user is a manager
+        user_role = int(request.user.profile.role) if request.user.profile.role is not None else None
+        if user_role == UserRole.MANAGER.value:       
+            # Get all profiles except the current user (only non-deleted)
+            employees = Profile.objects.filter(
+                ~Q(user=request.user),
+                user__is_deleted=False,
+                is_active=True
+            ).select_related('user').order_by('-created_at')
+        else:
+            employees = Profile.objects.filter(
+                Q(user=request.user) |
+                Q(role=UserRole.MANAGER.value),
+                user__is_deleted=False,
+                is_active=True
+            ).select_related('user')
+
+        # Serialize employees with flat structure
+        serializer = EmployeeSerializer(employees, many=True)
+
         context = {}
         context["UserRole"] = {role.name: role.value for role in UserRole}
         context["lead_obj"] = LeadSerializer(lead_obj).data
+        context["statuses"] = statuses_data
+        context["sources"] = sources_data
+        context["employees"] = serializer.data
+
         return Response(context)
 
 
