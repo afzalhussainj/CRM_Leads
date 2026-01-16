@@ -779,7 +779,16 @@ class Dashboard(APIView):
         due_today_serializer = LeadSerializer(due_today, many=True)
         upcoming_serializer = LeadSerializer(upcoming, many=True)
         done_serializer = LeadSerializer(done, many=True)
-                
+        
+        # Employee count
+        employee_count = 0
+        if user_role == UserRole.MANAGER.value:
+            employee_count = Profile.objects.filter(
+                role=UserRole.EMPLOYEE.value, 
+                is_active=True
+                ).count()
+
+
         response_data = {
             "unread_notes":{
             "success": True,
@@ -808,7 +817,8 @@ class Dashboard(APIView):
                     "count": done.count(),
                     "leads": done_serializer.data
                 }
-                }
+                },
+            "employee_count": employee_count
             }
  
         return Response(response_data, status=status.HTTP_200_OK)
