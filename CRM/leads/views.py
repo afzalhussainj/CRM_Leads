@@ -121,11 +121,6 @@ class LeadListView(APIView, LimitOffsetPagination):
             offset = 0
             queryset = queryset[:page_size]
 
-        context["leads"] = LeadSerializer(queryset, many=True).data
-        context["count"] = count
-        context["offset"] = offset
-        context["limit"] = page_size
-        context["search"] = search
         
         #statuses and sources along with lead data
 
@@ -148,8 +143,6 @@ class LeadListView(APIView, LimitOffsetPagination):
             for src in sources
         ]
 
-        context["statuses"] = statuses_data
-        context["sources"] = sources_data
 
         # Employees along with leads data
 
@@ -159,11 +152,25 @@ class LeadListView(APIView, LimitOffsetPagination):
                 user__is_deleted=False
             )
 
-            users = ProfileSerializer(users, many=True).data
-            context["users"] = users
+            users = users
         else:
-            
-            context["users"] = []
+            users = Profile.objects.filter(
+                Q(user=request.user) |
+                Q(role=UserRole.MANAGER.value),
+                user__is_deleted=False,
+                is_active=True
+            ).select_related('user')
+        
+        users = ProfileSerializer(users, many=True).data
+
+        context["statuses"] = statuses_data
+        context["sources"] = sources_data
+        context["leads"] = LeadSerializer(queryset, many=True).data
+        context["count"] = count
+        context["offset"] = offset
+        context["limit"] = page_size
+        context["search"] = search
+        context["users"] = users
 
         return context
 
@@ -297,7 +304,6 @@ class LeadDetailView(APIView):
         if user_role == UserRole.MANAGER.value:       
             # Get all profiles except the current user (only non-deleted)
             employees = Profile.objects.filter(
-                ~Q(user=request.user),
                 user__is_deleted=False,
                 is_active=True
             ).select_related('user').order_by('-created_at')
