@@ -993,3 +993,61 @@ class RemindersListView(APIView):
                 "leads": done_serializer.data
             }
         }, status=status.HTTP_200_OK)
+
+class OptionsView(APIView):
+    """
+    API View for returning configuration options including employees, lead sources, and role options.
+    
+    GET: Returns employees, lead sources, and available options
+        - Managers: See all employees
+        - Employees: See all employees
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, **kwargs):
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        if int(request.user.profile.role) == UserRole.MANAGER.value:
+            users = Profile.objects.filter(
+                is_active=True,
+                user__is_active=True,
+                user__is_deleted=False,
+            ).select_related('user').order_by('user__first_name', 'user__last_name')
+        
+        else:
+            users = Profile.objects.filter(
+                is_active=True,
+                user__is_active=True,
+                user__is_deleted=False,
+                role=UserRole.EMPLOYEE.value
+            ).select_related('user').order_by('user__first_name', 'user__last_name')
+            
+            # Serialize employees
+        employees_serializer = EmployeeSerializer(users, many=True)
+            
+        # Get all lead sources
+        lead_sources = LeadSource.objects.all().order_by('source')
+        lead_sources_data = [
+            {"id": source.id, "name": source.source}
+            for source in lead_sources
+        ]
+
+        # Get all lead statuses
+        statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
+        statuses_data = [
+            {"id": status.id, "name": status.name}
+            for status in statuses
+        ]
+       
+        return Response({
+            "success": True,
+            "employees": employees_serializer.data,
+            "lead_sources": lead_sources_data,
+            "lead_statuses": statuses_data,
+        }, status=status.HTTP_200_OK)
+    
+        
