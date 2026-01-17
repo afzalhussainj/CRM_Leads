@@ -1,14 +1,17 @@
-import resend
-from django.conf import settings
+"""
+DEPRECATED: Resend email functions are no longer used.
+All email is now sent via Mailtrap API using common/utils/email_mailtrap.py
+If this module is imported, it will raise an error to catch accidental usage.
+"""
 
-# Set API key once
-resend.api_key = settings.RESEND_API_KEY
+
+def send_reset_email(*args, **kwargs):
+    raise RuntimeError("Resend deprecated. Use send_mailtrap_email from common.utils.email_mailtrap")
 
 
-def send_reset_email(email, reset_link):
-    """
-    Send password reset email using Resend API.
-    """
+def send_email_html(*args, **kwargs):
+    raise RuntimeError("Resend deprecated. Use send_mailtrap_email from common.utils.email_mailtrap")
+
     try:
         resend.Emails.send({
             "from": settings.DEFAULT_FROM_EMAIL,

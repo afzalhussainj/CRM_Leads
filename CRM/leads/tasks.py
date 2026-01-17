@@ -82,7 +82,7 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
 
 @app.task
 def send_email_to_assigned_user(recipients, lead_id, source=""):
-    """Send Mail To Users When they are assigned to a lead - Using Resend"""
+    """Send email to users when leads are assigned to them."""
     # Optimize: Use select_related
     lead = Lead.objects.select_related(
         'status', 'assigned_to', 'assigned_to__user'

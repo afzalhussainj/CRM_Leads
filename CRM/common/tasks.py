@@ -19,7 +19,7 @@ app = Celery("redis://")
 
 @app.task
 def send_email_to_new_user(user_id):
-    """Send Mail To Users When their account is created - Using Resend"""
+    """Send activation email to newly created users."""
     user_obj = User.objects.filter(id=user_id, is_deleted=False).first()
 
     if user_obj:
@@ -63,7 +63,7 @@ def send_email_user_status(
     user_id,
     status_changed_user="",
 ):
-    """Send Mail To Users Regarding their status i.e active or inactive - Using Resend"""
+    """Send status change email (activated/deactivated) to users."""
     user = User.objects.filter(id=user_id).first()
     if user:
         context = {}
@@ -100,7 +100,7 @@ def send_email_user_delete(
     user_email,
     deleted_by="",
 ):
-    """Send Mail To Users When their account is deleted - Using Resend"""
+    """Send account deletion notification email to users."""
     if user_email:
         context = {}
         context["message"] = "deleted"
@@ -125,7 +125,7 @@ def send_email_user_delete(
 def resend_activation_link_to_user(
     user_email="",
 ):
-    """Send Mail To Users When requested for resend activation link - Using Resend"""
+    """Send activation link when user requests to resend."""
     user_obj = User.objects.filter(email=user_email, is_deleted=False).first()
     if not user_obj:
         return False
