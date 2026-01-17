@@ -205,9 +205,11 @@ USE_TZ = True
 # EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "").lower() == "true"
 # EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 # EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL="noreply@example.com"
 
 # Email configuration (Mailtrap API)
-MAILTRAP_API_TOKEN = os.getenv("MAILTRAP_API_TOKEN")
+# MAILTRAP_API_TOKEN = os.getenv("MAILTRAP_API_TOKEN")
+MAILTRAP_API_TOKEN = "9ca4b097d82fbb40707da0ef58617581"
 # NOTE: Mailtrap API is used instead of SMTP on Railway.
 # If you prefer SMTP locally, set EMAIL_* env vars and update tasks accordingly.
 
