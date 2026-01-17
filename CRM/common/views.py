@@ -319,15 +319,13 @@ def create_employee(request):
             alternate_phone=alternate_phone if alternate_phone else None,
         )
         
-        # Optionally send activation email
-        send_activation_email = request.data.get('send_activation_email', False)
-        if send_activation_email:
-            try:
-                from common.tasks import send_email_to_new_user
-                send_email_to_new_user.delay(user.id)
-            except Exception as e:
-                # Don't fail the request if email fails
-                pass
+        # Send activation email to new employee
+        try:
+            from common.tasks import send_email_to_new_user
+            send_email_to_new_user.delay(user.id)
+        except Exception as e:
+            # Don't fail the request if email fails
+            pass
         
         # Return created employee data
         profile_serializer = ProfileSerializer(profile)
@@ -668,6 +666,16 @@ class UserStatusView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             profile.save()
+            # Send status change email
+            try:
+                from common.tasks import send_email_user_status
+                send_email_user_status.delay(
+                    profile.user.id,
+                    status_changed_user=request.user.email
+                )
+            except Exception as e:
+                # Don't fail the request if email fails
+                pass
 
         context = {}
         context["ROLE_EMPLOYEE_VALUE"] = UserRole.EMPLOYEE.value

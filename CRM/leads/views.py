@@ -243,6 +243,19 @@ class LeadListView(APIView, LimitOffsetPagination):
                 assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
                 lead_obj.assigned_to = assigned_to
                 lead_obj.save()
+                
+                # Send email to assigned employee(s) when lead is created by manager
+                if user_role == UserRole.MANAGER.value or request.user.is_superuser:
+                    try:
+                        from leads.tasks import send_email_to_assigned_user
+                        send_email_to_assigned_user.delay(
+                            [assigned_to.id],
+                            lead_obj.id,
+                            source="lead_creation"
+                        )
+                    except Exception as e:
+                        # Don't fail the request if email fails
+                        pass
 
             # Return the created lead with full details
             lead_serializer = LeadSerializer(lead_obj)
