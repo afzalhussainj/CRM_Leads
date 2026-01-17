@@ -2,6 +2,7 @@ from rest_framework import serializers
 from datetime import datetime
 import re
 
+from common.models import LeadStatus
 from common.serializer import (
     ProfileSerializer,
     UserSerializer,
@@ -9,9 +10,17 @@ from common.serializer import (
 from leads.models import Lead, LeadNote, LeadNoteRead
 
 
+class LeadStatusSerializer(serializers.ModelSerializer):
+    """Serializer for LeadStatus model"""
+    class Meta:
+        model = LeadStatus
+        fields = ("id", "name", "sort_order")
+
+
 class LeadSerializer(serializers.ModelSerializer):
     assigned_to = ProfileSerializer(read_only=True)
     created_by = UserSerializer(read_only=True)
+    status = LeadStatusSerializer(read_only=True)
 
     class Meta:
         model = Lead
