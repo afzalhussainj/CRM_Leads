@@ -5,7 +5,7 @@ Hi {{email}}
 {% endblock heading %}
 
 
-{% ifequal 'activated' message %}
+{% if message == 'activated' %}
 {% block content_body %}
 You account has been activated by {{status_changed_user}}. You can login to your account and access all the features of
 Django CRM.
@@ -19,7 +19,7 @@ Django CRM.
 {% endif %}
 {% endblock button_link %}
 
-{% else %}
+{% elif message == 'deactivated' %}
 {% block content_body %}
 You account has been deactivated by {{status_changed_user}}. You will receive an email if your account has been
 activated.
@@ -27,7 +27,7 @@ activated.
 {% block extra_content %}
 Please contact your admin if you have any queries.
 {% endblock extra_content %}
-{% endifequal %}
+{% endif %}
 
 
 {% comment %}
