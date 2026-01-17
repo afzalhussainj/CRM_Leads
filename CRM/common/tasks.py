@@ -25,9 +25,13 @@ def send_email_to_new_user(user_id):
     if user_obj:
         context = {}
         user_email = user_obj.email
+        user_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
+        context["email"] = user_email
+        context["user_name"] = user_name or user_email
         context["url"] = settings.DOMAIN_NAME
-        context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
+        context["uid"] = urlsafe_base64_encode(force_bytes(user_obj.pk))
         context["token"] = account_activation_token.make_token(user_obj)
+        context["message"] = "activation_link"
         context["UserRole"] = UserRole
         time_delta_two_hours = datetime.datetime.strftime(
             timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
@@ -40,14 +44,14 @@ def send_email_to_new_user(user_id):
         context["complete_url"] = context[
             "url"
         ] + "/auth/activate-user/{}/{}/{}/".format(
-            context["uid"][0],
+            context["uid"],
             context["token"],
             activation_key,
         )
-        
-        subject = "Welcome to SLCW CRM"
+
+        subject = "Activate your SLCW CRM account"
         html_content = render_to_string("common/user_status_activate.html", context=context)
-        
+
         # Send via Mailtrap API
         send_mailtrap_email(
             subject=subject,
@@ -134,15 +138,18 @@ def resend_activation_link_to_user(
     user_obj.save()
     
     context = {}
+    context["email"] = user_email
     context["user_email"] = user_email
     context["UserRole"] = UserRole
     context["url"] = settings.DOMAIN_NAME
-    context["uid"] = (urlsafe_base64_encode(force_bytes(user_obj.pk)),)
+    context["uid"] = urlsafe_base64_encode(force_bytes(user_obj.pk))
     context["token"] = account_activation_token.make_token(user_obj)
+    context["message"] = "activation_link"
+    user_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
+    context["user_name"] = user_name or user_email
     time_delta_two_hours = datetime.datetime.strftime(
         timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
     )
-    context["token"] = context["token"]
     activation_key = context["token"] + time_delta_two_hours
     user_obj.activation_key = activation_key
     user_obj.key_expires = timezone.now() + datetime.timedelta(hours=2)
@@ -151,14 +158,14 @@ def resend_activation_link_to_user(
     context["complete_url"] = context[
         "url"
     ] + "/auth/activate_user/{}/{}/{}/".format(
-        context["uid"][0],
+        context["uid"],
         context["token"],
         activation_key,
     )
-    
-    subject = "Welcome to SLCW CRM - Activation Link"
+
+    subject = "Your SLCW CRM activation link"
     html_content = render_to_string("common/user_status_activate.html", context=context)
-    
+
     # Send via Mailtrap API
     send_mailtrap_email(
         subject=subject,
@@ -190,7 +197,7 @@ def _send_email_to_reset_password_sync(user_email):
     subject = "Password Reset Request"
     context = {
         "reset_link": reset_link,
-        "user": user,
+        "user_name": f"{user.first_name} {user.last_name}",
     }
 
     html_content = render_to_string("password_reset_email.html", context)
@@ -222,8 +229,6 @@ def send_email_to_reset_password(self, user_email):
     logger = logging.getLogger(__name__)
 
     logger.info("Celery task started for password reset email: %s", user_email)
-    logging.info("Using EMAIL_HOST: %s", settings.EMAIL_HOST)
-    logging.info("Using EMAIL_PORT: %s", settings.EMAIL_PORT)
 
     result = _send_email_to_reset_password_sync(user_email)
 

@@ -88,6 +88,7 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
         'status', 'assigned_to', 'assigned_to__user'
     ).get(id=lead_id)
     created_by = lead.created_by
+    lead_detail_url = f"{settings.DOMAIN_NAME}/leads/{lead.id}/view/"
     for user in recipients:
         # Optimize: Use select_related
         profile = Profile.objects.select_related('user').filter(
@@ -97,15 +98,15 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
         ).first()
         if profile and profile.user.email:
             context = {}
-            context["url"] = settings.DOMAIN_NAME
             context["user"] = profile.user
-            context["lead"] = lead
+            context["lead_instance"] = lead
+            context["lead_detail_url"] = lead_detail_url
             context["created_by"] = created_by
             context["source"] = source
             context["UserRole"] = UserRole
             subject = "Assigned a lead for you"
             html_content = render_to_string(
-                "assigned_to/leads_assigned.html", context=context
+                "leads/lead_assigned.html", context=context
             )
             
             # Send via Mailtrap API
