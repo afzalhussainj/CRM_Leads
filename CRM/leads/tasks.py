@@ -7,7 +7,6 @@ from django.db.models import Q
 from django.template.loader import render_to_string
 
 from common.models import Profile
-from common.utils.email_resend import send_email_html
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
@@ -30,16 +29,25 @@ def send_email(
     bcc=[],
     cc=[],
 ):
-    """Send email using Resend API (attachments, bcc, cc not supported in simple version)"""
+    """Send email using Django's SMTP backend"""
     if not from_email:
         from_email = settings.DEFAULT_FROM_EMAIL
     
-    # Send to each recipient using Resend
-    for recipient in recipients:
-        send_email_html(subject, recipient, html_content, from_email=from_email)
+    msg = EmailMultiAlternatives(
+        subject,
+        text_content or html_content,
+        from_email,
+        recipients,
+        bcc=bcc,
+        cc=cc
+    )
+    if html_content:
+        msg.attach_alternative(html_content, "text/html")
     
-    # Note: BCC and CC not directly supported in this simple Resend implementation
-    # If needed, can send separately to bcc/cc recipients
+    for attachment in attachments:
+        msg.attach(*attachment)
+    
+    msg.send()
 
 
 @app.task
@@ -108,8 +116,15 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
                 "assigned_to/leads_assigned.html", context=context
             )
             
-            # Send via Resend
-            send_email_html(subject, profile.user.email, html_content)
+            # Send via Django SMTP
+            msg = EmailMultiAlternatives(
+                subject,
+                html_content,
+                settings.DEFAULT_FROM_EMAIL,
+                [profile.user.email]
+            )
+            msg.attach_alternative(html_content, "text/html")
+            msg.send()
 
 
 

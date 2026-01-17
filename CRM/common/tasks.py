@@ -4,6 +4,7 @@ import socket
 from celery import Celery, shared_task
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.encoding import force_bytes
@@ -11,7 +12,6 @@ from django.utils.http import urlsafe_base64_encode
 
 from common.models import Profile, User
 from common.utils.token_generator import account_activation_token
-from common.utils.email_resend import send_reset_email, send_email_html
 from utils.roles_enum import UserRole
 
 app = Celery("redis://")
@@ -48,8 +48,15 @@ def send_email_to_new_user(user_id):
         subject = "Welcome to SLCW CRM"
         html_content = render_to_string("common/user_status_activate.html", context=context)
         
-        # Send via Resend
-        send_email_html(subject, user_email, html_content)
+        # Send via Django SMTP
+        msg = EmailMultiAlternatives(
+            subject,
+            html_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
 
 
 @app.task
@@ -79,8 +86,15 @@ def send_email_user_status(
                 "user_status_deactivate.html", context=context
             )
         
-        # Send via Resend
-        send_email_html(subject, user.email, html_content)
+        # Send via Django SMTP
+        msg = EmailMultiAlternatives(
+            subject,
+            html_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
 
 
 @app.task
@@ -99,8 +113,15 @@ def send_email_user_delete(
         subject = "CRM: Your account has been deleted"
         html_content = render_to_string("user_delete_email.html", context=context)
         
-        # Send via Resend
-        send_email_html(subject, user_email, html_content)
+        # Send via Django SMTP
+        msg = EmailMultiAlternatives(
+            subject,
+            html_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
 
 
 @app.task
@@ -141,12 +162,19 @@ def resend_activation_link_to_user(
     subject = "Welcome to SLCW CRM - Activation Link"
     html_content = render_to_string("common/user_status_activate.html", context=context)
     
-    # Send via Resend
-    send_email_html(subject, user_email, html_content)
+    # Send via Django SMTP
+    msg = EmailMultiAlternatives(
+        subject,
+        html_content,
+        settings.DEFAULT_FROM_EMAIL,
+        [user_email]
+    )
+    msg.attach_alternative(html_content, "text/html")
+    msg.send()
 
 
 def _send_email_to_reset_password_sync(user_email):
-    """Send Mail To Users When they request password reset (synchronous) - Using Resend"""
+    """Send Mail To Users When they request password reset (synchronous) - Using Django SMTP"""
     user = User.objects.filter(email=user_email, is_deleted=False).first()
     if not user:
         return False
@@ -159,20 +187,34 @@ def _send_email_to_reset_password_sync(user_email):
     frontend_url = getattr(settings, "FRONTEND_URL")
     reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
     
-    # Send email using Resend
+    # Send email using Django SMTP
     try:
-        result = send_reset_email(user_email, reset_link)
-        return result
+        subject = "Password Reset Request"
+        context = {
+            'reset_link': reset_link,
+            'user': user,
+        }
+        html_content = render_to_string("password_reset_email.html", context)
+        
+        msg = EmailMultiAlternatives(
+            subject,
+            html_content,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        return True
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
-        logger.error(f"Failed to send password reset email via Resend: {str(e)}")
+        logger.error(f"Failed to send password reset email: {str(e)}")
         return False
 
 # Celery task for password reset email
 @shared_task(bind=True, max_retries=3)
 def send_email_to_reset_password(self, user_email):
-    """Celery task for password reset email (async) - Uses Resend API"""
+    """Celery task for password reset email (async) - Uses Django SMTP"""
     try:
         result = _send_email_to_reset_password_sync(user_email)
         if not result:
