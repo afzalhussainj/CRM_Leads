@@ -2,11 +2,11 @@ import re
 
 from celery import Celery
 from django.conf import settings
-from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.db.models import Q
 from django.template.loader import render_to_string
 
 from common.models import Profile
+from common.utils.email_mailtrap import send_mailtrap_email
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
@@ -29,25 +29,17 @@ def send_email(
     bcc=[],
     cc=[],
 ):
-    """Send email using Django's SMTP backend"""
+    """Send email using Mailtrap API"""
     if not from_email:
         from_email = settings.DEFAULT_FROM_EMAIL
     
-    msg = EmailMultiAlternatives(
-        subject,
-        text_content or html_content,
-        from_email,
-        recipients,
-        bcc=bcc,
-        cc=cc
+    send_mailtrap_email(
+        subject=subject,
+        recipients=recipients,
+        html=html_content,
+        text=text_content,
+        from_email=from_email,
     )
-    if html_content:
-        msg.attach_alternative(html_content, "text/html")
-    
-    for attachment in attachments:
-        msg.attach(*attachment)
-    
-    msg.send()
 
 
 @app.task
@@ -116,15 +108,14 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
                 "assigned_to/leads_assigned.html", context=context
             )
             
-            # Send via Django SMTP
-            msg = EmailMultiAlternatives(
-                subject,
-                html_content,
-                settings.DEFAULT_FROM_EMAIL,
-                [profile.user.email]
+            # Send via Mailtrap API
+            send_mailtrap_email(
+                subject=subject,
+                recipients=[profile.user.email],
+                html=html_content,
+                text=None,
+                from_email=settings.DEFAULT_FROM_EMAIL,
             )
-            msg.attach_alternative(html_content, "text/html")
-            msg.send()
 
 
 

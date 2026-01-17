@@ -4,7 +4,6 @@ import socket
 from celery import Celery, shared_task
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.encoding import force_bytes
@@ -12,6 +11,7 @@ from django.utils.http import urlsafe_base64_encode
 
 from common.models import Profile, User
 from common.utils.token_generator import account_activation_token
+from common.utils.email_mailtrap import send_mailtrap_email
 from utils.roles_enum import UserRole
 
 app = Celery("redis://")
@@ -48,15 +48,14 @@ def send_email_to_new_user(user_id):
         subject = "Welcome to SLCW CRM"
         html_content = render_to_string("common/user_status_activate.html", context=context)
         
-        # Send via Django SMTP
-        msg = EmailMultiAlternatives(
-            subject,
-            html_content,
-            settings.DEFAULT_FROM_EMAIL,
-            [user_email]
+        # Send via Mailtrap API
+        send_mailtrap_email(
+            subject=subject,
+            recipients=[user_email],
+            html=html_content,
+            text=None,
+            from_email=settings.DEFAULT_FROM_EMAIL,
         )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
 
 
 @app.task
@@ -86,15 +85,14 @@ def send_email_user_status(
                 "user_status_deactivate.html", context=context
             )
         
-        # Send via Django SMTP
-        msg = EmailMultiAlternatives(
-            subject,
-            html_content,
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email]
+        # Send via Mailtrap API
+        send_mailtrap_email(
+            subject=subject,
+            recipients=[user.email],
+            html=html_content,
+            text=None,
+            from_email=settings.DEFAULT_FROM_EMAIL,
         )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
 
 
 @app.task
@@ -113,15 +111,14 @@ def send_email_user_delete(
         subject = "CRM: Your account has been deleted"
         html_content = render_to_string("user_delete_email.html", context=context)
         
-        # Send via Django SMTP
-        msg = EmailMultiAlternatives(
-            subject,
-            html_content,
-            settings.DEFAULT_FROM_EMAIL,
-            [user_email]
+        # Send via Mailtrap API
+        send_mailtrap_email(
+            subject=subject,
+            recipients=[user_email],
+            html=html_content,
+            text=None,
+            from_email=settings.DEFAULT_FROM_EMAIL,
         )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
 
 
 @app.task
@@ -162,15 +159,14 @@ def resend_activation_link_to_user(
     subject = "Welcome to SLCW CRM - Activation Link"
     html_content = render_to_string("common/user_status_activate.html", context=context)
     
-    # Send via Django SMTP
-    msg = EmailMultiAlternatives(
-        subject,
-        html_content,
-        settings.DEFAULT_FROM_EMAIL,
-        [user_email]
+    # Send via Mailtrap API
+    send_mailtrap_email(
+        subject=subject,
+        recipients=[user_email],
+        html=html_content,
+        text=None,
+        from_email=settings.DEFAULT_FROM_EMAIL,
     )
-    msg.attach_alternative(html_content, "text/html")
-    msg.send()
 
 
 def _send_email_to_reset_password_sync(user_email):
@@ -199,18 +195,15 @@ def _send_email_to_reset_password_sync(user_email):
 
     html_content = render_to_string("password_reset_email.html", context)
 
-    msg = EmailMultiAlternatives(
-        subject=subject,
-        body=html_content,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[user_email],
-    )
-    msg.attach_alternative(html_content, "text/html")
-
     logger.info("Sending password reset email to %s", user_email)
 
-    # 🔥 fail_silently=False is important
-    msg.send(fail_silently=False)
+    send_mailtrap_email(
+        subject=subject,
+        recipients=[user_email],
+        html=html_content,
+        text=None,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+    )
 
     logger.info("Password reset email sent successfully to %s", user_email)
     return True

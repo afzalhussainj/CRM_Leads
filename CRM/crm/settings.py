@@ -206,15 +206,10 @@ USE_TZ = True
 # EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 # EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
-# Email configuration (Mailtrap SMTP)
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "sandbox.smtp.mailtrap.io"
-EMAIL_PORT = 2525
-EMAIL_HOST_USER = "e5850c021f3e0d"
-EMAIL_HOST_PASSWORD = "e8d3e674b2bfb5"
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-DEFAULT_FROM_EMAIL = "no-reply@example.com"
+# Email configuration (Mailtrap API)
+MAILTRAP_API_TOKEN = os.getenv("MAILTRAP_API_TOKEN")
+# NOTE: Mailtrap API is used instead of SMTP on Railway.
+# If you prefer SMTP locally, set EMAIL_* env vars and update tasks accordingly.
 
 
 
