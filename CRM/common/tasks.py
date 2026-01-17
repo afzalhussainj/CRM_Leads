@@ -50,7 +50,7 @@ def send_email_to_new_user(user_id):
         )
 
         subject = "Activate your SLCW CRM account"
-        html_content = render_to_string("common/user_status_activate.html", context=context)
+        html_content = render_to_string("user_status_activate.html", context=context)
 
         # Send via Mailtrap API
         send_mailtrap_email(
@@ -164,7 +164,7 @@ def resend_activation_link_to_user(
     )
 
     subject = "Your SLCW CRM activation link"
-    html_content = render_to_string("common/user_status_activate.html", context=context)
+    html_content = render_to_string("user_status_activate.html", context=context)
 
     # Send via Mailtrap API
     send_mailtrap_email(
