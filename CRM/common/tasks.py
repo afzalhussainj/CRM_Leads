@@ -174,53 +174,64 @@ def resend_activation_link_to_user(
 
 
 def _send_email_to_reset_password_sync(user_email):
-    """Send Mail To Users When they request password reset (synchronous) - Using Django SMTP"""
+    """Send password reset email using Django SMTP"""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    logger.info("Preparing password reset email for %s", user_email)
+
     user = User.objects.filter(email=user_email, is_deleted=False).first()
     if not user:
-        return False
-    
-    # Generate reset token
-    uid = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
-    
-    # Use FRONTEND_URL for the reset link (points to React frontend)
-    frontend_url = getattr(settings, "FRONTEND_URL")
-    reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
-    
-    # Send email using Django SMTP
-    try:
-        subject = "Password Reset Request"
-        context = {
-            'reset_link': reset_link,
-            'user': user,
-        }
-        html_content = render_to_string("password_reset_email.html", context)
-        
-        msg = EmailMultiAlternatives(
-            subject,
-            html_content,
-            settings.DEFAULT_FROM_EMAIL,
-            [user_email]
-        )
-        msg.attach_alternative(html_content, "text/html")
-        msg.send()
-        return True
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Failed to send password reset email: {str(e)}")
+        logger.warning("User not found for email %s", user_email)
         return False
 
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+
+    frontend_url = settings.FRONTEND_URL
+    reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+
+    subject = "Password Reset Request"
+    context = {
+        "reset_link": reset_link,
+        "user": user,
+    }
+
+    html_content = render_to_string("password_reset_email.html", context)
+
+    msg = EmailMultiAlternatives(
+        subject=subject,
+        body=html_content,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[user_email],
+    )
+    msg.attach_alternative(html_content, "text/html")
+
+    logger.info("Sending password reset email to %s", user_email)
+
+    # 🔥 fail_silently=False is important
+    msg.send(fail_silently=False)
+
+    logger.info("Password reset email sent successfully to %s", user_email)
+    return True
+
 # Celery task for password reset email
-@shared_task(bind=True, max_retries=3)
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_kwargs={"max_retries": 3, "countdown": 60},
+    retry_backoff=True,
+)
 def send_email_to_reset_password(self, user_email):
-    """Celery task for password reset email (async) - Uses Django SMTP"""
-    try:
-        result = _send_email_to_reset_password_sync(user_email)
-        if not result:
-            # Retry if email sending failed
-            raise Exception("Email sending failed")
-        return result
-    except Exception as exc:
-        # Retry after 60 seconds
-        raise self.retry(exc=exc, countdown=60, max_retries=3)
+    import logging
+    logger = logging.getLogger(__name__)
+
+    logger.info("Celery task started for password reset email: %s", user_email)
+
+    result = _send_email_to_reset_password_sync(user_email)
+
+    if not result:
+        raise Exception("Email sending returned False")
+
+    logger.info("Celery task completed successfully for %s", user_email)
+    return True
