@@ -224,9 +224,13 @@ def _send_email_to_reset_password_sync(user_email):
 )
 def send_email_to_reset_password(self, user_email):
     import logging
+    from django.conf import settings
+
     logger = logging.getLogger(__name__)
 
     logger.info("Celery task started for password reset email: %s", user_email)
+    logging.info("Using EMAIL_HOST: %s", settings.EMAIL_HOST)
+    logging.info("Using EMAIL_PORT: %s", settings.EMAIL_PORT)
 
     result = _send_email_to_reset_password_sync(user_email)
 
