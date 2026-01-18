@@ -172,6 +172,77 @@ class SourceDeleteView(APIView):
         # Support POST for backward compatibility (curl uses POST)
         return self.delete(request, pk)
 
+class LifecycleCreateView(APIView):
+    """API View for creating new lead lifecycles - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request):
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # Support both JSON and form data
+        if request.content_type == 'application/json':
+            lifecycle_name = request.data.get('name', '').strip()
+            sort_order = request.data.get('sort_order', 0)
+        else:
+            lifecycle_name = request.POST.get('name', '').strip()
+            sort_order = request.POST.get('sort_order', 0)
+        
+        if not lifecycle_name:
+            return Response({"success": False, "error": "name_required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            sort_order = int(sort_order)
+        except (ValueError, TypeError):
+            sort_order = 0
+        
+        # Check if lifecycle already exists
+        if LeadLifecycle.objects.filter(name=lifecycle_name).exists():
+            return Response({"success": False, "error": "lifecycle_exists"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        lifecycle_obj = LeadLifecycle.objects.create(
+            name=lifecycle_name,
+            sort_order=sort_order
+        )
+                
+        return Response({
+            "success": True,
+            "lifecycle": {
+                "id": lifecycle_obj.id,
+                "name": lifecycle_obj.name,
+                "sort_order": lifecycle_obj.sort_order
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class LifecycleDeleteView(APIView):
+    """API View for deleting lead lifecycles - JWT authenticated"""
+    permission_classes = (IsAuthenticated,)
+    
+
+    def delete(self, request, pk):
+        # Check if user is a manager
+        if not hasattr(request.user, 'profile') or int(request.user.profile.role) != UserRole.MANAGER.value:
+            return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            lifecycle_obj = LeadLifecycle.objects.get(pk=pk)
+        except LeadLifecycle.DoesNotExist:
+            return Response({"success": False, "error": "lifecycle_not_found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if lifecycle is being used by any leads
+        from leads.models import Lead
+        if Lead.objects.filter(lifecycle=lifecycle_obj).exists():
+            return Response({"success": False, "error": "lifecycle_in_use"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        lifecycle_obj.delete()
+        return Response({"success": True}, status=status.HTTP_200_OK)
+    
+    def post(self, request, pk):
+        # Support POST for backward compatibility (curl uses POST)
+        return self.delete(request, pk)
+
 class LeadoptionsListView(APIView):
     permission_classes = (IsAuthenticated,)
 

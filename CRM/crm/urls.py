@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
-from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView, LeadoptionsListView
+from leads.combined_management_views import CombinedManagementView, StatusCreateView, StatusDeleteView, SourceCreateView, SourceDeleteView, LifecycleCreateView, LifecycleDeleteView, LeadoptionsListView
 from leads.employee_management_views import EmployeeListView, EmployeeToggleActiveView, EmployeeDeleteView
 
  
@@ -23,6 +23,8 @@ urlpatterns = [
     path("ui/options/statuses/<int:pk>/delete/", StatusDeleteView.as_view(), name="ui-options-statuses-delete"),
     path("ui/options/sources/create/", SourceCreateView.as_view(), name="ui-options-sources-create"),
     path("ui/options/sources/<int:pk>/delete/", SourceDeleteView.as_view(), name="ui-options-sources-delete"),
+    path("ui/options/lifecycles/create/", LifecycleCreateView.as_view(), name="ui-options-lifecycles-create"),
+    path("ui/options/lifecycles/<int:pk>/delete/", LifecycleDeleteView.as_view(), name="ui-options-lifecycles-delete"),
     
     # Employee Management URLs
     path("ui/employees/", EmployeeListView.as_view(), name="api-employees-list"),
