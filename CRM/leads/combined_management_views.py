@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import PermissionDenied
 from rest_framework.response import Response
-from common.models import LeadStatus, LeadSource
+from common.models import LeadStatus, LeadSource, LeadLifecycle
 from utils.roles_enum import UserRole
 
 
@@ -32,6 +32,7 @@ class CombinedManagementView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['sources'] = LeadSource.objects.all().order_by('source')
+        context['lifecycles'] = LeadLifecycle.objects.all().order_by('sort_order', 'name')
         return context
 
 
@@ -193,4 +194,13 @@ class LeadoptionsListView(APIView):
             }
             for src in sources
         ]
-        return Response({'statuses': statuses_data, 'sources': sources_data}, status=status.HTTP_200_OK)
+
+        lifecycles = LeadLifecycle.objects.all().order_by('sort_order', 'name')
+        lifecycles_data = [
+            {
+                'id': lc.id,
+                'name': lc.name,
+            }
+            for lc in lifecycles
+        ]
+        return Response({'statuses': statuses_data, 'sources': sources_data, 'lifecycles': lifecycles_data}, status=status.HTTP_200_OK)

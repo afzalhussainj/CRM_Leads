@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.models import LeadSource, LeadStatus, Profile
+from common.models import LeadSource, LeadStatus, LeadLifecycle, Profile
 from common.serializer import EmployeeSerializer, ProfileSerializer
 from .models import Lead, LeadNote, LeadNoteRead
 from leads.serializer import (
@@ -49,6 +49,7 @@ class LeadListView(APIView, LimitOffsetPagination):
         queryset = (
             self.model.objects.select_related(
                 'status',
+                'lifecycle',
                 'assigned_to',
                 'assigned_to__user',
                 'created_by'
@@ -122,7 +123,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             queryset = queryset[:page_size]
 
         
-        #statuses and sources along with lead data
+        #statuses, sources and lifecycles along with lead data
 
         statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
         statuses_data = [
@@ -141,6 +142,15 @@ class LeadListView(APIView, LimitOffsetPagination):
                 'name': src.source,
             }
             for src in sources
+        ]
+
+        lifecycles = LeadLifecycle.objects.all().order_by('sort_order', 'name')
+        lifecycles_data = [
+            {
+                'id': lc.id,
+                'name': lc.name,
+            }
+            for lc in lifecycles
         ]
 
 
@@ -165,6 +175,7 @@ class LeadListView(APIView, LimitOffsetPagination):
 
         context["statuses"] = statuses_data
         context["sources"] = sources_data
+        context["lifecycles"] = lifecycles_data
         context["leads"] = LeadSerializer(queryset, many=True).data
         context["count"] = count
         context["offset"] = offset
@@ -279,7 +290,7 @@ class LeadDetailView(APIView):
     def get_object(self, pk):
         # Optimize: Use select_related
         return get_object_or_404(
-            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user'),
+            Lead.objects.select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user'),
             pk=pk
         )
 
@@ -290,7 +301,7 @@ class LeadDetailView(APIView):
         
         lead_obj = self.get_object(pk)
 
-        #statuses and sourcses options
+        #statuses, sources and lifecycles options
         statuses = LeadStatus.objects.all().order_by('sort_order', 'name')
         statuses_data = [
             {
@@ -307,6 +318,15 @@ class LeadDetailView(APIView):
                 'name': src.source,
             }
             for src in sources
+        ]
+
+        lifecycles = LeadLifecycle.objects.all().order_by('sort_order', 'name')
+        lifecycles_data = [
+            {
+                'id': lc.id,
+                'name': lc.name,
+            }
+            for lc in lifecycles
         ]
 
 
@@ -336,6 +356,7 @@ class LeadDetailView(APIView):
         context["lead_obj"] = LeadSerializer(lead_obj).data
         context["statuses"] = statuses_data
         context["sources"] = sources_data
+        context["lifecycles"] = lifecycles_data
         context["employees"] = serializer.data
 
         return Response(context)
@@ -1055,12 +1076,20 @@ class OptionsView(APIView):
             {"id": status.id, "name": status.name}
             for status in statuses
         ]
+
+        # Get all lead lifecycles
+        lifecycles = LeadLifecycle.objects.all().order_by('sort_order', 'name')
+        lifecycles_data = [
+            {"id": lifecycle.id, "name": lifecycle.name}
+            for lifecycle in lifecycles
+        ]
        
         return Response({
             "success": True,
             "employees": employees_serializer.data,
             "lead_sources": lead_sources_data,
             "lead_statuses": statuses_data,
+            "lead_lifecycles": lifecycles_data,
         }, status=status.HTTP_200_OK)
     
         

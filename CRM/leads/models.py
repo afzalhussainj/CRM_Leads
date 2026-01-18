@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import pgettext_lazy
 
-from common.models import Profile, LeadStatus
+from common.models import Profile, LeadStatus, LeadLifecycle
 from common.base import BaseModel 
 
 class Lead(BaseModel):
@@ -15,6 +15,13 @@ class Lead(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True
+    )
+    lifecycle = models.ForeignKey(
+        LeadLifecycle,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Lead lifecycle stage"
     )
     source = models.CharField(
         _("Source of Lead"), max_length=255, blank=True, null=True

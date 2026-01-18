@@ -129,4 +129,25 @@ class LeadSource(models.Model):
         super().delete(*args, **kwargs)
 
 
+class LeadLifecycle(models.Model):
+    """Model to store lead lifecycle stages that can be managed through admin"""
+    name = models.CharField(max_length=100, unique=True)
+    sort_order = models.IntegerField(default=0)
+    
+    class Meta:
+        verbose_name = "Lead Lifecycle"
+        verbose_name_plural = "Lead Lifecycles"
+        db_table = "lead_lifecycle"
+        ordering = ["sort_order", "name"]
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+
+
 
