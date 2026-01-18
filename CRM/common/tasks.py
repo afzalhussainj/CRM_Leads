@@ -18,48 +18,46 @@ app = Celery("redis://")
 
 
 @app.task
-def send_email_to_new_user(user_id):
-    """Send activation email to newly created users."""
+def send_password_set_email_to_new_employee(user_id):
+    """Send password set email to newly created employees."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     user_obj = User.objects.filter(id=user_id, is_deleted=False).first()
-
-    if user_obj:
-        context = {}
-        user_email = user_obj.email
-        user_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
-        context["email"] = user_email
-        context["user_name"] = user_name or user_email
-        context["url"] = settings.DOMAIN_NAME
-        context["uid"] = urlsafe_base64_encode(force_bytes(user_obj.pk))
-        context["token"] = account_activation_token.make_token(user_obj)
-        context["message"] = "activation_link"
-        context["UserRole"] = UserRole
-        time_delta_two_hours = datetime.datetime.strftime(
-            timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
-        )
-        # creating an activation token and saving it in user model
-        activation_key = context["token"] + time_delta_two_hours
-        user_obj.activation_key = activation_key
-        user_obj.save()
-
-        context["complete_url"] = context[
-            "url"
-        ] + "/auth/activate-user/{}/{}/{}/".format(
-            context["uid"],
-            context["token"],
-            activation_key,
-        )
-
-        subject = "Activate your SLCW CRM account"
-        html_content = render_to_string("user_status_activate.html", context=context)
-
-        # Send via Mailtrap API
-        send_mailtrap_email(
-            subject=subject,
-            recipients=[user_email],
-            html=html_content,
-            text=None,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-        )
+    if not user_obj:
+        logger.warning("User not found for id %s", user_id)
+        return False
+    
+    logger.info("Preparing password set email for %s", user_obj.email)
+    
+    # Generate password reset token (same flow as password reset)
+    uid = urlsafe_base64_encode(force_bytes(user_obj.pk))
+    token = default_token_generator.make_token(user_obj)
+    
+    frontend_url = settings.FRONTEND_URL
+    reset_link = f"{frontend_url}/reset-password/{uid}/{token}/"
+    
+    user_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
+    subject = "Set Your Password - SLCW CRM Account"
+    context = {
+        "reset_link": reset_link,
+        "user_name": user_name or user_obj.email,
+    }
+    
+    html_content = render_to_string("password_reset_email.html", context)
+    
+    logger.info("Sending password set email to %s", user_obj.email)
+    
+    send_mailtrap_email(
+        subject=subject,
+        recipients=[user_obj.email],
+        html=html_content,
+        text=None,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+    )
+    
+    logger.info("Password set email sent successfully to %s", user_obj.email)
+    return True
 
 
 @app.task

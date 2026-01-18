@@ -273,7 +273,6 @@ def create_employee(request):
     email = request.data.get('email')
     first_name = request.data.get('first_name', '')
     last_name = request.data.get('last_name', '')
-    password = request.data.get('password')
     phone = request.data.get('phone')
     alternate_phone = request.data.get('alternate_phone')
     
@@ -283,30 +282,26 @@ def create_employee(request):
             'error': 'Email is required'
         }, status=status.HTTP_400_BAD_REQUEST)
     
-    if not password:
-        return Response({
-            'error': 'Password is required'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate password length
-    if len(password) < 8:
-        return Response({
-            'error': 'Password must be at least 8 characters long'
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
     # Check if user already exists
     if User.objects.filter(email=email, is_deleted=False).exists():
         return Response({
             'error': 'A user with this email already exists.'
         }, status=status.HTTP_400_BAD_REQUEST)
     
+    if User.objects.filter(email=email, is_deleted=True).exists():
+        user = User.objects.get(email=email, is_deleted=True)
+        user.is_deleted = False
+        user.save()
+        return Response({
+            'message': f'Employee {first_name or email} {last_name or ""} restored successfully.',
+        }, status=status.HTTP_200_OK)
+
     try:
         # Create user
         user = User.objects.create_user(
             email=email,
             first_name=first_name,
             last_name=last_name,
-            password=password,
             is_active=True
         )
         
@@ -319,10 +314,10 @@ def create_employee(request):
             alternate_phone=alternate_phone if alternate_phone else None,
         )
         
-        # Send activation email to new employee
+        # Send password set email to new employee
         try:
-            from common.tasks import send_email_to_new_user
-            send_email_to_new_user.delay(user.id)
+            from common.tasks import send_password_set_email_to_new_employee
+            send_password_set_email_to_new_employee.delay(user.id)
         except Exception as e:
             # Don't fail the request if email fails
             pass
