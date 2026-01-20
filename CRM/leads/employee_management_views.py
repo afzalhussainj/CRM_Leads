@@ -141,6 +141,17 @@ class EmployeeDeleteView(APIView):
             profile.is_active = False
             profile.save(update_fields=['is_active'])
             
+            # Send deletion email
+            try:
+                from common.tasks import send_email_user_delete
+                send_email_user_delete.delay(
+                    user_email=user_to_delete.email,
+                    deleted_by=request.user.email
+                )
+            except Exception as e:
+                # Don't fail the request if email fails
+                pass
+            
             return Response({
                 "success": True,
                 "message": "Employee deleted successfully"
