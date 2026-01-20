@@ -119,4 +119,58 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
             )
 
 
-
+@app.task
+def send_follow_up_reminder_email(lead_id):
+    """
+    Send follow-up reminder email to assigned user.
+    Called by Celery beat or scheduled task based on reminder_time_offset.
+    """
+    from django.utils import timezone
+    
+    # Get lead with related data
+    try:
+        lead = Lead.objects.select_related(
+            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
+        ).get(id=lead_id)
+    except Lead.DoesNotExist:
+        return False
+    
+    # Check if reminder should be sent
+    if not lead.send_reminder_email or not lead.follow_up_at:
+        return False
+    
+    # Check if assigned user exists and has email
+    if not lead.assigned_to or not lead.assigned_to.user.email:
+        return False
+    
+    # Check if follow-up is still pending
+    if lead.follow_up_status != "pending":
+        return False
+    
+    # Prepare email context
+    lead_detail_url = f"{settings.DOMAIN_NAME}/leads/{lead.id}/view/"
+    
+    context = {
+        "user": lead.assigned_to.user,
+        "lead_instance": lead,
+        "lead_detail_url": lead_detail_url,
+        "follow_up_at": lead.follow_up_at,
+        "reminder_offset": dict(lead.REMINDER_TIME_CHOICES).get(lead.reminder_time_offset, "exact time"),
+        "UserRole": UserRole,
+    }
+    
+    subject = f"Follow-up Reminder: {lead.title}"
+    html_content = render_to_string(
+        "emails/follow_up_reminder.html", context=context
+    )
+    
+    # Send via Mailtrap API
+    send_mailtrap_email(
+        subject=subject,
+        recipients=[lead.assigned_to.user.email],
+        html=html_content,
+        text=None,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+    )
+    
+    return True

@@ -38,7 +38,22 @@ class Lead(BaseModel):
         choices=FOLLOW_UP_STATUS_CHOICES,
         null=True,
         blank=True
-        )
+    )
+    # Follow-up reminder notification settings
+    send_reminder_email = models.BooleanField(default=False)
+    REMINDER_TIME_CHOICES = (
+        ("exact", "At exact time"),
+        ("30min", "30 minutes before"),
+        ("1hour", "1 hour before"),
+        ("1day", "1 day before"),
+    )
+    reminder_time_offset = models.CharField(
+        max_length=10,
+        choices=REMINDER_TIME_CHOICES,
+        default="exact",
+        blank=True,
+        null=True
+    )
     is_active = models.BooleanField(default=False)
     always_active = models.BooleanField(default=False)
     priority = models.BooleanField(default=False)

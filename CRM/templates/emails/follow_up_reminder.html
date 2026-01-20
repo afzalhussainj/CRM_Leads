@@ -1,136 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Follow-up Reminder</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .email-container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 20px;
-            margin-bottom: 30px;
-        }
-        .header h1 {
-            color: #007bff;
-            margin: 0;
-            font-size: 24px;
-        }
-        .reminder-info {
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .lead-details {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-        .lead-details h3 {
-            margin-top: 0;
-            color: #495057;
-        }
-        .lead-details p {
-            margin: 8px 0;
-        }
-        .cta-button {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-        .cta-button:hover {
-            background-color: #0056b3;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #dee2e6;
-            color: #6c757d;
-            font-size: 14px;
-        }
-        .urgent {
-            background-color: #fff3cd;
-            border-left-color: #ffc107;
-            color: #856404;
-        }
-        .urgent h3 {
-            color: #856404;
-        }
-    </style>
-</head>
-<body>
-    <div class="email-container">
-        <div class="header">
-            <h1>🔔 Follow-up Reminder</h1>
-            <p>You have a follow-up scheduled soon</p>
-        </div>
+{% extends 'root_email_template_new.html' %}
+
+{% block content %}
+<div style="padding: 20px;">
+    <h2 style="color: #333; margin-bottom: 20px;">Follow-up Reminder</h2>
+    
+    <p style="font-size: 16px; color: #555;">Hi {{ user.first_name }},</p>
+    
+    <p style="font-size: 16px; color: #555; line-height: 1.6;">
+        This is a reminder about your scheduled follow-up for the following lead:
+    </p>
+    
+    <div style="background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 20px; margin: 20px 0; border-radius: 4px;">
+        <h3 style="margin-top: 0; color: #007bff;">{{ lead_instance.title }}</h3>
         
-        <div class="reminder-info">
-            <h2>⏰ Follow-up in {{ hours_until }} hours</h2>
-            <p><strong>Scheduled for:</strong> {{ follow_up_time|date:"F j, Y, g:i A" }}</p>
-            <p><strong>Current time:</strong> {{ current_time|date:"F j, Y, g:i A" }}</p>
-        </div>
-        
-        <div class="lead-details">
-            <h3>📋 Lead Details</h3>
-            <p><strong>Title:</strong> {{ lead.title }}</p>
-            <p><strong>Company:</strong> {{ lead.company_name|default:"Not specified" }}</p>
-            <p><strong>Contact:</strong> {{ lead.contact_first_name|default:"" }} {{ lead.contact_last_name|default:"" }}</p>
-            <p><strong>Email:</strong> {{ lead.contact_email|default:"Not specified" }}</p>
-            <p><strong>Status:</strong> <span style="color: #007bff; font-weight: bold;">{{ lead.status|title }}</span></p>
-            <p><strong>Source:</strong> {{ lead.source|title|default:"Not specified" }}</p>
-            {% if lead.description %}
-            <p><strong>Description:</strong> {{ lead.description|truncatewords:30 }}</p>
-            {% endif %}
-        </div>
-        
-        <div style="text-align: center;">
-            <a href="{{ lead_detail_url }}" class="cta-button">
-                📝 View Lead Details
-            </a>
-        </div>
-        
-        <div class="reminder-info urgent">
-            <h3>⚠️ Action Required</h3>
-            <p>Please review this lead and take necessary action before the scheduled follow-up time. You can:</p>
-            <ul>
-                <li>Update the lead status</li>
-                <li>Add notes or comments</li>
-                <li>Reschedule the follow-up if needed</li>
-                <li>Mark the follow-up as completed</li>
-            </ul>
-        </div>
-        
-        <div class="footer">
-            <p>This is an automated reminder from your Lead Management System.</p>
-            <p>If you have any questions, please contact your manager.</p>
-            <p><small>Sent on {{ current_time|date:"F j, Y, g:i A" }}</small></p>
+        <div style="margin-top: 15px;">
+            <p style="margin: 8px 0;">
+                <strong>Scheduled Follow-up:</strong> 
+                <span style="color: #dc3545;">{{ follow_up_at|date:"F d, Y" }} at {{ follow_up_at|time:"g:i A" }}</span>
+            </p>
+            
+            <p style="margin: 8px 0;">
+                <strong>Reminder:</strong> {{ reminder_offset }}
+            </p>
         </div>
     </div>
-</body>
-</html>
-
+    
+    <div style="margin: 25px 0;">
+        <h4 style="color: #333; margin-bottom: 10px;">Lead Details:</h4>
+        <table style="width: 100%; border-collapse: collapse;">
+            {% if lead_instance.company_name %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef; width: 30%;"><strong>Company:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">{{ lead_instance.company_name }}</td>
+            </tr>
+            {% endif %}
+            
+            {% if lead_instance.contact_first_name or lead_instance.contact_last_name %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;"><strong>Contact Name:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">
+                    {{ lead_instance.contact_first_name }} {{ lead_instance.contact_last_name }}
+                </td>
+            </tr>
+            {% endif %}
+            
+            {% if lead_instance.contact_email %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;"><strong>Email:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">{{ lead_instance.contact_email }}</td>
+            </tr>
+            {% endif %}
+            
+            {% if lead_instance.contact_phone %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;"><strong>Phone:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">{{ lead_instance.contact_phone }}</td>
+            </tr>
+            {% endif %}
+            
+            {% if lead_instance.status %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;"><strong>Status:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">{{ lead_instance.status }}</td>
+            </tr>
+            {% endif %}
+            
+            {% if lead_instance.lifecycle %}
+            <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;"><strong>Lifecycle:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #e9ecef;">{{ lead_instance.lifecycle }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+    
+    {% if lead_instance.description %}
+    <div style="margin: 20px 0;">
+        <h4 style="color: #333; margin-bottom: 10px;">Description:</h4>
+        <p style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; color: #555; line-height: 1.6;">
+            {{ lead_instance.description }}
+        </p>
+    </div>
+    {% endif %}
+    
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="{{ lead_detail_url }}" 
+           style="display: inline-block; padding: 12px 30px; background-color: #007bff; color: white; 
+                  text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+            View Lead Details
+        </a>
+    </div>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef;">
+        <p style="font-size: 14px; color: #6c757d; line-height: 1.5;">
+            This is an automated reminder based on your follow-up schedule. 
+            Please mark the follow-up as complete after you've contacted the lead.
+        </p>
+    </div>
+</div>
+{% endblock %}

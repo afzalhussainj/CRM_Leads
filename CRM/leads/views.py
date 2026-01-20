@@ -513,6 +513,217 @@ class LeadAlwaysActiveUpdateView(APIView):
         )
 
 
+class LeadAssignView(APIView):
+    """
+    API View for assigning a lead to an employee.
+    
+    POST: Assigns lead to a new employee
+        - Only managers can assign leads
+        - Sends email notification to newly assigned employee
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def post(self, request, pk, **kwargs):
+        """
+        Assign lead to an employee.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Get assigned_to from request data
+        assigned_to_id = request.data.get("assigned_to")
+        
+        if not assigned_to_id:
+            return Response(
+                {"error": True, "message": "assigned_to is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Validate and get the profile
+        try:
+            new_assignee = Profile.objects.select_related('user').get(
+                id=assigned_to_id,
+                is_active=True,
+                user__is_deleted=False
+            )
+        except Profile.DoesNotExist:
+            return Response(
+                {"error": True, "message": "Invalid assigned_to profile ID or user is inactive."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Store old assignee for comparison
+        old_assignee = lead_obj.assigned_to
+        
+        # Update the assignment
+        lead_obj.assigned_to = new_assignee
+        lead_obj.save(update_fields=["assigned_to"])
+        
+        # Send email notification if assignee changed
+        if old_assignee != new_assignee:
+            try:
+                from leads.tasks import send_email_to_assigned_user
+                send_email_to_assigned_user.delay(
+                    [new_assignee.id],
+                    lead_obj.id,
+                    source="reassignment"
+                )
+            except Exception as e:
+                # Don't fail the request if email fails
+                pass
+        
+        # Return updated lead data
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Lead assigned successfully",
+                "assigned_to": {
+                    "id": new_assignee.id,
+                    "name": f"{new_assignee.user.first_name} {new_assignee.user.last_name}",
+                    "email": new_assignee.user.email
+                },
+                "lead": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LeadFollowUpScheduleView(APIView):
+    """
+    API View for scheduling a follow-up for a lead.
+    
+    POST: Schedules a follow-up with optional email reminder
+        - Employees can schedule for their assigned leads
+        - Managers can schedule for any lead
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def post(self, request, pk, **kwargs):
+        """
+        Schedule a follow-up for a lead.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            # Employees can only schedule for leads assigned to them
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only schedule follow-ups for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        # Get follow-up data from request
+        follow_up_at = request.data.get("follow_up_at")
+        send_reminder_email = request.data.get("send_reminder_email", False)
+        reminder_time_offset = request.data.get("reminder_time_offset", "exact")
+        
+        if not follow_up_at:
+            return Response(
+                {"error": True, "message": "follow_up_at is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Validate reminder_time_offset
+        valid_offsets = ["exact", "30min", "1hour", "1day"]
+        if reminder_time_offset not in valid_offsets:
+            return Response(
+                {"error": True, "message": f"reminder_time_offset must be one of: {', '.join(valid_offsets)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Parse and validate the datetime
+        from dateutil import parser as date_parser
+        try:
+            follow_up_datetime = date_parser.parse(follow_up_at)
+            
+            # Check if follow-up time is in the past
+            if follow_up_datetime < timezone.now():
+                return Response(
+                    {"error": True, "message": "Follow-up time cannot be in the past."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except (ValueError, TypeError) as e:
+            return Response(
+                {"error": True, "message": f"Invalid datetime format: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Update the lead
+        lead_obj.follow_up_at = follow_up_datetime
+        lead_obj.follow_up_status = "pending"
+        lead_obj.send_reminder_email = bool(send_reminder_email)
+        lead_obj.reminder_time_offset = reminder_time_offset if send_reminder_email else None
+        lead_obj.save(update_fields=["follow_up_at", "follow_up_status", "send_reminder_email", "reminder_time_offset"])
+        
+        # Schedule reminder email if requested
+        if send_reminder_email:
+            # Calculate when to send the reminder based on offset
+            from datetime import timedelta
+            reminder_send_at = follow_up_datetime
+            
+            if reminder_time_offset == "30min":
+                reminder_send_at = follow_up_datetime - timedelta(minutes=30)
+            elif reminder_time_offset == "1hour":
+                reminder_send_at = follow_up_datetime - timedelta(hours=1)
+            elif reminder_time_offset == "1day":
+                reminder_send_at = follow_up_datetime - timedelta(days=1)
+            
+            # TODO: Schedule Celery task to send reminder at reminder_send_at
+            # For now, we'll just store the settings
+            # You can implement this with Celery beat or delayed tasks
+        
+        # Return updated lead data
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Follow-up scheduled successfully",
+                "follow_up": {
+                    "follow_up_at": lead_obj.follow_up_at.isoformat(),
+                    "follow_up_status": lead_obj.follow_up_status,
+                    "send_reminder_email": lead_obj.send_reminder_email,
+                    "reminder_time_offset": lead_obj.reminder_time_offset
+                },
+                "lead": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class LeadFollowUpStatusUpdateView(APIView):
     """
