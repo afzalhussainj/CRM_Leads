@@ -5,9 +5,11 @@ app_name = "api_leads"
 
 urlpatterns = [
     path("", views.LeadListView.as_view()),
+    path("projects/", views.ProjectListView.as_view(), name="api_projects"),
     path("reminders/", views.RemindersListView.as_view(), name="api_reminders"),
     path("options/", views.OptionsView.as_view(), name="api_options"),
     path("<str:pk>/", views.LeadDetailView.as_view()),
+    path("<str:pk>/convert-to-project/", views.LeadConvertToProjectView.as_view(), name="api_lead_convert_to_project"),
     path("<str:pk>/assign/", views.LeadAssignView.as_view(), name="api_lead_assign"),
     path("<str:pk>/schedule-follow-up/", views.LeadFollowUpScheduleView.as_view(), name="api_lead_schedule_follow_up"),
     path("<str:pk>/follow-up-status/", views.LeadFollowUpStatusUpdateView.as_view(), name="api_lead_follow_up_status"),

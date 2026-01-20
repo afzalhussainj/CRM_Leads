@@ -805,6 +805,152 @@ class LeadFollowUpStatusUpdateView(APIView):
         )
 
 
+class ProjectListView(APIView, LimitOffsetPagination):
+    """
+    API View for listing projects (leads converted to projects).
+    
+    GET: Returns all projects with role-based filtering
+        - Employees: Only see projects assigned to them
+        - Managers: See all projects
+    """
+    model = Lead
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        """
+        Get queryset with role-based filtering.
+        Employees see only assigned projects, Managers see all projects.
+        """
+        request = self.request
+        
+        # Base queryset with optimizations - only projects
+        queryset = (
+            self.model.objects.select_related(
+                'status',
+                'lifecycle',
+                'assigned_to',
+                'assigned_to__user',
+                'created_by'
+            )
+            .filter(is_active=True, is_project=True)  # Only projects
+            .order_by("-created_at")
+        )
+        
+        # Role-based filtering
+        if request.user.is_authenticated and hasattr(request.user, 'profile'):
+            user_profile = request.user.profile
+            user_role = int(user_profile.role) if user_profile.role is not None else None
+            
+            # Employees can only see projects assigned to them
+            if user_role == UserRole.EMPLOYEE.value:
+                queryset = queryset.filter(assigned_to=user_profile)
+            # Managers can see all projects (no additional filter needed)
+        
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        params = self.request.query_params
+        request = self.request
+        
+        # Get base queryset with role-based filtering
+        queryset = self.get_queryset()
+        
+        # Apply search filters
+        if params:
+            if params.get("name"):
+                queryset = queryset.filter(
+                    Q(company_name__icontains=params.get("name"))
+                    | Q(contact_first_name__icontains=params.get("name"))
+                    | Q(contact_last_name__icontains=params.get("name"))
+                )
+            if params.get("email"):
+                queryset = queryset.filter(
+                    contact_email__icontains=params.get("email")
+                )
+            if params.get("status"):
+                queryset = queryset.filter(status=params.get("status"))
+            if params.get("assigned_to"):
+                queryset = queryset.filter(assigned_to=params.get("assigned_to"))
+        
+        context = {}
+        results = self.paginate_queryset(queryset, request, view=self)
+        serializer = LeadSerializer(results, many=True)
+        
+        context["projects_count"] = queryset.count()
+        context["projects"] = serializer.data
+        
+        return context
+
+    def get(self, request, *args, **kwargs):
+        """Get list of projects"""
+        context = self.get_context_data()
+        return Response(context, status=status.HTTP_200_OK)
+
+
+class LeadConvertToProjectView(APIView):
+    """
+    API View for converting a lead to a project.
+    
+    POST: Converts a lead to a project
+        - Only managers can convert leads to projects
+        - Sets is_project=True on the lead
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user'),
+            pk=pk
+        )
+
+    def post(self, request, pk, **kwargs):
+        """
+        Convert lead to project.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Only managers can convert leads to projects
+        if user_role != UserRole.MANAGER.value and not request.user.is_superuser:
+            return Response(
+                {"error": True, "message": "Only managers can convert leads to projects."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        
+        # Check if already a project
+        if lead_obj.is_project:
+            return Response(
+                {"error": True, "message": "This lead is already a project."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        # Convert to project
+        lead_obj.is_project = True
+        lead_obj.save(update_fields=["is_project"])
+        
+        # Return updated lead data
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Lead successfully converted to project",
+                "is_project": True,
+                "project": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class LeadNotesListView(APIView):
     """
     API View for listing and creating notes for a lead.
