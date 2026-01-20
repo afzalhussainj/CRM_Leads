@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count
+from django.db.models import Count, Case, When, Value, CharField
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -686,142 +686,126 @@ class Dashboard(APIView):
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, **kwargs):
-        """Get all unread notes for the current user"""
-        
-        # Validate user has profile
-        if not hasattr(request.user, 'profile') or request.user.profile is None:
+        # Validate user profile
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        if not profile:
             return Response(
                 {"error": True, "message": "User profile not found."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
-        user_profile = request.user.profile
-        user_role = int(user_profile.role) if user_profile.role is not None else None
-        
-        # Base query: Get leads where user has unread notes (notes sent TO them, not BY them)
-        if user_role == UserRole.EMPLOYEE.value:
-            # Employees only see unread notes from leads assigned to them
-            leads_queryset = Lead.objects.filter(
-                assigned_to=user_profile,
-                is_active=True
-            ).select_related('status', 'assigned_to', 'assigned_to__user', 'created_by')
-        else:
-            # Managers can see unread notes from all leads
-            leads_queryset = Lead.objects.filter(
-                is_active=True
-            ).select_related('status', 'assigned_to', 'assigned_to__user', 'created_by')
 
-        # Aggregate lead counts by status for the accessible leads
-        status_counts_qs = (
+        user_role = int(profile.role) if profile.role is not None else None
+
+        # Base lead queryset (role-based)
+        if user_role == UserRole.EMPLOYEE.value:
+            leads_queryset = Lead.objects.filter(
+                assigned_to=profile,
+                is_active=True
+            )
+        else:
+            leads_queryset = Lead.objects.filter(is_active=True)
+
+        # Lead counts by status
+        status_counts = (
             leads_queryset
             .values('status__id', 'status__name')
             .annotate(count=Count('id'))
             .order_by('status__name')
         )
-        status_counts = [
-            {
-                "status_id": item['status__id'],
-                "status_name": item['status__name'],
-                "count": item['count'],
-            }
-            for item in status_counts_qs
-        ]
 
-        # Always-active leads (within the same role-based scope)
-        always_active_leads = leads_queryset.filter(always_active=True)
-        always_active_count = always_active_leads.count()
-        always_active_leads = LeadSerializer(always_active_leads, many=True).data
-        
-        # Get all unread notes sent TO the user (not BY the user)
-        # Find notes by other users that current user hasn't read
-        unread_notes = LeadNote.objects.filter(
-            lead__in=leads_queryset
-        ).exclude(
-            author__user=request.user
-        ).exclude(
-            read_by__user=request.user
-        ).select_related(
-            'lead',
-            'author',
-            'author__user'
-        ).distinct().order_by('-created_at')
-        
-        # Serialize notes with full context
-        serializer = LeadNoteSerializer(unread_notes, many=True)
-        
+        # Unread notes
+        unread_notes_qs = (
+            LeadNote.objects.filter(
+                lead__in=leads_queryset
+            )
+            .exclude(author__user=user)
+            .exclude(read_by__user=user)
+            .select_related('lead', 'author', 'author__user')
+            .order_by('-created_at')
+        )
+
+        unread_notes_count = unread_notes_qs.count()
+
+        unread_notes_serializer = LeadNoteSerializer(unread_notes_qs, many=True)
+
+        # Reminders
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
-        
-        # Overdue: follow_up_at is in the past and status is 'pending'
-        overdue = leads_queryset.filter(
-            follow_up_at__lt=today_start,
-            follow_up_status='pending'
-        ).order_by('follow_up_at')
-        
-        # Due today: follow_up_at is today and status is 'pending'
-        due_today = leads_queryset.filter(
-            follow_up_at__gte=today_start,
-            follow_up_at__lt=today_end,
-            follow_up_status='pending'
-        ).order_by('follow_up_at')
-        
-        # Upcoming: follow_up_at is in the future (after today) and status is 'pending'
-        upcoming = leads_queryset.filter(
-            follow_up_at__gte=today_end,
-            follow_up_status='pending'
-        ).order_by('follow_up_at')
-        
-        # Done: follow_up_status is 'done'
-        done = leads_queryset.filter(
-            follow_up_status='done'
-        ).order_by('-follow_up_at')
-        
-        # Serialize all categories
-        overdue_serializer = LeadSerializer(overdue, many=True)
-        due_today_serializer = LeadSerializer(due_today, many=True)
-        upcoming_serializer = LeadSerializer(upcoming, many=True)
-        done_serializer = LeadSerializer(done, many=True)
-        
+
+        reminders_qs = leads_queryset.annotate(
+            reminder_type=Case(
+                When(follow_up_status='done', then=Value('done')),
+                When(
+                    follow_up_status='pending',
+                    follow_up_at__lt=today_start,
+                    then=Value('overdue')
+                ),
+                When(
+                    follow_up_status='pending',
+                    follow_up_at__gte=today_start,
+                    follow_up_at__lt=today_end,
+                    then=Value('due_today')
+                ),
+                When(
+                    follow_up_status='pending',
+                    follow_up_at__gte=today_end,
+                    then=Value('upcoming')
+                ),
+                output_field=CharField()
+            )
+        )
+
+        overdue = []
+        due_today = []
+        upcoming = []
+        done = []
+
+        for lead in reminders_qs:
+            if lead.reminder_type == 'overdue':
+                overdue.append(lead)
+            elif lead.reminder_type == 'due_today':
+                due_today.append(lead)
+            elif lead.reminder_type == 'upcoming':
+                upcoming.append(lead)
+            elif lead.reminder_type == 'done':
+                done.append(lead)
+
         # Employee count
         employee_count = 0
         if user_role == UserRole.MANAGER.value:
             employee_count = Profile.objects.filter(
-                role=UserRole.EMPLOYEE.value, 
+                role=UserRole.EMPLOYEE.value,
                 is_active=True
-                ).count()
-
+            ).count()
 
         response_data = {
-            "unread_notes":{
-            "success": True,
-            "unread_count": len(unread_notes),
-            "notes": serializer.data
+            "unread_notes": {
+                "success": True,
+                "unread_count": unread_notes_count,
+                "notes": unread_notes_serializer.data,
             },
-            "lead_statuses": status_counts,
-            "always_active": {
-            "count": always_active_count,
-            "always_active_leads": always_active_leads
-            },
+            "lead_statuses": list(status_counts),
             "reminders": {
                 "overdue": {
-                    "count": overdue.count(),
-                    "leads": overdue_serializer.data
+                    "count": len(overdue),
+                    "leads": LeadSerializer(overdue, many=True).data,
                 },
                 "due_today": {
-                    "count": due_today.count(),
-                    "leads": due_today_serializer.data
+                    "count": len(due_today),
+                    "leads": LeadSerializer(due_today, many=True).data,
                 },
                 "upcoming": {
-                    "count": upcoming.count(),
-                    "leads": upcoming_serializer.data
+                    "count": len(upcoming),
+                    "leads": LeadSerializer(upcoming, many=True).data,
                 },
                 "done": {
-                    "count": done.count(),
-                    "leads": done_serializer.data
-                }
+                    "count": len(done),
+                    "leads": LeadSerializer(done, many=True).data,
                 },
-            "employee_count": employee_count
-            }
- 
+            },
+            "employee_count": employee_count,
+        }
+
         return Response(response_data, status=status.HTTP_200_OK)
