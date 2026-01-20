@@ -759,18 +759,18 @@ class Dashboard(APIView):
         overdue_leads = list(leads_queryset.filter(
             follow_up_status='pending',
             follow_up_at__lt=today_start
-        )[:20])  # Limit to 20
+        ))
         
         due_today_leads = list(leads_queryset.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_start,
             follow_up_at__lt=today_end
-        )[:20])
+        ))
         
         upcoming_leads = list(leads_queryset.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_end
-        )[:20])
+        ))
 
         # Employee count - cached
         employee_count = 0
