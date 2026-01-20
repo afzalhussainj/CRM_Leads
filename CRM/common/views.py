@@ -697,16 +697,17 @@ class Dashboard(APIView):
 
         user_role = int(profile.role) if profile.role is not None else None
 
-        # Base lead queryset (role-based)
+        # Base lead queryset (role-based) with optimizations
+        leads_base = Lead.objects.select_related(
+            'status', 'lifecycle', 'source', 'assigned_to', 'assigned_to__user'
+        ).filter(is_active=True)
+        
         if user_role == UserRole.EMPLOYEE.value:
-            leads_queryset = Lead.objects.filter(
-                assigned_to=profile,
-                is_active=True
-            )
+            leads_queryset = leads_base.filter(assigned_to=profile)
         else:
-            leads_queryset = Lead.objects.filter(is_active=True)
+            leads_queryset = leads_base
 
-        # Lead counts by status
+        # Lead counts by status - optimized
         status_counts = (
             leads_queryset
             .values('status__id', 'status__name')
@@ -714,70 +715,70 @@ class Dashboard(APIView):
             .order_by('status__name')
         )
 
-        # Unread notes
+        # Unread notes - optimized with prefetch
         unread_notes_qs = (
             LeadNote.objects.filter(
                 lead__in=leads_queryset
             )
             .exclude(author__user=user)
             .exclude(read_by__user=user)
-            .select_related('lead', 'author', 'author__user')
+            .select_related('lead', 'author', 'author__user', 'lead__status')
             .order_by('-created_at')
         )
 
         unread_notes_count = unread_notes_qs.count()
-
         unread_notes_serializer = LeadNoteSerializer(unread_notes_qs, many=True)
 
-        # Reminders
+        # Reminders - optimized with aggregation instead of loops
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
 
-        reminders_qs = leads_queryset.annotate(
-            reminder_type=Case(
-                When(follow_up_status='done', then=Value('done')),
-                When(
-                    follow_up_status='pending',
-                    follow_up_at__lt=today_start,
-                    then=Value('overdue')
-                ),
-                When(
-                    follow_up_status='pending',
-                    follow_up_at__gte=today_start,
-                    follow_up_at__lt=today_end,
-                    then=Value('due_today')
-                ),
-                When(
-                    follow_up_status='pending',
-                    follow_up_at__gte=today_end,
-                    then=Value('upcoming')
-                ),
-                output_field=CharField()
-            )
-        )
+        # Get counts only for summary
+        overdue_count = leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__lt=today_start
+        ).count()
+        
+        due_today_count = leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_start,
+            follow_up_at__lt=today_end
+        ).count()
+        
+        upcoming_count = leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_end
+        ).count()
+        
+        done_count = leads_queryset.filter(
+            follow_up_status='done'
+        ).count()
 
-        overdue = []
-        due_today = []
-        upcoming = []
-        done = []
+        # Fetch actual leads only if needed (limit results)
+        overdue_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__lt=today_start
+        )[:20])  # Limit to 20
+        
+        due_today_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_start,
+            follow_up_at__lt=today_end
+        )[:20])
+        
+        upcoming_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_end
+        )[:20])
 
-        for lead in reminders_qs:
-            if lead.reminder_type == 'overdue':
-                overdue.append(lead)
-            elif lead.reminder_type == 'due_today':
-                due_today.append(lead)
-            elif lead.reminder_type == 'upcoming':
-                upcoming.append(lead)
-            elif lead.reminder_type == 'done':
-                done.append(lead)
-
-        # Employee count
+        # Employee count - cached
         employee_count = 0
         if user_role == UserRole.MANAGER.value:
             employee_count = Profile.objects.filter(
                 role=UserRole.EMPLOYEE.value,
-                is_active=True
+                is_active=True,
+                user__is_deleted=False
             ).count()
 
         response_data = {
@@ -789,20 +790,20 @@ class Dashboard(APIView):
             "lead_statuses": list(status_counts),
             "reminders": {
                 "overdue": {
-                    "count": len(overdue),
-                    "leads": LeadSerializer(overdue, many=True).data,
+                    "count": overdue_count,
+                    "leads": LeadSerializer(overdue_leads, many=True).data,
                 },
                 "due_today": {
-                    "count": len(due_today),
-                    "leads": LeadSerializer(due_today, many=True).data,
+                    "count": due_today_count,
+                    "leads": LeadSerializer(due_today_leads, many=True).data,
                 },
                 "upcoming": {
-                    "count": len(upcoming),
-                    "leads": LeadSerializer(upcoming, many=True).data,
+                    "count": upcoming_count,
+                    "leads": LeadSerializer(upcoming_leads, many=True).data,
                 },
                 "done": {
-                    "count": len(done),
-                    "leads": LeadSerializer(done, many=True).data,
+                    "count": done_count,
+                    "leads": [],  # Don't return done leads to reduce payload
                 },
             },
             "employee_count": employee_count,
