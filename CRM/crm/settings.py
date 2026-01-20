@@ -237,51 +237,6 @@ if ENV_TYPE == "dev":
     MEDIA_ROOT = os.path.join(BASE_DIR, "media")
     MEDIA_URL = "/media/"
 
-# celery Tasks
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = None
-
-# Normalize Redis URLs: force database 0 and add SSL parameters for rediss://
-def normalize_redis_url(url):
-    """Normalize Redis URL to add SSL parameters for rediss://"""
-    if not url or "//" not in url:
-        return url
-    
-    # For rediss:// URLs, add ssl_cert_reqs parameter if not already present (required in Celery 5.4+)
-    if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
-        separator = "&" if "?" in url else "?"
-        url = f"{url}{separator}ssl_cert_reqs=CERT_NONE"
-    
-    return url
-
-CELERY_BROKER_URL = normalize_redis_url(CELERY_BROKER_URL)
-CELERY_RESULT_BACKEND = normalize_redis_url(CELERY_RESULT_BACKEND)
-
-# Celery configuration
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_EAGER_PROPAGATES = True
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TASK_IGNORE_RESULT = True
-CELERY_TASK_TRACK_STARTED = False
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_TASK_ACKS_LATE = True
-CELERY_WORKER_SEND_TASK_EVENTS = False
-CELERY_TASK_SEND_SENT_EVENT = False
-CELERY_WORKER_DISABLE_RATE_LIMITS = True
-CELERY_BROKER_TRANSPORT_OPTIONS = {
-    "visibility_timeout": 86400,
-    "polling_interval": 60,
-    "fanout_prefix": True,
-    "fanout_patterns": True,
-}
-CELERY_BROKER_CONNECTION_RETRY = False
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = False
-CELERY_BROKER_POOL_LIMIT = 1  # Only 1 connection to broker
-
-
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

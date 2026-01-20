@@ -259,12 +259,12 @@ class LeadListView(APIView, LimitOffsetPagination):
                 if user_role == UserRole.MANAGER.value or request.user.is_superuser:
                     try:
                         from leads.tasks import send_email_to_assigned_user
-                        send_email_to_assigned_user.delay(
+                        send_email_to_assigned_user(
                             [assigned_to.id],
                             lead_obj.id,
                             source="lead_creation"
                         )
-                    except Exception as e:
+                    except Exception:
                         # Don't fail the request if email fails
                         pass
 
@@ -579,12 +579,12 @@ class LeadAssignView(APIView):
         if old_assignee != new_assignee:
             try:
                 from leads.tasks import send_email_to_assigned_user
-                send_email_to_assigned_user.delay(
+                send_email_to_assigned_user(
                     [new_assignee.id],
                     lead_obj.id,
                     source="reassignment"
                 )
-            except Exception as e:
+            except Exception:
                 # Don't fail the request if email fails
                 pass
         
@@ -688,33 +688,10 @@ class LeadFollowUpScheduleView(APIView):
         lead_obj.follow_up_status = "pending"
         lead_obj.send_reminder_email = bool(send_reminder_email)
         lead_obj.reminder_time_offset = reminder_time_offset if send_reminder_email else None
-        lead_obj.save(update_fields=["follow_up_at", "follow_up_status", "send_reminder_email", "reminder_time_offset"])
-        
-        # Schedule reminder email if requested
-        if send_reminder_email:
-            # Calculate when to send the reminder based on offset
-            reminder_send_at = follow_up_datetime
-            
-            if reminder_time_offset == "30min":
-                reminder_send_at = follow_up_datetime - timedelta(minutes=30)
-            elif reminder_time_offset == "1hour":
-                reminder_send_at = follow_up_datetime - timedelta(hours=1)
-            elif reminder_time_offset == "1day":
-                reminder_send_at = follow_up_datetime - timedelta(days=1)
-            
-            # Schedule Celery task to send reminder at reminder_send_at
-            # Calculate countdown (seconds from now until reminder should be sent)
-            from leads.tasks import send_follow_up_reminder_email
-            
-            now = timezone.now()
-            if reminder_send_at > now:
-                countdown = int((reminder_send_at - now).total_seconds())
-                send_follow_up_reminder_email.apply_async(
-                    args=[str(lead_obj.id)],
-                    countdown=countdown
-                )
-            else:
-                send_follow_up_reminder_email.delay(str(lead_obj.id))
+        # Reset reminder send marker so cron can send when due
+        # Always clear the sent marker when rescheduling or disabling reminders
+        lead_obj.reminder_email_sent_at = None
+        lead_obj.save(update_fields=["follow_up_at", "follow_up_status", "send_reminder_email", "reminder_time_offset", "reminder_email_sent_at"])
         
         # Return updated lead data
         lead_serializer = LeadSerializer(lead_obj)

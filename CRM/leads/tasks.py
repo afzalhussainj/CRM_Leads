@@ -1,6 +1,5 @@
 import re
 
-from celery import Celery
 from django.conf import settings
 from django.db.models import Q
 from django.template.loader import render_to_string
@@ -10,15 +9,12 @@ from common.utils.email_mailtrap import send_mailtrap_email
 from leads.models import Lead
 from utils.roles_enum import UserRole
 
-app = Celery("redis://")
-
 
 def get_rendered_html(template_name, context={}):
     html_content = render_to_string(template_name, context)
     return html_content
 
 
-@app.task
 def send_email(
     subject,
     html_content,
@@ -42,7 +38,6 @@ def send_email(
     )
 
 
-@app.task
 def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
     # Optimize: Use select_related
     lead_instance = Lead.objects.select_related(
@@ -77,10 +72,9 @@ def send_lead_assigned_emails(lead_id, new_assigned_to_list, site_address):
             html_content = get_rendered_html(template_name, context)
             mail_kwargs["html_content"] = html_content
             mail_kwargs["recipients"] = [profile.user.email]
-            send_email.delay(**mail_kwargs)
+            send_email(**mail_kwargs)
 
 
-@app.task
 def send_email_to_assigned_user(recipients, lead_id, source=""):
     """Send email to users when leads are assigned to them."""
     # Optimize: Use select_related
@@ -119,11 +113,10 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
             )
 
 
-@app.task
 def send_follow_up_reminder_email(lead_id):
     """
     Send follow-up reminder email to assigned user.
-    Called by Celery beat or scheduled task based on reminder_time_offset.
+    Called by cron-based scheduler or manual trigger based on reminder_time_offset.
     """
     from django.utils import timezone
     

@@ -54,6 +54,8 @@ class Lead(BaseModel):
         blank=True,
         null=True
     )
+    # When we actually sent the reminder email (for cron-based sending)
+    reminder_email_sent_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=False)
     always_active = models.BooleanField(default=False)
     priority = models.BooleanField(default=False)

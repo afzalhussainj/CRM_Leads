@@ -79,11 +79,11 @@ class EmployeeToggleActiveView(APIView):
             # Send status change email
             try:
                 from common.tasks import send_email_user_status
-                send_email_user_status.delay(
+                send_email_user_status(
                     profile.user.id,
                     status_changed_user=request.user.email
                 )
-            except Exception as e:
+            except Exception:
                 # Don't fail the request if email fails
                 pass
             
@@ -144,11 +144,11 @@ class EmployeeDeleteView(APIView):
             # Send deletion email
             try:
                 from common.tasks import send_email_user_delete
-                send_email_user_delete.delay(
+                send_email_user_delete(
                     user_email=user_to_delete.email,
                     deleted_by=request.user.email
                 )
-            except Exception as e:
+            except Exception:
                 # Don't fail the request if email fails
                 pass
             

@@ -240,10 +240,9 @@ def password_reset_request(request):
             'error': 'Account not found. Please contact your manager for assistance.'
         }, status=status.HTTP_404_NOT_FOUND)
     
-    # Send password reset email
+    # Send password reset email (synchronous helper)
     from common.tasks import send_email_to_reset_password
-    # Use Celery async only
-    send_email_to_reset_password.delay(user.email)
+    send_email_to_reset_password(user.email)
     
     return Response({
         'message': 'If an account with this email exists, a password reset link has been sent.'
@@ -317,7 +316,7 @@ def create_employee(request):
         # Send password set email to new employee
         try:
             from common.tasks import send_password_set_email_to_new_employee
-            send_password_set_email_to_new_employee.delay(user.id)
+            send_password_set_email_to_new_employee(user.id)
         except Exception as e:
             # Don't fail the request if email fails
             pass
@@ -612,7 +611,7 @@ class UserDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         deleted_by = self.request.user.profile.user.email
-        send_email_user_delete.delay(
+        send_email_user_delete(
             self.object.user.email,
             deleted_by=deleted_by,
         )
@@ -664,11 +663,11 @@ class UserStatusView(APIView):
             # Send status change email
             try:
                 from common.tasks import send_email_user_status
-                send_email_user_status.delay(
+                send_email_user_status(
                     profile.user.id,
                     status_changed_user=request.user.email
                 )
-            except Exception as e:
+            except Exception:
                 # Don't fail the request if email fails
                 pass
 

@@ -1,7 +1,6 @@
 import datetime
 import socket
 
-from celery import Celery, shared_task
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.template.loader import render_to_string
@@ -14,10 +13,7 @@ from common.utils.token_generator import account_activation_token
 from common.utils.email_mailtrap import send_mailtrap_email
 from utils.roles_enum import UserRole
 
-app = Celery("redis://")
 
-
-@app.task
 def send_password_set_email_to_new_employee(user_id):
     """Send password set email to newly created employees."""
     import logging
@@ -60,7 +56,6 @@ def send_password_set_email_to_new_employee(user_id):
     return True
 
 
-@app.task
 def send_email_user_status(
     user_id,
     status_changed_user="",
@@ -97,7 +92,6 @@ def send_email_user_status(
         )
 
 
-@app.task
 def send_email_user_delete(
     user_email,
     deleted_by="",
@@ -123,7 +117,6 @@ def send_email_user_delete(
         )
 
 
-@app.task
 def resend_activation_link_to_user(
     user_email="",
 ):
@@ -213,25 +206,10 @@ def _send_email_to_reset_password_sync(user_email):
     logger.info("Password reset email sent successfully to %s", user_email)
     return True
 
-# Celery task for password reset email
-@shared_task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_kwargs={"max_retries": 3, "countdown": 60},
-    retry_backoff=True,
-)
-def send_email_to_reset_password(self, user_email):
+def send_email_to_reset_password(user_email):
+    """Send password reset email (synchronous)."""
     import logging
-    from django.conf import settings
-
     logger = logging.getLogger(__name__)
 
-    logger.info("Celery task started for password reset email: %s", user_email)
-
-    result = _send_email_to_reset_password_sync(user_email)
-
-    if not result:
-        raise Exception("Email sending returned False")
-
-    logger.info("Celery task completed successfully for %s", user_email)
-    return True
+    logger.info("Password reset email requested for %s", user_email)
+    return _send_email_to_reset_password_sync(user_email)

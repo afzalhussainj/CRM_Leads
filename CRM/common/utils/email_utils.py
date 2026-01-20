@@ -85,7 +85,7 @@ def send_follow_up_reminder(lead, hours_before=2):
 def send_bulk_follow_up_reminders():
     """
     Send follow-up reminders for all leads that need them.
-    This function should be called by a scheduled task (e.g., cron job or Celery).
+    This function should be called by a scheduled task (e.g., cron job).
     """
     from leads.models import Lead
     
