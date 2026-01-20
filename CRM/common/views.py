@@ -681,6 +681,195 @@ class UserStatusView(APIView):
         ).data
         return Response(context)
 
+class DashboardUnreadNotes(APIView):
+    """
+    API endpoint to get unread notes.
+    
+    GET: Returns unread notes for leads accessible to the user
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, **kwargs):
+        # Validate user profile
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        if not profile:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_role = int(profile.role) if profile.role is not None else None
+
+        # Base lead queryset (role-based) with optimizations
+        leads_base = Lead.objects.select_related(
+            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
+        ).filter(is_active=True)
+        
+        if user_role == UserRole.EMPLOYEE.value:
+            leads_queryset = leads_base.filter(assigned_to=profile)
+        else:
+            leads_queryset = leads_base
+
+        # Unread notes - optimized with prefetch
+        unread_notes_qs = (
+            LeadNote.objects.filter(
+                lead__in=leads_queryset
+            )
+            .exclude(author__user=user)
+            .exclude(read_by__user=user)
+            .select_related('lead', 'author', 'author__user', 'lead__status')
+            .order_by('-created_at')
+        )
+
+        unread_notes_count = unread_notes_qs.count()
+        unread_notes_serializer = LeadNoteSerializer(unread_notes_qs, many=True)
+
+        response_data = {
+            "success": True,
+            "unread_count": unread_notes_count,
+            "notes": unread_notes_serializer.data,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class DashboardReminders(APIView):
+    """
+    API endpoint to get follow-up reminders.
+    
+    GET: Returns reminders categorized by status (overdue, due_today, upcoming, done)
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, **kwargs):
+        # Validate user profile
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        if not profile:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_role = int(profile.role) if profile.role is not None else None
+
+        # Base lead queryset (role-based) with optimizations
+        leads_base = Lead.objects.select_related(
+            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
+        ).filter(is_active=True)
+        
+        if user_role == UserRole.EMPLOYEE.value:
+            leads_queryset = leads_base.filter(assigned_to=profile)
+        else:
+            leads_queryset = leads_base
+
+        # Reminders - optimized with aggregation instead of loops
+        now = timezone.now()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+
+        # Get counts and actual leads
+        overdue_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__lt=today_start
+        ))
+        
+        due_today_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_start,
+            follow_up_at__lt=today_end
+        ))
+        
+        upcoming_leads = list(leads_queryset.filter(
+            follow_up_status='pending',
+            follow_up_at__gte=today_end
+        ))
+
+        done_count = leads_queryset.filter(
+            follow_up_status='done'
+        ).count()
+
+        response_data = {
+            "success": True,
+            "reminders": {
+                "overdue": {
+                    "count": len(overdue_leads),
+                    "leads": LeadSerializer(overdue_leads, many=True).data,
+                },
+                "due_today": {
+                    "count": len(due_today_leads),
+                    "leads": LeadSerializer(due_today_leads, many=True).data,
+                },
+                "upcoming": {
+                    "count": len(upcoming_leads),
+                    "leads": LeadSerializer(upcoming_leads, many=True).data,
+                },
+                "done": {
+                    "count": done_count,
+                    "leads": [],  # Don't return done leads to reduce payload
+                },
+            },
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+
+class DashboardLeadStatusesAndEmployees(APIView):
+    """
+    API endpoint to get lead statuses and employee count.
+    
+    GET: Returns lead status distribution and employee count (for managers)
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, **kwargs):
+        # Validate user profile
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        if not profile:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user_role = int(profile.role) if profile.role is not None else None
+
+        # Base lead queryset (role-based) with optimizations
+        leads_base = Lead.objects.select_related(
+            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
+        ).filter(is_active=True)
+        
+        if user_role == UserRole.EMPLOYEE.value:
+            leads_queryset = leads_base.filter(assigned_to=profile)
+        else:
+            leads_queryset = leads_base
+
+        # Lead counts by status - optimized
+        status_counts = (
+            leads_queryset
+            .values('status__id', 'status__name')
+            .annotate(count=Count('id'))
+            .order_by('status__name')
+        )
+
+        # Employee count - cached
+        employee_count = 0
+        if user_role == UserRole.MANAGER.value:
+            employee_count = Profile.objects.filter(
+                role=UserRole.EMPLOYEE.value,
+                is_active=True,
+                user__is_deleted=False
+            ).count()
+
+        response_data = {
+            "success": True,
+            "lead_statuses": list(status_counts),
+            "employee_count": employee_count,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
 class Dashboard(APIView):
     permission_classes = (IsAuthenticated,)
 

@@ -7,6 +7,9 @@ app_name = "api_common"
 
 urlpatterns = [
     path("dashboard/", views.Dashboard.as_view()),
+    path("dashboard/unread-notes/", views.DashboardUnreadNotes.as_view()),
+    path("dashboard/reminders/", views.DashboardReminders.as_view()),
+    path("dashboard/lead-statuses-employees/", views.DashboardLeadStatusesAndEmployees.as_view()),
     
     # Authentication endpoints
     path("auth/login/", views.login_view, name="api_login"),
