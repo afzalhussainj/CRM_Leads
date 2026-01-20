@@ -694,6 +694,7 @@ class LeadFollowUpScheduleView(APIView):
         if send_reminder_email:
             # Calculate when to send the reminder based on offset
             from datetime import timedelta
+            from django.utils import timezone
             reminder_send_at = follow_up_datetime
             
             if reminder_time_offset == "30min":
@@ -703,9 +704,19 @@ class LeadFollowUpScheduleView(APIView):
             elif reminder_time_offset == "1day":
                 reminder_send_at = follow_up_datetime - timedelta(days=1)
             
-            # TODO: Schedule Celery task to send reminder at reminder_send_at
-            # For now, we'll just store the settings
-            # You can implement this with Celery beat or delayed tasks
+            # Schedule Celery task to send reminder at reminder_send_at
+            # Calculate countdown (seconds from now until reminder should be sent)
+            from leads.tasks import send_follow_up_reminder_email
+            
+            now = timezone.now()
+            if reminder_send_at > now:
+                countdown = int((reminder_send_at - now).total_seconds())
+                send_follow_up_reminder_email.apply_async(
+                    args=[str(lead_obj.id)],
+                    countdown=countdown
+                )
+            else:
+                send_follow_up_reminder_email.delay(str(lead_obj.id))
         
         # Return updated lead data
         lead_serializer = LeadSerializer(lead_obj)
