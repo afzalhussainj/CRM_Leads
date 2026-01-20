@@ -239,7 +239,7 @@ if ENV_TYPE == "dev":
 
 # celery Tasks
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+CELERY_RESULT_BACKEND = None
 
 # Normalize Redis URLs: force database 0 and add SSL parameters for rediss://
 def normalize_redis_url(url):
@@ -263,6 +263,14 @@ CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_TASK_TRACK_STARTED = False
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_TASK_ACKS_LATE = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 86400,
+    "polling_interval": 10,
+}
 
 
 
