@@ -699,7 +699,7 @@ class Dashboard(APIView):
 
         # Base lead queryset (role-based) with optimizations
         leads_base = Lead.objects.select_related(
-            'status', 'lifecycle', 'source', 'assigned_to', 'assigned_to__user'
+            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
         ).filter(is_active=True)
         
         if user_role == UserRole.EMPLOYEE.value:
