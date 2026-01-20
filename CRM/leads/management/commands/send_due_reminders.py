@@ -35,7 +35,6 @@ class Command(BaseCommand):
             Lead.objects.select_related("assigned_to", "assigned_to__user", "status", "lifecycle")
             .filter(
                 send_reminder_email=True,
-                follow_up_status="pending",
                 follow_up_at__isnull=False,
                 reminder_email_sent_at__isnull=True,
             )

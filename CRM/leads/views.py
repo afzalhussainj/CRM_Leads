@@ -249,6 +249,11 @@ class LeadListView(APIView, LimitOffsetPagination):
                 created_by=request.user,
             )
 
+            # Reset reminder_email_sent_at if follow_up_at is set with reminder enabled
+            if data.get("follow_up_at") and data.get("send_reminder_email"):
+                lead_obj.reminder_email_sent_at = None
+                lead_obj.save(update_fields=["reminder_email_sent_at"])
+
             # Handle assignment
             if data.get("assigned_to"):
                 assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
@@ -398,6 +403,11 @@ class LeadDetailView(APIView):
         serializer = LeadCreateSerializer(lead_obj, data=data)
         if serializer.is_valid():
             lead_obj = serializer.save()
+
+            # Reset reminder_email_sent_at if follow_up_at is being updated with reminder enabled
+            if data.get("follow_up_at") and data.get("send_reminder_email"):
+                lead_obj.reminder_email_sent_at = None
+                lead_obj.save(update_fields=["reminder_email_sent_at"])
 
             # Handle assignment - optimize with select_related
             if data.get("assigned_to"):
