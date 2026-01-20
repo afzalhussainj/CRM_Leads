@@ -9,6 +9,7 @@ urlpatterns = [
     path("reminders/", views.RemindersListView.as_view(), name="api_reminders"),
     path("options/", views.OptionsView.as_view(), name="api_options"),
     path("<str:pk>/", views.LeadDetailView.as_view()),
+    path("<str:pk>/lifecycle/", views.LeadLifecycleUpdateView.as_view(), name="api_lead_lifecycle"),
     path("<str:pk>/convert-to-project/", views.LeadConvertToProjectView.as_view(), name="api_lead_convert_to_project"),
     path("<str:pk>/assign/", views.LeadAssignView.as_view(), name="api_lead_assign"),
     path("<str:pk>/schedule-follow-up/", views.LeadFollowUpScheduleView.as_view(), name="api_lead_schedule_follow_up"),

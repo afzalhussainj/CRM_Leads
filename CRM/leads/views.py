@@ -725,6 +725,77 @@ class LeadFollowUpScheduleView(APIView):
         )
 
 
+class LeadLifecycleUpdateView(APIView):
+    """
+    API View for updating lifecycle of a lead.
+    
+    PATCH: Updates the lifecycle field
+        - Employees can only update leads assigned to them
+        - Managers can update any lead
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def get_object(self, pk):
+        """Get lead object with optimizations"""
+        return get_object_or_404(
+            Lead.objects.select_related('status', 'assigned_to', 'assigned_to__user', 'lifecycle'),
+            pk=pk
+        )
+
+    def patch(self, request, pk, **kwargs):
+        """
+        Update lifecycle of a lead.
+        """
+        lead_obj = self.get_object(pk)
+        
+        # Validate user has profile
+        if not hasattr(request.user, 'profile') or request.user.profile is None:
+            return Response(
+                {"error": True, "message": "User profile not found."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        user_profile = request.user.profile
+        user_role = int(user_profile.role) if user_profile.role is not None else None
+        
+        # Role-based permission check
+        if user_role == UserRole.EMPLOYEE.value:
+            if lead_obj.assigned_to != user_profile:
+                return Response(
+                    {"error": True, "message": "You can only update lifecycles for leads assigned to you."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        
+        lifecycle_id = request.data.get("lifecycle")
+        if not lifecycle_id:
+            return Response(
+                {"error": True, "message": "lifecycle is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        try:
+            lifecycle_obj = LeadLifecycle.objects.get(id=lifecycle_id)
+        except LeadLifecycle.DoesNotExist:
+            return Response(
+                {"error": True, "message": "Invalid lifecycle id."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        lead_obj.lifecycle = lifecycle_obj
+        lead_obj.save(update_fields=["lifecycle"])
+        
+        lead_serializer = LeadSerializer(lead_obj)
+        return Response(
+            {
+                "error": False,
+                "message": "Lifecycle updated successfully",
+                "lifecycle": lifecycle_obj.id,
+                "lead": lead_serializer.data
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class LeadFollowUpStatusUpdateView(APIView):
     """
     API View for updating follow-up status of a lead.
