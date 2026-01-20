@@ -4,30 +4,30 @@
 Hi {{ user_name|default:email|default:user_email }}
 {% endblock heading %}
 
-{% if complete_url %}
 {% block content_body %}
+{% if complete_url %}
 Welcome to SLCW CRM! Click below to set your password and activate your account.
+{% elif message == 'activated' %}
+Your account has been activated by {{status_changed_user}}. You can login to your account and access all the features of Django CRM.
+{% endif %}
 {% endblock content_body %}
+
 {% block button_link %}
+{% if complete_url %}
 <div style="margin-bottom:20px">
     <a href="{{ complete_url }}"
         style="display:inline-block;width:200px;background:#38abdd;padding:12px;text-align:center;color:#fff;font-size:1rem;font-weight:600;margin:0px auto;margin-bottom:20px;border-radius:5px;text-decoration:none;display:block">Activate Account</a>
 </div>
-{% endblock button_link %}
-{% block extra_content %}
-If you did not expect this invitation, you can safely ignore this email.
-{% endblock extra_content %}
-{% elif message == 'activated' %}
-{% block content_body %}
-You account has been activated by {{status_changed_user}}. You can login to your account and access all the features of
-Django CRM.
-{% endblock content_body %}
-{% block button_link %}
-{% if url %}
+{% elif message == 'activated' and url %}
 <div style="margin-bottom:20px">
     <a href="{{url}}"
         style="display:inline-block;width:170px;background:#38abdd;padding:10px;text-align:center;color:#fff;font-size:1rem;font-weight:600;margin:0px auto;margin-bottom:20px;border-radius:5px;text-decoration:none;display:block">Login</a>
 </div>
 {% endif %}
 {% endblock button_link %}
+
+{% block extra_content %}
+{% if complete_url %}
+If you did not expect this invitation, you can safely ignore this email.
 {% endif %}
+{% endblock extra_content %}
