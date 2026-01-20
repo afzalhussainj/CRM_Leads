@@ -76,6 +76,17 @@ class EmployeeToggleActiveView(APIView):
             profile.is_active = not profile.is_active
             profile.save(update_fields=['is_active'])
             
+            # Send status change email
+            try:
+                from common.tasks import send_email_user_status
+                send_email_user_status.delay(
+                    profile.user.id,
+                    status_changed_user=request.user.email
+                )
+            except Exception as e:
+                # Don't fail the request if email fails
+                pass
+            
             serializer = EmployeeSerializer(profile)
             return Response({
                 "success": True,
