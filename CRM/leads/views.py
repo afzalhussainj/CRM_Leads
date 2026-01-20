@@ -889,11 +889,11 @@ class ProjectListView(APIView, LimitOffsetPagination):
 
 class LeadConvertToProjectView(APIView):
     """
-    API View for converting a lead to a project.
+    API View for converting between lead and project.
     
-    POST: Converts a lead to a project
-        - Only managers can convert leads to projects
-        - Sets is_project=True on the lead
+    POST: Converts a lead to a project or project to a lead (manager-only)
+        - Accepts `is_project` (bool) in the request body to set the target state
+        - Defaults to True to keep backward compatibility with the old behavior
     """
     permission_classes = (IsAuthenticated,)
 
@@ -906,7 +906,7 @@ class LeadConvertToProjectView(APIView):
 
     def post(self, request, pk, **kwargs):
         """
-        Convert lead to project.
+        Convert lead to project or project to lead (manager-only).
         """
         lead_obj = self.get_object(pk)
         
@@ -920,32 +920,43 @@ class LeadConvertToProjectView(APIView):
         user_profile = request.user.profile
         user_role = int(user_profile.role) if user_profile.role is not None else None
         
-        # Only managers can convert leads to projects
+        # Only managers can convert between lead and project
         if user_role != UserRole.MANAGER.value and not request.user.is_superuser:
             return Response(
-                {"error": True, "message": "Only managers can convert leads to projects."},
+                {"error": True, "message": "Only managers can convert leads or projects."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         
-        # Check if already a project
-        if lead_obj.is_project:
+        # Determine desired state (default True for backward compatibility)
+        desired_is_project = request.data.get("is_project", True)
+
+        # Normalize to bool (accept true/false strings or booleans)
+        if isinstance(desired_is_project, str):
+            desired_is_project = desired_is_project.strip().lower() in ["true", "1", "yes"]
+        else:
+            desired_is_project = bool(desired_is_project)
+
+        # If already in desired state, return conflict
+        if lead_obj.is_project == desired_is_project:
+            state_label = "project" if desired_is_project else "lead"
             return Response(
-                {"error": True, "message": "This lead is already a project."},
+                {"error": True, "message": f"This record is already a {state_label}."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
-        # Convert to project
-        lead_obj.is_project = True
+
+        # Apply conversion
+        lead_obj.is_project = desired_is_project
         lead_obj.save(update_fields=["is_project"])
-        
+
         # Return updated lead data
         lead_serializer = LeadSerializer(lead_obj)
+        state_label = "project" if desired_is_project else "lead"
         return Response(
             {
                 "error": False,
-                "message": "Lead successfully converted to project",
-                "is_project": True,
-                "project": lead_serializer.data
+                "message": f"Successfully converted to {state_label}.",
+                "is_project": desired_is_project,
+                "record": lead_serializer.data
             },
             status=status.HTTP_200_OK,
         )
