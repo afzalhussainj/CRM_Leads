@@ -1,5 +1,6 @@
 {
-  "buildCommand": "pip install --break-system-packages -r requirements.txt && cd CRM && python manage.py collectstatic --noinput || true",
+  "installCommand": "pip install --break-system-packages -r requirements.txt",
+  "buildCommand": "cd CRM && python manage.py collectstatic --noinput || true",
   "rewrites": [
     { "source": "/static/(.*)", "destination": "/CRM/staticfiles/$1" },
     { "source": "/(.*)", "destination": "/api/index" }
