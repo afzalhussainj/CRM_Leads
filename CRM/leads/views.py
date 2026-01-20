@@ -693,8 +693,6 @@ class LeadFollowUpScheduleView(APIView):
         # Schedule reminder email if requested
         if send_reminder_email:
             # Calculate when to send the reminder based on offset
-            from datetime import timedelta
-            from django.utils import timezone
             reminder_send_at = follow_up_datetime
             
             if reminder_time_offset == "30min":
