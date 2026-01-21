@@ -2,6 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 import logging
+import time
 
 from leads.models import Lead
 from common.utils.email_mailtrap import send_mailtrap_email
@@ -153,6 +154,11 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"  - ✓ SENT: Email sent and reminder_email_sent_at updated"))
                 logger.info(f"  - ✓ SENT: Email sent and reminder_email_sent_at updated")
                 sent_count += 1
+                
+                # Add delay between emails to respect Mailtrap rate limit (1 email/second)
+                if index < leads_count:
+                    self.stdout.write(f"  - Waiting 1 second before next email (Mailtrap rate limit)...")
+                    time.sleep(1)
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"  - FAILED: Could not update reminder_email_sent_at: {str(e)}"))
                 logger.error(f"  - FAILED: Could not update reminder_email_sent_at: {str(e)}")
