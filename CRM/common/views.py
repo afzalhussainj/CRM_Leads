@@ -19,7 +19,7 @@ from common.serializer import *
 from common.tasks import send_email_user_delete
 from common.utils.choices import ROLES
 from leads.serializer import LeadNoteSerializer, LeadSerializer
-from leads.models import Lead, LeadNote
+from leads.models import Lead, LeadNote, LeadNoteRead
 from utils.roles_enum import UserRole
 
 User = get_user_model()
@@ -709,9 +709,9 @@ class DashboardUnreadNotes(APIView):
                 lead__assigned_to=profile
             )
 
-        # Efficient "not read by user" check
-        read_subquery = LeadNote.read_by.through.objects.filter(
-            leadnote_id=OuterRef('pk'),
+        # Efficient "not read by user" check via LeadNoteRead
+        read_subquery = LeadNoteRead.objects.filter(
+            note_id=OuterRef('pk'),
             user_id=user.id,
         )
 
@@ -741,17 +741,12 @@ class DashboardUnreadNotes(APIView):
         )
 
 class DashboardReminders(APIView):
-    """
-    API endpoint to get follow-up reminders.
-    
-    GET: Returns reminders categorized by status (overdue, due_today, upcoming, done)
-    """
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, **kwargs):
-        # Validate user profile
         user = request.user
         profile = getattr(user, 'profile', None)
+
         if not profile:
             return Response(
                 {"error": True, "message": "User profile not found."},
@@ -760,66 +755,93 @@ class DashboardReminders(APIView):
 
         user_role = int(profile.role) if profile.role is not None else None
 
-        # Base lead queryset (role-based) with optimizations
-        leads_base = Lead.objects.select_related(
-            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
-        ).filter(is_active=True)
-        
-        if user_role == UserRole.EMPLOYEE.value:
-            leads_queryset = leads_base.filter(assigned_to=profile)
-        else:
-            leads_queryset = leads_base
+        # Base queryset (lean & indexed)
+        leads = Lead.objects.filter(is_active=True)
 
-        # Reminders - optimized with aggregation instead of loops
+        if user_role == UserRole.EMPLOYEE.value:
+            leads = leads.filter(assigned_to=profile)
+
+        # Time windows
         now = timezone.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
 
-        # Get counts and actual leads
-        overdue_leads = list(leads_queryset.filter(
+        # ---------- COUNTS (single DB hit) ----------
+        counts = leads.aggregate(
+            overdue=Count(
+                'id',
+                filter=Q(
+                    follow_up_status='pending',
+                    follow_up_at__lt=today_start
+                ),
+            ),
+            due_today=Count(
+                'id',
+                filter=Q(
+                    follow_up_status='pending',
+                    follow_up_at__gte=today_start,
+                    follow_up_at__lt=today_end
+                ),
+            ),
+            upcoming=Count(
+                'id',
+                filter=Q(
+                    follow_up_status='pending',
+                    follow_up_at__gte=today_end
+                ),
+            ),
+            done=Count(
+                'id',
+                filter=Q(follow_up_status='done'),
+            ),
+        )
+
+        # ---------- FETCH LIMITED LEADS ----------
+        base_fields = (
+            'id', 'name', 'follow_up_at',
+            'status', 'assigned_to'
+        )
+
+        overdue_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__lt=today_start
-        ))
-        
-        due_today_leads = list(leads_queryset.filter(
+        ).only(*base_fields).order_by('follow_up_at')
+
+        due_today_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_start,
             follow_up_at__lt=today_end
-        ))
-        
-        upcoming_leads = list(leads_queryset.filter(
+        ).only(*base_fields).order_by('follow_up_at')
+
+        upcoming_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_end
-        ))
+        ).only(*base_fields).order_by('follow_up_at')[:self.LIMIT]
 
-        done_count = leads_queryset.filter(
-            follow_up_status='done'
-        ).count()
-
-        response_data = {
-            "success": True,
-            "reminders": {
-                "overdue": {
-                    "count": len(overdue_leads),
-                    "leads": LeadSerializer(overdue_leads, many=True).data,
-                },
-                "due_today": {
-                    "count": len(due_today_leads),
-                    "leads": LeadSerializer(due_today_leads, many=True).data,
-                },
-                "upcoming": {
-                    "count": len(upcoming_leads),
-                    "leads": LeadSerializer(upcoming_leads, many=True).data,
-                },
-                "done": {
-                    "count": done_count,
-                    "leads": [],  # Don't return done leads to reduce payload
+        return Response(
+            {
+                "success": True,
+                "reminders": {
+                    "overdue": {
+                        "count": counts["overdue"],
+                        "leads": LeadSerializer(overdue_qs, many=True).data,
+                    },
+                    "due_today": {
+                        "count": counts["due_today"],
+                        "leads": LeadSerializer(due_today_qs, many=True).data,
+                    },
+                    "upcoming": {
+                        "count": counts["upcoming"],
+                        "leads": LeadSerializer(upcoming_qs, many=True).data,
+                    },
+                    "done": {
+                        "count": counts["done"],
+                        "leads": [],
+                    },
                 },
             },
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
+            status=status.HTTP_200_OK,
+        )
 
 class DashboardLeadStatusesAndEmployees(APIView):
     """
