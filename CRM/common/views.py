@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Case, When, Value, CharField
+from django.db.models import Count, Case, When, Value, CharField, OuterRef, Exists
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -682,17 +682,13 @@ class UserStatusView(APIView):
         return Response(context)
 
 class DashboardUnreadNotes(APIView):
-    """
-    API endpoint to get unread notes.
-    
-    GET: Returns unread notes for leads accessible to the user
-    """
     permission_classes = (IsAuthenticated,)
+    NOTES_LIMIT = 20  # limit payload size
 
     def get(self, request, **kwargs):
-        # Validate user profile
         user = request.user
         profile = getattr(user, 'profile', None)
+
         if not profile:
             return Response(
                 {"error": True, "message": "User profile not found."},
@@ -701,38 +697,52 @@ class DashboardUnreadNotes(APIView):
 
         user_role = int(profile.role) if profile.role is not None else None
 
-        # Base lead queryset (role-based) with optimizations
-        leads_base = Lead.objects.select_related(
-            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
-        ).filter(is_active=True)
-        
-        if user_role == UserRole.EMPLOYEE.value:
-            leads_queryset = leads_base.filter(assigned_to=profile)
-        else:
-            leads_queryset = leads_base
-
-        # Unread notes - optimized with prefetch
-        unread_notes_qs = (
-            LeadNote.objects.filter(
-                lead__in=leads_queryset
-            )
-            .exclude(author__user=user)
-            .exclude(read_by__user=user)
-            .select_related('lead', 'author', 'author__user', 'lead__status')
-            .order_by('-created_at')
+        # Base unread notes query
+        unread_notes = LeadNote.objects.filter(
+            lead__is_active=True
+        ).exclude(
+            author__user=user
         )
 
-        unread_notes_count = unread_notes_qs.count()
-        unread_notes_serializer = LeadNoteSerializer(unread_notes_qs, many=True)
+        # Role-based filtering
+        if user_role == UserRole.EMPLOYEE.value:
+            unread_notes = unread_notes.filter(
+                lead__assigned_to=profile
+            )
 
-        response_data = {
-            "success": True,
-            "unread_count": unread_notes_count,
-            "notes": unread_notes_serializer.data,
-        }
+        # Efficient "not read by user" check
+        read_subquery = LeadNote.read_by.through.objects.filter(
+            leadnote_id=OuterRef('pk'),
+            user_id=user.id,
+        )
 
-        return Response(response_data, status=status.HTTP_200_OK)
+        unread_notes = unread_notes.annotate(
+            is_read=Exists(read_subquery)
+        ).filter(
+            is_read=False
+        )
 
+        # Ordering + limiting
+        unread_notes = unread_notes.select_related(
+            'lead', 'lead__status', 'author', 'author__user'
+        ).order_by('-created_at')
+
+        # Count (cheap query)
+        unread_count = unread_notes.count()
+
+        # Fetch limited results only
+        notes = unread_notes[:self.NOTES_LIMIT]
+
+        serializer = LeadNoteSerializer(notes, many=True)
+
+        return Response(
+            {
+                "success": True,
+                "unread_count": unread_count,
+                "notes": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 class DashboardReminders(APIView):
     """
