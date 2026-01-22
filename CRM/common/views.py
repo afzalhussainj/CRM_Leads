@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Case, When, Value, CharField, OuterRef, Exists
+from django.db.models import Count, Case, When, Value, CharField, OuterRef, Exists, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -844,17 +844,12 @@ class DashboardReminders(APIView):
         )
 
 class DashboardLeadStatusesAndEmployees(APIView):
-    """
-    API endpoint to get lead statuses and employee count.
-    
-    GET: Returns lead status distribution and employee count (for managers)
-    """
     permission_classes = (IsAuthenticated,)
 
     def get(self, request, **kwargs):
-        # Validate user profile
         user = request.user
         profile = getattr(user, 'profile', None)
+
         if not profile:
             return Response(
                 {"error": True, "message": "User profile not found."},
@@ -863,40 +858,36 @@ class DashboardLeadStatusesAndEmployees(APIView):
 
         user_role = int(profile.role) if profile.role is not None else None
 
-        # Base lead queryset (role-based) with optimizations
-        leads_base = Lead.objects.select_related(
-            'status', 'lifecycle', 'assigned_to', 'assigned_to__user'
-        ).filter(is_active=True)
-        
-        if user_role == UserRole.EMPLOYEE.value:
-            leads_queryset = leads_base.filter(assigned_to=profile)
-        else:
-            leads_queryset = leads_base
+        leads = Lead.objects.filter(is_active=True)
 
-        # Lead counts by status - optimized
+        if user_role == UserRole.EMPLOYEE.value:
+            leads = leads.filter(assigned_to_id=profile.id)
+
         status_counts = (
-            leads_queryset
-            .values('status__id', 'status__name')
+            leads
+            .values('status_id', 'status__name')
             .annotate(count=Count('id'))
             .order_by('status__name')
         )
 
-        # Employee count - cached
+        # ---- EMPLOYEE COUNT (cached) ----
         employee_count = 0
         if user_role == UserRole.MANAGER.value:
+
             employee_count = Profile.objects.filter(
                 role=UserRole.EMPLOYEE.value,
                 is_active=True,
-                user__is_deleted=False
+                user__is_deleted=False,
             ).count()
 
-        response_data = {
-            "success": True,
-            "lead_statuses": list(status_counts),
-            "employee_count": employee_count,
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "success": True,
+                "lead_statuses": list(status_counts),
+                "employee_count": employee_count,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 class Dashboard(APIView):
     permission_classes = (IsAuthenticated,)
