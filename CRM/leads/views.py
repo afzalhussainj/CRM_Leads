@@ -1005,13 +1005,24 @@ class LeadConvertToProjectView(APIView):
 
         # Apply conversion
         lead_obj.is_project = desired_is_project
-        if not lead_obj.is_project:
+        if desired_is_project:
+            # Converting to project: clear follow-up data
             lead_obj.follow_up_at = None
             lead_obj.follow_up_status = None
             lead_obj.send_reminder_email = False
             lead_obj.reminder_time_offset = None
             lead_obj.reminder_email_sent_at = None
-        lead_obj.save(update_fields=["is_project"])
+            lead_obj.save(update_fields=[
+                "is_project",
+                "follow_up_at",
+                "follow_up_status",
+                "send_reminder_email",
+                "reminder_time_offset",
+                "reminder_email_sent_at"
+            ])
+        else:
+            # Converting back to lead: only update is_project
+            lead_obj.save(update_fields=["is_project"])
 
         # Return updated lead data
         lead_serializer = LeadSerializer(lead_obj)
