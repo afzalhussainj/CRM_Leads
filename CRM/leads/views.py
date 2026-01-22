@@ -1001,9 +1001,16 @@ class LeadConvertToProjectView(APIView):
                 {"error": True, "message": f"This record is already a {state_label}."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        
 
         # Apply conversion
         lead_obj.is_project = desired_is_project
+        if not lead_obj.is_project:
+            lead_obj.follow_up_at = None
+            lead_obj.follow_up_status = None
+            lead_obj.send_reminder_email = False
+            lead_obj.reminder_time_offset = None
+            lead_obj.reminder_email_sent_at = None
         lead_obj.save(update_fields=["is_project"])
 
         # Return updated lead data
