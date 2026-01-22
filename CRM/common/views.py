@@ -721,7 +721,7 @@ class DashboardUnreadNotes(APIView):
             is_read=False
         )
 
-        # Ordering + limiting
+        # Ordering
         unread_notes = unread_notes.select_related(
             'lead', 'lead__status', 'author', 'author__user'
         ).order_by('-created_at')
@@ -766,7 +766,6 @@ class DashboardReminders(APIView):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
 
-        # ---------- COUNTS (single DB hit) ----------
         counts = leads.aggregate(
             overdue=Count(
                 'id',
@@ -796,7 +795,6 @@ class DashboardReminders(APIView):
             ),
         )
 
-        # ---------- FETCH LIMITED LEADS ----------
         base_fields = (
             'id', 'name', 'follow_up_at',
             'status', 'assigned_to'
@@ -816,7 +814,7 @@ class DashboardReminders(APIView):
         upcoming_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_end
-        ).only(*base_fields).order_by('follow_up_at')[:self.LIMIT]
+        ).only(*base_fields).order_by('follow_up_at')
 
         return Response(
             {
@@ -962,7 +960,6 @@ class Dashboard(APIView):
             follow_up_status='done'
         ).count()
 
-        # Fetch actual leads only if needed (limit results)
         overdue_leads = list(leads_queryset.filter(
             follow_up_status='pending',
             follow_up_at__lt=today_start
