@@ -402,10 +402,40 @@ class LeadDetailView(APIView):
 
             # Handle assignment - optimize with select_related
             if data.get("assigned_to"):
+                # Store old assignee before changing
+                old_assignee = lead_obj.assigned_to
+                
                 try:
                     assigned_to = Profile.objects.select_related('user').get(id=data.get("assigned_to"))
                     lead_obj.assigned_to = assigned_to
                     lead_obj.save()
+                    
+                    # Send emails if assignee changed
+                    if old_assignee != assigned_to:
+                        try:
+                            from leads.tasks import send_email_to_assigned_user, send_email_to_unassigned_user
+                            import time
+                            
+                            # Send email to new assignee
+                            send_email_to_assigned_user(
+                                [assigned_to.id],
+                                lead_obj.id,
+                                source="reassignment"
+                            )
+                            
+                            # Send email to old assignee if they exist
+                            if old_assignee:
+                                # Add delay to respect rate limit
+                                time.sleep(1)
+                                send_email_to_unassigned_user(
+                                    old_assignee.id,
+                                    lead_obj.id,
+                                    new_assignee_id=assigned_to.id
+                                )
+                        except Exception:
+                            # Don't fail the request if email fails
+                            pass
+                            
                 except Profile.DoesNotExist:
                     return Response(
                         {"error": True, "message": "Invalid assigned_to profile ID."},
@@ -576,15 +606,28 @@ class LeadAssignView(APIView):
         lead_obj.assigned_to = new_assignee
         lead_obj.save(update_fields=["assigned_to"])
         
-        # Send email notification if assignee changed
+        # Send email notifications if assignee changed
         if old_assignee != new_assignee:
             try:
-                from leads.tasks import send_email_to_assigned_user
+                from leads.tasks import send_email_to_assigned_user, send_email_to_unassigned_user
+                import time
+                
+                # Send email to new assignee
                 send_email_to_assigned_user(
                     [new_assignee.id],
                     lead_obj.id,
                     source="reassignment"
                 )
+                
+                # Send email to old assignee if they exist
+                if old_assignee:
+                    # Add delay to respect rate limit
+                    time.sleep(1)
+                    send_email_to_unassigned_user(
+                        old_assignee.id,
+                        lead_obj.id,
+                        new_assignee_id=new_assignee.id
+                    )
             except Exception:
                 # Don't fail the request if email fails
                 pass

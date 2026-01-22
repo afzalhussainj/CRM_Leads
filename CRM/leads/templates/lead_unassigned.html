@@ -1,0 +1,37 @@
+{% extends 'root_email_template_new.html' %}
+
+{% block heading %}
+Lead Unassigned
+{% endblock heading %}
+
+{% block content_body %}
+Hello {{ user.first_name|default:user.email }},
+
+You have been removed from the following lead:
+
+<strong>Lead Title:</strong> {{ lead_instance.title }}<br>
+{% if lead_instance.company_name %}<strong>Company:</strong> {{ lead_instance.company_name }}<br>{% endif %}
+{% if lead_instance.contact_first_name or lead_instance.contact_last_name %}
+<strong>Contact:</strong> {{ lead_instance.contact_first_name }} {{ lead_instance.contact_last_name }}<br>
+{% endif %}
+{% if lead_instance.contact_email %}<strong>Email:</strong> {{ lead_instance.contact_email }}<br>{% endif %}
+{% if lead_instance.contact_phone %}<strong>Phone:</strong> {{ lead_instance.contact_phone }}<br>{% endif %}
+{% if new_assignee %}
+<strong>New Assignee:</strong> {{ new_assignee.first_name }} {{ new_assignee.last_name }} ({{ new_assignee.email }})<br>
+{% endif %}
+{% endblock content_body %}
+
+{% block button_link %}
+{% if lead_detail_url %}
+<div style="margin-bottom:20px">
+    <a href="{{ lead_detail_url }}"
+        style="display:inline-block;width:170px;background:#38abdd;padding:10px;text-align:center;color:#fff;font-size:1rem;font-weight:600;margin:0px auto;margin-bottom:20px;border-radius:5px;text-decoration:none;display:block">View Lead</a>
+</div>
+{% endif %}
+{% endblock button_link %}
+
+{% block extra_content %}
+<p style="font-size: 1.5em;">
+    This lead has been reassigned to another team member.
+</p>
+{% endblock extra_content %}

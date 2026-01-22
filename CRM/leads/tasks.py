@@ -113,6 +113,55 @@ def send_email_to_assigned_user(recipients, lead_id, source=""):
             )
 
 
+def send_email_to_unassigned_user(old_assignee_id, lead_id, new_assignee_id=None):
+    """Send email to user when they are removed from a lead."""
+    # Get lead with related data
+    lead = Lead.objects.select_related(
+        'status', 'assigned_to', 'assigned_to__user'
+    ).get(id=lead_id)
+    
+    # Get old assignee profile
+    old_profile = Profile.objects.select_related('user').filter(
+        id=old_assignee_id,
+        user__is_deleted=False
+    ).first()
+    
+    if not old_profile or not old_profile.user.email:
+        return
+    
+    lead_detail_url = f"{settings.DOMAIN_NAME}/leads/{lead.id}/view/"
+    
+    context = {
+        "user": old_profile.user,
+        "lead_instance": lead,
+        "lead_detail_url": lead_detail_url,
+        "UserRole": UserRole,
+    }
+    
+    # Add new assignee info if provided
+    if new_assignee_id:
+        new_profile = Profile.objects.select_related('user').filter(
+            id=new_assignee_id,
+            user__is_deleted=False
+        ).first()
+        if new_profile:
+            context["new_assignee"] = new_profile.user
+    
+    subject = f"Removed from lead: {lead.title}"
+    html_content = render_to_string(
+        "lead_unassigned.html", context=context
+    )
+    
+    # Send via Mailtrap API
+    send_mailtrap_email(
+        subject=subject,
+        recipients=[old_profile.user.email],
+        html=html_content,
+        text=None,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+    )
+
+
 def send_follow_up_reminder_email(lead_id):
     """
     Send follow-up reminder email to assigned user.
