@@ -1,7 +1,7 @@
 {% extends 'root_email_template_new.html' %}
 
 {% block heading %}
-Hi {{ user_name|default:email|default:user_email }}
+Hi {{ email }}
 {% endblock heading %}
 
 {% block content_body %}
