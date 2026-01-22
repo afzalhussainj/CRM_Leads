@@ -61,28 +61,46 @@ def send_email_user_status(
     status_changed_user="",
 ):
     """Send status change email (activated/deactivated) to users."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Attempting to send status change email for user_id: {user_id}")
+    
     user = User.objects.filter(id=user_id).first()
-    if user:
-        context = {}
-        context["message"] = "deactivated"
-        context["email"] = user.email
-        context["url"] = settings.DOMAIN_NAME
-        context["UserRole"] = UserRole
-        if user.is_active:
-            context["message"] = "activated"
-        context["status_changed_user"] = status_changed_user
-        if context["message"] == "activated":
-            subject = "Account Activated"
-            html_content = render_to_string(
-                "user_status_activate.html", context=context
-            )
-        else:
-            subject = "Account Deactivated"
-            html_content = render_to_string(
-                "user_status_deactivate.html", context=context
-            )
-        
-        # Send via Mailtrap API
+    if not user:
+        logger.warning(f"User not found for id {user_id}")
+        return False
+    
+    logger.info(f"User found: {user.email}, is_active: {user.is_active}")
+    
+    context = {}
+    context["message"] = "deactivated"
+    context["email"] = user.email
+    context["url"] = settings.DOMAIN_NAME
+    context["UserRole"] = UserRole
+    if user.is_active:
+        context["message"] = "activated"
+    context["status_changed_user"] = status_changed_user
+    
+    if context["message"] == "activated":
+        subject = "Account Activated"
+        template_name = "user_status_activate.html"
+    else:
+        subject = "Account Deactivated"
+        template_name = "user_status_deactivate.html"
+    
+    logger.info(f"Rendering template: {template_name}")
+    
+    try:
+        html_content = render_to_string(template_name, context=context)
+        logger.info(f"Template rendered successfully, length: {len(html_content)}")
+    except Exception as e:
+        logger.error(f"Failed to render template {template_name}: {str(e)}")
+        raise
+    
+    # Send via Mailtrap API
+    try:
+        logger.info(f"Sending email to {user.email} with subject: {subject}")
         send_mailtrap_email(
             subject=subject,
             recipients=[user.email],
@@ -90,6 +108,11 @@ def send_email_user_status(
             text=None,
             from_email=settings.DEFAULT_FROM_EMAIL,
         )
+        logger.info(f"Status change email sent successfully to {user.email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {user.email}: {str(e)}")
+        raise
 
 
 def send_email_user_delete(

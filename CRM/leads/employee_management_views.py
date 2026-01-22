@@ -90,7 +90,11 @@ class EmployeeToggleActiveView(APIView):
                     profile.user.id,
                     status_changed_user=request.user.email
                 )
-            except Exception:
+            except Exception as e:
+                # Log the error but don't fail the request
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to send status change email for user {profile.user.id}: {str(e)}")
                 # Don't fail the request if email fails
                 pass
             
