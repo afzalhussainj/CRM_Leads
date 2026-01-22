@@ -94,6 +94,12 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             self.fields["status"].required = False
             if hasattr(self.fields["status"], 'allow_null'):
                 self.fields["status"].allow_null = True
+        
+        # Lifecycle is ForeignKey, make it optional for updates but handle gracefully
+        if "lifecycle" in self.fields:
+            self.fields["lifecycle"].required = False
+            if hasattr(self.fields["lifecycle"], 'allow_null'):
+                self.fields["lifecycle"].allow_null = True
 
     def validate_status(self, value):
         """
@@ -128,6 +134,40 @@ class LeadCreateSerializer(serializers.ModelSerializer):
         
         # If we get here, value is not a valid format
         raise serializers.ValidationError("Status must be a LeadStatus ID (integer) or name (string).")
+
+    def validate_lifecycle(self, value):
+        """
+        Validate lifecycle field. Accepts either:
+        - LeadLifecycle ID (integer)
+        - LeadLifecycle instance
+        - None (to clear lifecycle)
+        """
+        if value is None:
+            return None
+        
+        # If already a LeadLifecycle instance, return as-is
+        from common.models import LeadLifecycle
+        if isinstance(value, LeadLifecycle):
+            return value
+        
+        # If it's an integer/string that looks like an ID, try to get by ID
+        if isinstance(value, (int, str)) and str(value).isdigit():
+            try:
+                return LeadLifecycle.objects.get(pk=int(value))
+            except LeadLifecycle.DoesNotExist:
+                raise serializers.ValidationError(f"LeadLifecycle with ID {value} does not exist.")
+        
+        # If it's a string (name), try to get by name
+        if isinstance(value, str):
+            try:
+                return LeadLifecycle.objects.get(name=value)
+            except LeadLifecycle.DoesNotExist:
+                raise serializers.ValidationError(f"LeadLifecycle with name '{value}' does not exist.")
+            except LeadLifecycle.MultipleObjectsReturned:
+                raise serializers.ValidationError(f"Multiple LeadLifecycle objects found with name '{value}'.")
+        
+        # If we get here, value is not a valid format
+        raise serializers.ValidationError("Lifecycle must be a LeadLifecycle ID (integer) or name (string).")
 
     def validate_title(self, title):
         if self.instance:
@@ -290,6 +330,7 @@ class LeadCreateSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "status",
+            "lifecycle",
             "source",
             "description",
             "company_name",
