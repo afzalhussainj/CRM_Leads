@@ -113,14 +113,7 @@ class LeadListView(APIView, LimitOffsetPagination):
             search = True
         count = queryset.count()
 
-        if params.get("limit") and params.get("offset"):
-            page_size = int(params.get("limit"))
-            offset = int(params.get("offset"))
-            queryset = queryset[offset:offset + page_size]
-        else:
-            page_size = 10
-            offset = 0
-            queryset = queryset[:page_size]
+
 
         
         #statuses, sources and lifecycles along with lead data
@@ -178,8 +171,6 @@ class LeadListView(APIView, LimitOffsetPagination):
         context["lifecycles"] = lifecycles_data
         context["leads"] = LeadSerializer(queryset, many=True).data
         context["count"] = count
-        context["offset"] = offset
-        context["limit"] = page_size
         context["search"] = search
         context["users"] = users
 
