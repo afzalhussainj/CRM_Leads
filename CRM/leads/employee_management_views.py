@@ -24,26 +24,33 @@ class EmployeeListView(APIView):
         if user_role != UserRole.MANAGER.value:
             return Response({"success": False, "error": "unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         
-        # Get all profiles except the current user (only non-deleted)
+        # Employees (role = EMPLOYEE)
         employees = Profile.objects.filter(
-            ~Q(user=request.user),
+            role=UserRole.EMPLOYEE.value,
             user__is_deleted=False
         ).select_related('user').order_by('-created_at')
+
+        # Managers (role = MANAGER), exclude current user to avoid duplication
+        managers = Profile.objects.filter(
+            role=UserRole.MANAGER.value,
+            user__is_deleted=False
+        ).exclude(user=request.user).select_related('user').order_by('-created_at')
         
-        # Serialize employees with flat structure
-        serializer = EmployeeSerializer(employees, many=True)
+        employees_serializer = EmployeeSerializer(employees, many=True)
+        managers_serializer = EmployeeSerializer(managers, many=True)
         
-        # Get counts using aggregation
-        base_queryset = Profile.objects.exclude(user=request.user)
+        # Counts for employees only
+        base_queryset = Profile.objects.filter(role=UserRole.EMPLOYEE.value, user__is_deleted=False)
         counts = base_queryset.aggregate(
-            active=Count('id', filter=Q(is_active=True, user__is_deleted=False)),
+            active=Count('id', filter=Q(is_active=True)),
             inactive=Count('id', filter=Q(is_active=False)),
-            total=Count('id', filter=Q(user__is_deleted=False))
+            total=Count('id')
         )
         
         return Response({
             "success": True,
-            "employees": serializer.data,
+            "employees": employees_serializer.data,
+            "managers": managers_serializer.data,
             "counts": {
                 "active": counts['active'] or 0,
                 "inactive": counts['inactive'] or 0,
