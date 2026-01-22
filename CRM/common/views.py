@@ -683,7 +683,6 @@ class UserStatusView(APIView):
 
 class DashboardUnreadNotes(APIView):
     permission_classes = (IsAuthenticated,)
-    NOTES_LIMIT = 20  # limit payload size
 
     def get(self, request, **kwargs):
         user = request.user
@@ -730,10 +729,7 @@ class DashboardUnreadNotes(APIView):
         # Count (cheap query)
         unread_count = unread_notes.count()
 
-        # Fetch limited results only
-        notes = unread_notes[:self.NOTES_LIMIT]
-
-        serializer = LeadNoteSerializer(notes, many=True)
+        serializer = LeadNoteSerializer(unread_notes, many=True)
 
         return Response(
             {
