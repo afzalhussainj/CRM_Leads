@@ -34,7 +34,7 @@ class EmployeeListView(APIView):
         managers = Profile.objects.filter(
             role=UserRole.MANAGER.value,
             user__is_deleted=False
-        ).exclude(user=request.user).select_related('user').order_by('-created_at')
+        ).select_related('user').order_by('-created_at')
         
         employees_serializer = EmployeeSerializer(employees, many=True)
         managers_serializer = EmployeeSerializer(managers, many=True)
