@@ -795,26 +795,21 @@ class DashboardReminders(APIView):
             ),
         )
 
-        base_fields = (
-            'id', 'name', 'follow_up_at',
-            'status', 'assigned_to'
-        )
-
         overdue_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__lt=today_start
-        ).only(*base_fields).order_by('follow_up_at')
+        ).select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user').order_by('follow_up_at')
 
         due_today_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_start,
             follow_up_at__lt=today_end
-        ).only(*base_fields).order_by('follow_up_at')
+        ).select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user').order_by('follow_up_at')
 
         upcoming_qs = leads.filter(
             follow_up_status='pending',
             follow_up_at__gte=today_end
-        ).only(*base_fields).order_by('follow_up_at')
+        ).select_related('status', 'lifecycle', 'assigned_to', 'assigned_to__user').order_by('follow_up_at')
 
         return Response(
             {
