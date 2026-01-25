@@ -974,8 +974,7 @@ class ProjectListView(APIView, LimitOffsetPagination):
                 queryset = queryset.filter(assigned_to=params.get("assigned_to"))
         
         context = {}
-        results = self.paginate_queryset(queryset, request, view=self)
-        serializer = LeadSerializer(results, many=True)
+        serializer = LeadSerializer(queryset, many=True)
         
         context["projects_count"] = queryset.count()
         context["projects"] = serializer.data
