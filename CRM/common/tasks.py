@@ -161,12 +161,12 @@ def resend_activation_link_to_user(
     context["message"] = "activation_link"
     user_name = f"{user_obj.first_name} {user_obj.last_name}".strip()
     context["user_name"] = user_name or user_email
-    time_delta_two_hours = datetime.datetime.strftime(
-        timezone.now() + datetime.timedelta(hours=2), "%Y-%m-%d-%H-%M-%S"
+    time_delta_24_hours = datetime.datetime.strftime(
+        timezone.now() + datetime.timedelta(hours=24), "%Y-%m-%d-%H-%M-%S"
     )
-    activation_key = context["token"] + time_delta_two_hours
+    activation_key = context["token"] + time_delta_24_hours
     user_obj.activation_key = activation_key
-    user_obj.key_expires = timezone.now() + datetime.timedelta(hours=2)
+    user_obj.key_expires = timezone.now() + datetime.timedelta(hours=24)
     user_obj.save()
 
     context["complete_url"] = context[
