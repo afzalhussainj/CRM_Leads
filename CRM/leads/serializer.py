@@ -568,12 +568,14 @@ class LeadNoteSerializer(serializers.ModelSerializer):
     """Serializer for lead notes"""
     author = ProfileSerializer(read_only=True)
     is_read = serializers.SerializerMethodField()
+    lead_title = serializers.CharField(source="lead.title", read_only=True)
     
     class Meta:
         model = LeadNote
         fields = (
             "id",
             "lead",
+            "lead_title",
             "author",
             "message",
             "created_at",
